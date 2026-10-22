@@ -3,12 +3,14 @@ import { format, parseISO, startOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import Cover from './Cover'
 import MonthCalendar from './MonthCalendar'
+import WeekView from './WeekView'
 import EventCard from './EventCard'
 import Sheet from './Sheet'
 import EventForm from './EventForm'
 import EventDetail from './EventDetail'
+import SettingsSheet from './SettingsSheet'
 import { supabase } from '../lib/supabase'
-import { deleteEvent, loadEverything, saveEvent, setCover } from '../lib/api'
+import { deleteEvent, loadEverything, markSeen, saveEvent, setCover } from '../lib/api'
 import { TEMPLATES } from '../lib/constants'
 import InviteCard from './InviteCard'
 import NotificationCard from './NotificationCard'
@@ -16,33 +18,53 @@ import { notifyPartner } from '../lib/push'
 
 const byDateTime = (a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`)
 
+const VIEW_KEY = 'usday:view'
+function savedView() {
+  try {
+    return localStorage.getItem(VIEW_KEY) ?? 'month'
+  } catch {
+    return 'month'
+  }
+}
+
 export default function Home({ userId }) {
   const [couple, setCouple] = useState(null)
   const [members, setMembers] = useState({})
   const [events, setEvents] = useState([])
+  const [seenAt, setSeenAt] = useState(null) // last visit before this one: newer partner plans get a "yeni" pill
+  const [view, setView] = useState(savedView)
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [selected, setSelected] = useState(() => new Date())
-  const [sheet, setSheet] = useState(null) // { type: 'form' | 'detail', event? }
+  const [sheet, setSheet] = useState(null) // { type: 'form' | 'detail' | 'settings', event?, preset? }
   const [toast, setToast] = useState(null)
 
-  const reload = useCallback(async () => {
-    try {
-      const data = await loadEverything()
-      setCouple(data.couple)
-      setMembers(data.members)
-      setEvents(data.events)
-    } catch {
-      setToast('Bağlantı sorunu, birazdan tekrar deneyeceğim')
-    }
-  }, [])
+  // Opening the app (or coming back to it) counts as seeing everything: clears the icon badge.
+  const reload = useCallback(
+    async ({ markAsSeen = false } = {}) => {
+      try {
+        const data = await loadEverything()
+        setCouple(data.couple)
+        setMembers(data.members)
+        setEvents(data.events)
+        if (markAsSeen) {
+          setSeenAt(data.members[userId]?.lastSeenAt ?? null)
+          await markSeen()
+          navigator.clearAppBadge?.().catch(() => {})
+        }
+      } catch {
+        setToast('Bağlantı sorunu, birazdan tekrar deneyeceğim')
+      }
+    },
+    [userId],
+  )
 
   useEffect(() => {
-    reload()
+    reload({ markAsSeen: true })
     const channel = supabase
       .channel('events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => reload())
       .subscribe()
-    const onVisible = () => document.visibilityState === 'visible' && reload()
+    const onVisible = () => document.visibilityState === 'visible' && reload({ markAsSeen: true })
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       supabase.removeChannel(channel)
@@ -57,7 +79,7 @@ export default function Home({ userId }) {
     const onMessage = (e) => {
       if (e.data?.type !== 'open') return
       setPendingOpen(new URL(e.data.url, window.location.origin).searchParams.get('event'))
-      reload()
+      reload({ markAsSeen: true })
     }
     navigator.serviceWorker?.addEventListener('message', onMessage)
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
@@ -86,10 +108,20 @@ export default function Home({ userId }) {
   const dayEvents = sorted.filter((e) => e.date === selectedKey)
   const upcoming = sorted.filter((e) => e.date >= todayKey && e.date !== selectedKey).slice(0, 4)
   const nextDate = sorted.find((e) => e.date >= todayKey && (e.tag === 'date' || e.surprise))
+  const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
 
   function selectDay(day) {
     setSelected(day)
     setMonth(startOfMonth(day))
+  }
+
+  function changeView(next) {
+    setView(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // not remembered in private mode
+    }
   }
 
   async function handleSave(form) {
@@ -133,7 +165,13 @@ export default function Home({ userId }) {
 
   return (
     <div className="app">
-      <Cover photo={couple.coverUrl} onPhoto={handleCover} nextEvent={nextDate} onOpen={openDetail} />
+      <Cover
+        photo={couple.coverUrl}
+        onPhoto={handleCover}
+        nextEvent={nextDate}
+        onOpen={openDetail}
+        onSettings={() => setSheet({ type: 'settings' })}
+      />
 
       <main className="content">
         <NotificationCard partnerName={partner?.name} onToast={setToast} />
@@ -163,14 +201,33 @@ export default function Home({ userId }) {
           </section>
         )}
 
-        <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={events} />
+        <div className="segmented view-switch" role="tablist" aria-label="Takvim görünümü">
+          <button className={view === 'month' ? 'is-active' : ''} onClick={() => changeView('month')}>
+            Ay
+          </button>
+          <button className={view === 'week' ? 'is-active' : ''} onClick={() => changeView('week')}>
+            Hafta
+          </button>
+        </div>
+
+        {view === 'week' ? (
+          <WeekView
+            selected={selected}
+            onSelect={selectDay}
+            events={events}
+            onOpen={openDetail}
+            onCreate={(date, time) => openForm({ date, time })}
+          />
+        ) : (
+          <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={events} />
+        )}
 
         <section className="agenda">
           <h2 className="section-title">{format(selected, 'd MMMM, EEEE', { locale: tr })}</h2>
           {dayEvents.length ? (
             <div className="event-list">
               {dayEvents.map((e) => (
-                <EventCard key={e.id} event={e} members={members} onClick={() => openDetail(e)} />
+                <EventCard key={e.id} event={e} members={members} isNew={isNew(e)} onClick={() => openDetail(e)} />
               ))}
             </div>
           ) : (
@@ -185,15 +242,18 @@ export default function Home({ userId }) {
             <h2 className="section-title">Yaklaşanlar</h2>
             <div className="event-list">
               {upcoming.map((e) => (
-                <EventCard key={e.id} event={e} members={members} showDate onClick={() => openDetail(e)} />
+                <EventCard
+                  key={e.id}
+                  event={e}
+                  members={members}
+                  isNew={isNew(e)}
+                  showDate
+                  onClick={() => openDetail(e)}
+                />
               ))}
             </div>
           </section>
         )}
-
-        <button className="signout" onClick={() => supabase.auth.signOut()}>
-          {members[userId]?.name} olarak giriş yapıldı · Çıkış yap
-        </button>
       </main>
 
       <button className="fab" onClick={() => setSheet({ type: 'form' })} aria-label="Plan ekle">
@@ -202,7 +262,9 @@ export default function Home({ userId }) {
 
       {sheet && (
         <Sheet onClose={() => setSheet(null)}>
-          {sheet.type === 'form' ? (
+          {sheet.type === 'settings' ? (
+            <SettingsSheet me={members[userId]} onClose={() => setSheet(null)} onToast={setToast} />
+          ) : sheet.type === 'form' ? (
             <EventForm
               initial={sheet.event}
               preset={sheet.preset}

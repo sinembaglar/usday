@@ -14,7 +14,7 @@ function countdownLabel(date) {
   return `${days} gün sonra`
 }
 
-export default function Cover({ photo, onPhoto, nextEvent, onOpen }) {
+export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings }) {
   const inputRef = useRef(null)
   const [picked, setPicked] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -37,9 +37,14 @@ export default function Cover({ photo, onPhoto, nextEvent, onOpen }) {
       {photo && <div className="cover-shade" />}
       <div className="cover-top">
         <span className="brand">UsDay</span>
-        <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
-          {uploading ? 'Yükleniyor…' : photo ? 'Fotoğrafı değiştir' : '📷 Fotoğrafınızı ekleyin'}
-        </button>
+        <span className="cover-actions">
+          <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
+            {uploading ? 'Yükleniyor…' : photo ? '📷 Değiştir' : '📷 Fotoğrafınızı ekleyin'}
+          </button>
+          <button className="cover-photo-btn cover-icon" onClick={onSettings} aria-label="Ayarlar">
+            ⚙️
+          </button>
+        </span>
         <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />
       </div>
 

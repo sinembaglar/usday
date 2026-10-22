@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { registerServiceWorker } from './lib/push'
+import { applyTheme, watchSystemTheme } from './lib/theme'
 
+applyTheme()
+watchSystemTheme()
 registerServiceWorker()
 
 createRoot(document.getElementById('root')).render(

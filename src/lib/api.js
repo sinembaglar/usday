@@ -18,7 +18,13 @@ async function signedUrls(paths) {
   return (path) => urlCache.get(path)?.url ?? null
 }
 
-const toPerson = (p) => ({ id: p.id, name: p.name, short: initials(p.name), color: p.color })
+const toPerson = (p) => ({
+  id: p.id,
+  name: p.name,
+  short: initials(p.name),
+  color: p.color,
+  lastSeenAt: p.last_seen_at,
+})
 
 function fromRow(r, urlFor) {
   return {
@@ -34,6 +40,7 @@ function fromRow(r, urlFor) {
     revealOn: r.reveal_on ?? '',
     blurPhotos: r.blur_photos,
     createdBy: r.created_by,
+    createdAt: r.created_at,
     locked: false,
   }
 }
@@ -56,6 +63,7 @@ function fromTeaser(t, urlFor) {
     revealOn: t.reveal_on,
     blurPhotos: blurred,
     createdBy: t.created_by,
+    createdAt: t.created_at,
     locked: true,
   }
 }
@@ -63,7 +71,7 @@ function fromTeaser(t, urlFor) {
 export async function loadEverything() {
   const results = await Promise.all([
     supabase.from('couples').select('id, cover_path, invite_code').single(),
-    supabase.from('profiles').select('id, name, color').order('created_at'),
+    supabase.from('profiles').select('id, name, color, last_seen_at').order('created_at'),
     supabase.from('events').select('*'),
     supabase.rpc('surprise_teasers'),
   ])
@@ -132,6 +140,17 @@ export async function deleteEvent(event) {
   const { error } = await supabase.from('events').delete().eq('id', event.id)
   if (error) throw error
   await removePhotos(event.photos.map((p) => p.path))
+}
+
+export async function markSeen() {
+  await supabase.rpc('mark_seen')
+}
+
+// Personal calendar feed token; renew=true invalidates the old link.
+export async function calendarToken(renew = false) {
+  const { data, error } = await supabase.rpc('my_calendar_token', { renew })
+  if (error) throw error
+  return data
 }
 
 // Returns the inviting partner's name, or null if the code is not usable.

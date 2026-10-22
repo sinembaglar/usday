@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/cal/:token",
+      "destination": "https://uywvqxxjsbnwspdxwnhl.supabase.co/functions/v1/ical?token=:token"
+    }
+  ]
+}

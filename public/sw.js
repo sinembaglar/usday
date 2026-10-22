@@ -5,14 +5,23 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {}
+  const badge =
+    typeof data.badge === 'number' && self.navigator.setAppBadge
+      ? data.badge > 0
+        ? self.navigator.setAppBadge(data.badge)
+        : self.navigator.clearAppBadge()
+      : Promise.resolve()
   event.waitUntil(
-    self.registration.showNotification(data.title ?? 'UsDay', {
-      body: data.body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: data.tag,
-      data: { url: data.url ?? '/' },
-    }),
+    Promise.all([
+      badge.catch(() => {}),
+      self.registration.showNotification(data.title ?? 'UsDay', {
+        body: data.body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: data.tag,
+        data: { url: data.url ?? '/' },
+      }),
+    ]),
   )
 })
 

@@ -26,17 +26,31 @@ export type EventRow = {
 
 export type Person = { id: string; name: string; couple_id: string }
 
+// Plans the partner added since this person last opened the app (the icon badge).
+async function unreadCount(userId: string) {
+  const { data: me } = await admin.from('profiles').select('couple_id, last_seen_at').eq('id', userId).single()
+  if (!me) return 0
+  const { count } = await admin
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('couple_id', me.couple_id)
+    .neq('created_by', userId)
+    .gt('created_at', me.last_seen_at)
+  return count ?? 0
+}
+
 // Sends to every device of the given people; drops subscriptions the push service no longer knows.
 export async function sendToUsers(userIds: string[], payload: Payload) {
   if (!userIds.length) return 0
   const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', userIds)
+  const badges = Object.fromEntries(await Promise.all(userIds.map(async (id) => [id, await unreadCount(id)])))
   let sent = 0
   await Promise.all(
     (subs ?? []).map(async (s) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify(payload),
+          JSON.stringify({ ...payload, badge: badges[s.user_id] }),
           { TTL: 60 * 60 * 12, urgency: 'high' },
         )
         sent++
