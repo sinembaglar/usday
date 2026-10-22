@@ -38,5 +38,6 @@ npm run dev
 - [x] Supabase ile giriş ve ortak veritabanı
 - [x] Fotoğrafların bulutta saklanması
 - [x] Canlı güncelleme
-- [ ] iOS web push bildirimleri
-- [ ] Davet koduyla eşleşme (birden çok çift için)
+- [x] Davet koduyla eşleşme
+- [x] Web push bildirimleri ve hatırlatmalar (Edge Functions + pg_cron)
+- [ ] App Store sürümü

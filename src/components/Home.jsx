@@ -11,6 +11,8 @@ import { supabase } from '../lib/supabase'
 import { deleteEvent, loadEverything, saveEvent, setCover } from '../lib/api'
 import { TEMPLATES } from '../lib/constants'
 import InviteCard from './InviteCard'
+import NotificationCard from './NotificationCard'
+import { notifyPartner } from '../lib/push'
 
 const byDateTime = (a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`)
 
@@ -48,6 +50,29 @@ export default function Home({ userId }) {
     }
   }, [reload])
 
+  // A tapped notification opens its plan, both on a cold start (?event=) and while the app is open.
+  const [pendingOpen, setPendingOpen] = useState(() => new URLSearchParams(window.location.search).get('event'))
+
+  useEffect(() => {
+    const onMessage = (e) => {
+      if (e.data?.type !== 'open') return
+      setPendingOpen(new URL(e.data.url, window.location.origin).searchParams.get('event'))
+      reload()
+    }
+    navigator.serviceWorker?.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
+  }, [reload])
+
+  useEffect(() => {
+    const event = pendingOpen && events.find((e) => e.id === pendingOpen)
+    if (!event) return
+    setSheet({ type: 'detail', event })
+    setSelected(parseISO(event.date))
+    setMonth(startOfMonth(parseISO(event.date)))
+    setPendingOpen(null)
+    window.history.replaceState(null, '', '/')
+  }, [pendingOpen, events])
+
   useEffect(() => {
     if (!toast) return
     const id = setTimeout(() => setToast(null), 3200)
@@ -68,10 +93,11 @@ export default function Home({ userId }) {
   }
 
   async function handleSave(form) {
-    await saveEvent(form, couple.id, sheet.event)
+    const id = await saveEvent(form, couple.id, sheet.event)
     setSheet(null)
     selectDay(parseISO(form.date))
     if (!sheet.event) {
+      if (partner) notifyPartner(id)
       setToast(
         form.surprise
           ? `🎁 Sürpriz eklendi, ${partner?.name ?? 'eşin'} sadece ipucunu görecek`
@@ -110,6 +136,8 @@ export default function Home({ userId }) {
       <Cover photo={couple.coverUrl} onPhoto={handleCover} nextEvent={nextDate} onOpen={openDetail} />
 
       <main className="content">
+        <NotificationCard partnerName={partner?.name} onToast={setToast} />
+
         {!partner && (
           <InviteCard
             code={couple.inviteCode}

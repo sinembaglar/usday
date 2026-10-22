@@ -229,6 +229,35 @@ h3 {
   border: 1.5px dashed var(--dash);
 }
 
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.notice > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice strong {
+  display: block;
+}
+
+.notice small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.notice-emoji {
+  font-size: 24px;
+}
+
+.notice .btn {
+  padding: 10px 16px;
+}
+
 .invite-head {
   display: flex;
   align-items: center;

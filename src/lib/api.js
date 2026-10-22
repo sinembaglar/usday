@@ -116,15 +116,16 @@ export async function saveEvent(form, coupleId, original) {
     blur_photos: form.blurPhotos,
   }
 
-  const { error } = original
-    ? await supabase.from('events').update(row).eq('id', original.id)
-    : await supabase.from('events').insert(row)
+  const { data, error } = original
+    ? await supabase.from('events').update(row).eq('id', original.id).select('id').single()
+    : await supabase.from('events').insert(row).select('id').single()
 
   if (error) {
     await removePhotos(uploaded)
     throw error
   }
   if (original) await removePhotos(original.photos.map((p) => p.path).filter((p) => !photos.includes(p)))
+  return data.id
 }
 
 export async function deleteEvent(event) {
