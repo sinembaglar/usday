@@ -13,9 +13,20 @@
 
 ## Teknolojiler
 
-React 19 · Vite · date-fns
+React 19 · Vite · date-fns · Supabase (Auth, Postgres, Storage, Realtime)
+
+## Gizlilik
+
+Sürprizlerin gizliliği istemcide değil veritabanında sağlanır. Row Level Security kuralları, açılış gününe kadar sürprizin detaylarını ve bulanık seçilen fotoğrafları partnerin cihazına hiç göndermez. Partner sadece `surprise_teasers()` fonksiyonundan ipucunu ve tarihi alır. Şema: [`supabase/migrations`](supabase/migrations).
 
 ## Çalıştırma
+
+`.env.local` dosyasına Supabase bilgilerini ekleyin:
+
+```
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+```
 
 ```bash
 npm install
@@ -24,6 +35,8 @@ npm run dev
 
 ## Yol haritası
 
-- [ ] Supabase ile giriş ve ortak veritabanı
-- [ ] Fotoğrafların bulutta saklanması
+- [x] Supabase ile giriş ve ortak veritabanı
+- [x] Fotoğrafların bulutta saklanması
+- [x] Canlı güncelleme
 - [ ] iOS web push bildirimleri
+- [ ] Davet koduyla eşleşme (birden çok çift için)

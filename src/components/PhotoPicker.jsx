@@ -1,6 +1,7 @@
 import { useRef } from 'react'
-import { resizeImage } from '../lib/storage'
+import { resizeImage } from '../lib/image'
 
+// photos: [{ path, url }] already uploaded, or [{ dataUrl }] picked now
 export default function PhotoPicker({ photos, onChange }) {
   const inputRef = useRef(null)
 
@@ -9,14 +10,14 @@ export default function PhotoPicker({ photos, onChange }) {
     e.target.value = ''
     if (!files.length) return
     const resized = await Promise.all(files.map((f) => resizeImage(f, 1200)))
-    onChange([...photos, ...resized])
+    onChange([...photos, ...resized.map((dataUrl) => ({ dataUrl }))])
   }
 
   return (
     <div className="photo-picker">
-      {photos.map((src, i) => (
-        <div key={i} className="photo-thumb">
-          <img src={src} alt="" />
+      {photos.map((photo, i) => (
+        <div key={photo.path ?? i} className="photo-thumb">
+          <img src={photo.dataUrl ?? photo.url} alt="" />
           <button type="button" aria-label="Kaldır" onClick={() => onChange(photos.filter((_, j) => j !== i))}>
             ×
           </button>

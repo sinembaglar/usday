@@ -12,11 +12,10 @@ import {
 } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { SURPRISE_COLOR, TAGS } from '../lib/constants'
-import { isHiddenFor } from '../lib/surprise'
 
 const WEEKDAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz']
 
-export default function MonthCalendar({ month, onMonthChange, selected, onSelect, events, viewer }) {
+export default function MonthCalendar({ month, onMonthChange, selected, onSelect, events }) {
   const days = eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
@@ -61,7 +60,7 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
               <span className="num">{format(day, 'd')}</span>
               <span className="dots">
                 {dayEvents.slice(0, 3).map((e) => (
-                  <i key={e.id} style={{ background: isHiddenFor(e, viewer) ? SURPRISE_COLOR : TAGS[e.tag].color }} />
+                  <i key={e.id} style={{ background: e.locked ? SURPRISE_COLOR : (TAGS[e.tag] ?? TAGS.plan).color }} />
                 ))}
               </span>
             </button>

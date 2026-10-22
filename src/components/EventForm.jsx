@@ -16,20 +16,29 @@ const EMPTY = {
 
 export default function EventForm({ initial, defaultDate, onSave, onDelete, onCancel }) {
   const [form, setForm] = useState(() => ({ ...EMPTY, date: defaultDate, ...initial }))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const set = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.title.trim() || !form.date) return
-    onSave({
+    if (!form.title.trim() || !form.date || saving) return
+    setSaving(true)
+    setError('')
+    try {
+      await onSave({
       ...form,
       title: form.title.trim(),
       teaser: form.surprise ? form.teaser.trim() || DEFAULT_TEASER : '',
       revealOn: form.surprise ? form.revealOn || form.date : '',
       blurPhotos: form.surprise && form.blurPhotos,
-    })
+      })
+    } catch {
+      setError('Kaydedilemedi. İnternet bağlantını kontrol edip tekrar dener misin?')
+      setSaving(false)
+    }
   }
 
   return (
@@ -95,6 +104,8 @@ export default function EventForm({ initial, defaultDate, onSave, onDelete, onCa
         </div>
       )}
 
+      {error && <p className="form-error">{error}</p>}
+
       <div className="form-actions">
         {onDelete && (
           <button type="button" className="btn btn-ghost danger" onClick={onDelete}>
@@ -104,8 +115,8 @@ export default function EventForm({ initial, defaultDate, onSave, onDelete, onCa
         <button type="button" className="btn btn-ghost" onClick={onCancel}>
           Vazgeç
         </button>
-        <button type="submit" className="btn btn-primary">
-          Kaydet
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          {saving ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
       </div>
     </form>

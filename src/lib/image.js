@@ -1,27 +1,3 @@
-import { useEffect, useState } from 'react'
-
-// Temporary local persistence; replaced by Supabase in the next step.
-export function usePersistentState(key, initial) {
-  const [value, setValue] = useState(() => {
-    try {
-      const raw = localStorage.getItem(key)
-      return raw ? JSON.parse(raw) : initial
-    } catch {
-      return initial
-    }
-  })
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value))
-    } catch {
-      // storage full or unavailable; keep working in memory
-    }
-  }, [key, value])
-
-  return [value, setValue]
-}
-
 export function resizeImage(file, max = 1400) {
   return new Promise((resolve, reject) => {
     const img = new Image()

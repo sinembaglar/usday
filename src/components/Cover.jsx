@@ -1,8 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { isHiddenFor } from '../lib/surprise'
-import { resizeImage } from '../lib/storage'
+import { resizeImage } from '../lib/image'
 
 function countdownLabel(date) {
   const days = differenceInCalendarDays(parseISO(date), new Date())
@@ -11,15 +10,17 @@ function countdownLabel(date) {
   return `${days} gün sonra`
 }
 
-export default function Cover({ photo, onPhoto, nextEvent, viewer, onOpen }) {
+export default function Cover({ photo, onPhoto, nextEvent, onOpen }) {
   const inputRef = useRef(null)
-  const hidden = nextEvent && isHiddenFor(nextEvent, viewer)
+  const [uploading, setUploading] = useState(false)
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
-    if (!file) return
-    onPhoto(await resizeImage(file))
     e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    await onPhoto(await resizeImage(file))
+    setUploading(false)
   }
 
   return (
@@ -27,8 +28,8 @@ export default function Cover({ photo, onPhoto, nextEvent, viewer, onOpen }) {
       {photo && <div className="cover-shade" />}
       <div className="cover-top">
         <span className="brand">UsDay</span>
-        <button className="cover-photo-btn" onClick={() => inputRef.current?.click()}>
-          {photo ? 'Fotoğrafı değiştir' : '📷 Fotoğrafınızı ekleyin'}
+        <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
+          {uploading ? 'Yükleniyor…' : photo ? 'Fotoğrafı değiştir' : '📷 Fotoğrafınızı ekleyin'}
         </button>
         <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />
       </div>
@@ -38,7 +39,7 @@ export default function Cover({ photo, onPhoto, nextEvent, viewer, onOpen }) {
           <small>Sıradaki date</small>
           <strong>{countdownLabel(nextEvent.date)}</strong>
           <span>
-            {hidden ? '🎁 Bir sürpriz yaklaşıyor' : nextEvent.title}
+            {nextEvent.locked ? '🎁 Bir sürpriz yaklaşıyor' : nextEvent.title}
             {' · '}
             {format(parseISO(nextEvent.date), 'd MMMM', { locale: tr })}
           </span>

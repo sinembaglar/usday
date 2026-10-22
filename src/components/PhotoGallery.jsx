@@ -1,17 +1,22 @@
 import { useState } from 'react'
 
-export default function PhotoGallery({ photos, locked }) {
+export default function PhotoGallery({ photos }) {
   const [open, setOpen] = useState(null)
 
   return (
     <>
-      <div className={`gallery ${locked ? 'is-locked' : ''}`}>
-        {photos.map((src, i) => (
-          <button key={i} className="gallery-item" onClick={() => !locked && setOpen(src)} disabled={locked}>
-            <img src={src} alt="" />
-            {locked && <span className="gallery-lock">🔒</span>}
-          </button>
-        ))}
+      <div className="gallery">
+        {photos.map((photo) =>
+          photo.url ? (
+            <button key={photo.path} className="gallery-item" onClick={() => setOpen(photo.url)}>
+              <img src={photo.url} alt="" />
+            </button>
+          ) : (
+            <span key={photo.path} className="gallery-item is-locked">
+              <span className="gallery-lock">🔒</span>
+            </span>
+          ),
+        )}
       </div>
 
       {open && (
