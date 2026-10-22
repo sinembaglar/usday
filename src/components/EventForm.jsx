@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DEFAULT_TEASER, TAGS, TEMPLATES } from '../lib/constants'
+import { DEFAULT_TEASER, TAGS, TEMPLATES, isTemplateTitle } from '../lib/constants'
 import PhotoPicker from './PhotoPicker'
 
 const EMPTY = {
@@ -21,6 +21,13 @@ export default function EventForm({ initial, preset, defaultDate, onSave, onDele
 
   const set = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+
+  // Switching category drops a ready-made title from the previous one; typed titles stay.
+  function chooseCategory(tag) {
+    setForm((f) => (isTemplateTitle(f.title) && f.tag !== tag ? { ...f, tag, title: '', time: '' } : { ...f, tag }))
+  }
+
+  const category = TEMPLATES[form.tag]
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -45,19 +52,39 @@ export default function EventForm({ initial, preset, defaultDate, onSave, onDele
     <form className="event-form" onSubmit={handleSubmit}>
       <h3>{initial ? 'Planı düzenle' : 'Yeni plan'}</h3>
 
-      {!initial && (
-        <div className="templates" aria-label="Hazır şablonlar">
-          {TEMPLATES.map((t) => (
-            <button
-              type="button"
-              key={t.title}
-              className={`chip ${form.title === t.title ? 'is-active' : ''}`}
-              style={{ '--tag': TAGS[t.tag].color }}
-              onClick={() => setForm((f) => ({ ...f, ...t }))}
-            >
-              {t.title}
-            </button>
-          ))}
+      <div className="categories" role="radiogroup" aria-label="Kategori">
+        {Object.entries(TAGS).map(([key, tag]) => (
+          <button
+            type="button"
+            key={key}
+            role="radio"
+            aria-checked={form.tag === key}
+            className={`category ${form.tag === key ? 'is-active' : ''}`}
+            style={{ '--tag': tag.color }}
+            onClick={() => chooseCategory(key)}
+          >
+            <span>{tag.emoji}</span>
+            {tag.label}
+          </button>
+        ))}
+      </div>
+
+      {!initial && category && (
+        <div className="template-group">
+          <small>{category.heading}</small>
+          <div className="templates" aria-label={category.heading}>
+            {category.items.map((t) => (
+              <button
+                type="button"
+                key={t.title}
+                className={`chip ${form.title === t.title ? 'is-active' : ''}`}
+                style={{ '--tag': TAGS[form.tag].color }}
+                onClick={() => setForm((f) => ({ ...f, ...t }))}
+              >
+                {t.title}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -72,20 +99,6 @@ export default function EventForm({ initial, preset, defaultDate, onSave, onDele
           <span>Saat</span>
           <input className="input" type="time" value={form.time} onChange={set('time')} />
         </label>
-      </div>
-
-      <div className="chips">
-        {Object.entries(TAGS).map(([key, tag]) => (
-          <button
-            type="button"
-            key={key}
-            className={`chip ${form.tag === key ? 'is-active' : ''}`}
-            style={{ '--tag': tag.color }}
-            onClick={() => setForm((f) => ({ ...f, tag: key }))}
-          >
-            {tag.emoji} {tag.label}
-          </button>
-        ))}
       </div>
 
       <textarea className="input" rows={2} placeholder="Not ekle…" value={form.note} onChange={set('note')} />

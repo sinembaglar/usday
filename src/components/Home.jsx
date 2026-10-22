@@ -192,8 +192,8 @@ export default function Home({ userId }) {
             <strong>UsDay’e hoş geldiniz 💜</strong>
             <small>İlk planınızı ekleyin. Bir şablona dokunmanız yeterli:</small>
             <div className="templates">
-              {TEMPLATES.slice(0, 6).map((t) => (
-                <button key={t.title} className="chip" onClick={() => openForm(t)}>
+              {TEMPLATES.date.items.slice(0, 6).map((t) => (
+                <button key={t.title} className="chip" onClick={() => openForm({ ...t, tag: 'date' })}>
                   {t.title}
                 </button>
               ))}
