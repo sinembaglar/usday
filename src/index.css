@@ -61,7 +61,7 @@ h3 {
 /* Cover */
 .cover {
   position: relative;
-  min-height: 300px;
+  aspect-ratio: 5 / 4;
   padding: calc(env(safe-area-inset-top) + 18px) 18px 22px;
   display: flex;
   flex-direction: column;
@@ -217,25 +217,131 @@ h3 {
   opacity: 0.6;
 }
 
-.invite {
+.invite,
+.welcome {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  text-align: left;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.invite {
   border: 1.5px dashed var(--dash);
 }
 
-.invite > span:first-child {
+.invite-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.invite-emoji {
   font-size: 26px;
 }
 
-.invite strong {
+.invite strong,
+.welcome strong {
   display: block;
 }
 
-.invite small {
+.invite small,
+.welcome small,
+.hint {
+  font-size: 13px;
   color: var(--muted);
+}
+
+.hint {
+  margin: 0;
+}
+
+.invite-code {
+  align-self: center;
+  padding: 8px 18px;
+  border-radius: 14px;
+  background: var(--blush);
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--rose-deep);
+  user-select: all;
+}
+
+.invite-join {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.invite-join .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.invite-join .form-error {
+  width: 100%;
+}
+
+.code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.link-btn {
+  align-self: center;
+  font-size: 13px;
+  color: var(--rose-deep);
+  text-decoration: underline;
+}
+
+.templates {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 -2px;
+  padding: 2px;
+  scrollbar-width: none;
+}
+
+.templates .chip {
+  flex: none;
+}
+
+/* Cropper */
+.cropper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cropper h3 {
+  font-size: 22px;
+}
+
+.crop-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #2b2230;
+  touch-action: none;
+  cursor: grab;
+}
+
+.crop-frame img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.zoom {
+  width: 100%;
+  accent-color: var(--rose-deep);
 }
 
 .signout {

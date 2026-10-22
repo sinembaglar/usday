@@ -62,7 +62,7 @@ function fromTeaser(t, urlFor) {
 
 export async function loadEverything() {
   const results = await Promise.all([
-    supabase.from('couples').select('id, cover_path').single(),
+    supabase.from('couples').select('id, cover_path, invite_code').single(),
     supabase.from('profiles').select('id, name, color').order('created_at'),
     supabase.from('events').select('*'),
     supabase.rpc('surprise_teasers'),
@@ -76,7 +76,12 @@ export async function loadEverything() {
   )
 
   return {
-    couple: { id: couple.id, coverPath: couple.cover_path, coverUrl: couple.cover_path ? urlFor(couple.cover_path) : null },
+    couple: {
+      id: couple.id,
+      inviteCode: couple.invite_code,
+      coverPath: couple.cover_path,
+      coverUrl: couple.cover_path ? urlFor(couple.cover_path) : null,
+    },
     members: Object.fromEntries(profiles.map((p) => [p.id, toPerson(p)])),
     events: [...rows.map((r) => fromRow(r, urlFor)), ...teasers.map((t) => fromTeaser(t, urlFor))],
   }
@@ -126,6 +131,18 @@ export async function deleteEvent(event) {
   const { error } = await supabase.from('events').delete().eq('id', event.id)
   if (error) throw error
   await removePhotos(event.photos.map((p) => p.path))
+}
+
+// Returns the inviting partner's name, or null if the code is not usable.
+export async function checkInvite(code) {
+  const { data, error } = await supabase.rpc('check_invite', { code })
+  if (error) throw error
+  return data
+}
+
+export async function joinCouple(code) {
+  const { error } = await supabase.rpc('join_couple', { code })
+  if (error) throw error
 }
 
 export async function setCover(couple, dataUrl) {

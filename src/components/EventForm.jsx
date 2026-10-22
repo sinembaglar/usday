@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DEFAULT_TEASER, TAGS } from '../lib/constants'
+import { DEFAULT_TEASER, TAGS, TEMPLATES } from '../lib/constants'
 import PhotoPicker from './PhotoPicker'
 
 const EMPTY = {
@@ -14,8 +14,8 @@ const EMPTY = {
   blurPhotos: false,
 }
 
-export default function EventForm({ initial, defaultDate, onSave, onDelete, onCancel }) {
-  const [form, setForm] = useState(() => ({ ...EMPTY, date: defaultDate, ...initial }))
+export default function EventForm({ initial, preset, defaultDate, onSave, onDelete, onCancel }) {
+  const [form, setForm] = useState(() => ({ ...EMPTY, date: defaultDate, ...preset, ...initial }))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -45,7 +45,23 @@ export default function EventForm({ initial, defaultDate, onSave, onDelete, onCa
     <form className="event-form" onSubmit={handleSubmit}>
       <h3>{initial ? 'Planı düzenle' : 'Yeni plan'}</h3>
 
-      <input className="input title-input" placeholder="Ne yapıyoruz?" value={form.title} onChange={set('title')} autoFocus />
+      {!initial && (
+        <div className="templates" aria-label="Hazır şablonlar">
+          {TEMPLATES.map((t) => (
+            <button
+              type="button"
+              key={t.title}
+              className={`chip ${form.title === t.title ? 'is-active' : ''}`}
+              style={{ '--tag': TAGS[t.tag].color }}
+              onClick={() => setForm((f) => ({ ...f, ...t }))}
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <input className="input title-input" placeholder="Ne yapıyoruz?" value={form.title} onChange={set('title')} />
 
       <div className="row">
         <label className="field">

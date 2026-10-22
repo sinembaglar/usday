@@ -9,6 +9,8 @@ import EventForm from './EventForm'
 import EventDetail from './EventDetail'
 import { supabase } from '../lib/supabase'
 import { deleteEvent, loadEverything, saveEvent, setCover } from '../lib/api'
+import { TEMPLATES } from '../lib/constants'
+import InviteCard from './InviteCard'
 
 const byDateTime = (a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`)
 
@@ -98,17 +100,7 @@ export default function Home({ userId }) {
     }
   }
 
-  async function invite() {
-    const url = window.location.origin
-    const text = 'UsDay’de ortak takvimimizi açtım 💜 Kayıt olunca takvimlerimiz birleşiyor:'
-    if (navigator.share) {
-      navigator.share({ title: 'UsDay', text, url }).catch(() => {})
-    } else {
-      await navigator.clipboard?.writeText(`${text} ${url}`)
-      setToast('🔗 Davet linki kopyalandı')
-    }
-  }
-
+  const openForm = (preset) => setSheet({ type: 'form', preset })
   const openDetail = (event) => setSheet({ type: 'detail', event })
 
   if (!couple) return <div className="splash">UsDay</div>
@@ -119,13 +111,28 @@ export default function Home({ userId }) {
 
       <main className="content">
         {!partner && (
-          <button className="invite card" onClick={invite}>
-            <span>💌</span>
-            <span>
-              <strong>Eşini davet et</strong>
-              <small>UsDay linkini gönder. Kayıt olunca takviminiz birleşir.</small>
-            </span>
-          </button>
+          <InviteCard
+            code={couple.inviteCode}
+            onToast={setToast}
+            onJoined={() => {
+              setToast('💜 Takvimleriniz birleşti!')
+              reload()
+            }}
+          />
+        )}
+
+        {events.length === 0 && (
+          <section className="welcome card">
+            <strong>UsDay’e hoş geldiniz 💜</strong>
+            <small>İlk planınızı ekleyin. Bir şablona dokunmanız yeterli:</small>
+            <div className="templates">
+              {TEMPLATES.slice(0, 6).map((t) => (
+                <button key={t.title} className="chip" onClick={() => openForm(t)}>
+                  {t.title}
+                </button>
+              ))}
+            </div>
+          </section>
         )}
 
         <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={events} />
@@ -170,6 +177,7 @@ export default function Home({ userId }) {
           {sheet.type === 'form' ? (
             <EventForm
               initial={sheet.event}
+              preset={sheet.preset}
               defaultDate={selectedKey}
               onSave={handleSave}
               onDelete={sheet.event ? () => handleDelete(sheet.event) : null}
