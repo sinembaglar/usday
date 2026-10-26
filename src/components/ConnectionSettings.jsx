@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { RELATIONS, UNKNOWN_PERSON } from '../lib/constants'
 
 // One connection in settings: who they are to me, since when, or withdraw an open invitation.
-function ConnectionRow({ connection, members, onRelation, onSince, onCancel, onReport }) {
+function ConnectionRow({ connection, members, onRelation, onSince, onCancel, onReport, onRemove }) {
   const [since, setSince] = useState(connection.togetherSince)
   const person = connection.partnerId ? (members[connection.partnerId] ?? UNKNOWN_PERSON) : null
   const relation = RELATIONS[connection.relation] ?? RELATIONS.partner
@@ -49,15 +49,20 @@ function ConnectionRow({ connection, members, onRelation, onSince, onCancel, onR
         </button>
       )}
       {person && (
-        <button className="link-btn danger-link" onClick={() => onReport(person)}>
-          🚩 {person.name} hakkında şikayet et
-        </button>
+        <div className="connection-links">
+          <button className="link-btn danger-link" onClick={() => onRemove(connection, person)}>
+            Bağlantıyı kaldır / engelle
+          </button>
+          <button className="link-btn danger-link" onClick={() => onReport(connection, person)}>
+            🚩 Şikayet et
+          </button>
+        </div>
       )}
     </div>
   )
 }
 
-export default function ConnectionSettings({ connections, members, onRelation, onSince, onCancel, onReport }) {
+export default function ConnectionSettings({ connections, members, onRelation, onSince, onCancel, onReport, onRemove }) {
   return (
     <section className="settings-group">
       <h4>👥 Kişiler</h4>
@@ -73,6 +78,7 @@ export default function ConnectionSettings({ connections, members, onRelation, o
           onSince={onSince}
           onCancel={onCancel}
           onReport={onReport}
+          onRemove={onRemove}
         />
       ))}
     </section>

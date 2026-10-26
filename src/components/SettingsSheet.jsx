@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { calendarToken, deleteAccount } from '../lib/api'
+import { calendarToken, deleteAccount, loadBlocks, unblock } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
 import ConnectionSettings from './ConnectionSettings'
 
@@ -16,6 +16,24 @@ export default function SettingsSheet({ me, admin, connections, members, connect
   const [changing, setChanging] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [blocks, setBlocks] = useState([])
+
+  useEffect(() => {
+    loadBlocks()
+      .then(setBlocks)
+      .catch(() => {})
+  }, [])
+
+  async function lift(b) {
+    if (!window.confirm(`${b.blocked_name} kişisinin engeli kaldırılsın mı? Sana tekrar bağlanabilir ve davet gönderebilir.`)) return
+    try {
+      await unblock(me.id, b.blocked)
+      setBlocks((list) => list.filter((x) => x.blocked !== b.blocked))
+      onToast('Engel kaldırıldı')
+    } catch {
+      onToast('Kaldırılamadı, tekrar dener misin?')
+    }
+  }
 
   async function changePassword(e) {
     e.preventDefault()
@@ -72,6 +90,20 @@ export default function SettingsSheet({ me, admin, connections, members, connect
       <h3>Ayarlar</h3>
 
       <ConnectionSettings connections={connections} members={members} {...connectionActions} />
+
+      {blocks.length > 0 && (
+        <section className="settings-group">
+          <h4>🚫 Engellenenler</h4>
+          {blocks.map((b) => (
+            <div key={b.blocked} className="blocked-row">
+              <span>{b.blocked_name}</span>
+              <button className="link-btn" onClick={() => lift(b)}>
+                Engeli kaldır
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="settings-group">
         <h4>Tema</h4>

@@ -41,6 +41,7 @@ import InvitationCard from './InvitationCard'
 import NotificationsSheet from './NotificationsSheet'
 import FeedbackSheet from './FeedbackSheet'
 import ReportSheet from './ReportSheet'
+import RemoveConnectionSheet from './RemoveConnectionSheet'
 import AdminPanel from './AdminPanel'
 import { dative } from '../lib/format'
 import NotificationCard from './NotificationCard'
@@ -436,7 +437,8 @@ export default function Home({ userId }) {
         setToast('İptal edilemedi. Bu bağlantıda plan varsa önce onları sil.')
       }
     },
-    onReport: (person) => setSheet({ type: 'report', person }),
+    onReport: (connection, person) => setSheet({ type: 'report', connection, person }),
+    onRemove: (connection, person) => setSheet({ type: 'remove', connection, person }),
   }
 
   const openForm = (preset) => setSheet({ type: 'form', preset })
@@ -746,8 +748,24 @@ export default function Home({ userId }) {
           ) : sheet.type === 'report' ? (
             <ReportSheet
               userId={userId}
+              connection={sheet.connection}
               person={sheet.person}
-              onDone={closeWith}
+              onDone={(message) => {
+                closeWith(message)
+                reload()
+              }}
+              onCancel={() => setSheet({ type: 'settings' })}
+              onToast={setToast}
+            />
+          ) : sheet.type === 'remove' ? (
+            <RemoveConnectionSheet
+              connection={sheet.connection}
+              person={sheet.person}
+              planCount={events.filter((e) => e.coupleId === sheet.connection.id).length}
+              onDone={(message) => {
+                closeWith(message)
+                reload()
+              }}
               onCancel={() => setSheet({ type: 'settings' })}
               onToast={setToast}
             />

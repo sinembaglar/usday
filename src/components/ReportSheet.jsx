@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { reportPerson } from '../lib/api'
+import { removeConnection, reportPerson } from '../lib/api'
 import { dative } from '../lib/format'
 
 export const REPORT_REASONS = {
@@ -10,9 +10,10 @@ export const REPORT_REASONS = {
 }
 
 // Reporting someone I am connected with. They are not told.
-export default function ReportSheet({ userId, person, onDone, onCancel, onToast }) {
+export default function ReportSheet({ userId, connection, person, onDone, onCancel, onToast }) {
   const [reason, setReason] = useState(null)
   const [message, setMessage] = useState('')
+  const [block, setBlock] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function submit(e) {
@@ -20,7 +21,8 @@ export default function ReportSheet({ userId, person, onDone, onCancel, onToast 
     setBusy(true)
     try {
       await reportPerson(userId, person.id, reason, message)
-      onDone('🚩 Şikayetin alındı, en kısa sürede inceleyeceğiz')
+      if (block) await removeConnection(connection.id, true)
+      onDone(block ? `🚩 Şikayetin alındı, ${person.name} engellendi` : '🚩 Şikayetin alındı, en kısa sürede inceleyeceğiz')
     } catch {
       setBusy(false)
       onToast('Gönderilemedi, tekrar dener misin?')
@@ -57,6 +59,15 @@ export default function ReportSheet({ userId, person, onDone, onCancel, onToast 
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
+      {connection && (
+        <label className="check-row">
+          <input type="checkbox" checked={block} onChange={(e) => setBlock(e.target.checked)} />
+          <span>
+            <strong>🚫 Ayrıca engelle ve bağlantıyı kaldır</strong>
+            <small>Bu bağlantıdaki planlar ve fotoğraflar ikiniz için de silinir; sana tekrar bağlanamaz.</small>
+          </span>
+        </label>
+      )}
       <p className="hint">Acil bir tehlike varsa lütfen 112’yi ara.</p>
       <div className="form-actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>

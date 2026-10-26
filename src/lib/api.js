@@ -518,3 +518,20 @@ export async function setBanned(userId, banned, reason = null) {
   })
   if (error) throw error
 }
+
+// Ending a connection: its shared plans and photos are deleted for both; blocking also stops new invites.
+export async function removeConnection(coupleId, block) {
+  const { error } = await supabase.functions.invoke('remove-connection', { body: { couple_id: coupleId, block } })
+  if (error) throw error
+}
+
+export async function loadBlocks() {
+  const { data, error } = await supabase.from('blocks').select('blocked, blocked_name, created_at').order('created_at')
+  if (error) throw error
+  return data
+}
+
+export async function unblock(userId, blocked) {
+  const { error } = await supabase.from('blocks').delete().eq('blocker', userId).eq('blocked', blocked)
+  if (error) throw error
+}
