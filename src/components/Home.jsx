@@ -10,7 +10,15 @@ import EventForm from './EventForm'
 import EventDetail from './EventDetail'
 import SettingsSheet from './SettingsSheet'
 import { supabase } from '../lib/supabase'
-import { deleteEvent, loadEverything, markSeen, saveEvent, setCover } from '../lib/api'
+import {
+  addTemplate,
+  deleteEvent,
+  deleteTemplate,
+  loadEverything,
+  markSeen,
+  saveEvent,
+  setCover,
+} from '../lib/api'
 import { TEMPLATES } from '../lib/constants'
 import InviteCard from './InviteCard'
 import NotificationCard from './NotificationCard'
@@ -31,6 +39,7 @@ export default function Home({ userId }) {
   const [couple, setCouple] = useState(null)
   const [members, setMembers] = useState({})
   const [events, setEvents] = useState([])
+  const [templates, setTemplates] = useState([])
   const [seenAt, setSeenAt] = useState(null) // last visit before this one: newer partner plans get a "yeni" pill
   const [view, setView] = useState(savedView)
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
@@ -46,6 +55,7 @@ export default function Home({ userId }) {
         setCouple(data.couple)
         setMembers(data.members)
         setEvents(data.events)
+        setTemplates(data.templates)
         if (markAsSeen) {
           setSeenAt(data.members[userId]?.lastSeenAt ?? null)
           await markSeen()
@@ -269,6 +279,16 @@ export default function Home({ userId }) {
               initial={sheet.event}
               preset={sheet.preset}
               defaultDate={selectedKey}
+              templates={templates}
+              onAddTemplate={async (t) => {
+                await addTemplate(t)
+                setToast('✨ Şablon eklendi')
+                reload()
+              }}
+              onDeleteTemplate={async (id) => {
+                await deleteTemplate(id)
+                reload()
+              }}
               onSave={handleSave}
               onDelete={sheet.event ? () => handleDelete(sheet.event) : null}
               onCancel={() => setSheet(null)}

@@ -74,10 +74,11 @@ export async function loadEverything() {
     supabase.from('profiles').select('id, name, color, last_seen_at').order('created_at'),
     supabase.from('events').select('*'),
     supabase.rpc('surprise_teasers'),
+    supabase.from('custom_templates').select('id, tag, title, event_time').order('created_at'),
   ])
   const failed = results.find((r) => r.error)
   if (failed) throw failed.error
-  const [couple, profiles, rows, teasers] = results.map((r) => r.data)
+  const [couple, profiles, rows, teasers, templates] = results.map((r) => r.data)
 
   const urlFor = await signedUrls(
     [couple.cover_path, ...rows.flatMap((r) => r.photos), ...teasers.flatMap((t) => t.photos)].filter(Boolean),
@@ -92,7 +93,18 @@ export async function loadEverything() {
     },
     members: Object.fromEntries(profiles.map((p) => [p.id, toPerson(p)])),
     events: [...rows.map((r) => fromRow(r, urlFor)), ...teasers.map((t) => fromTeaser(t, urlFor))],
+    templates: templates.map((t) => ({ id: t.id, tag: t.tag, title: t.title, time: t.event_time?.slice(0, 5) ?? '' })),
   }
+}
+
+export async function addTemplate({ tag, title, time }) {
+  const { error } = await supabase.from('custom_templates').insert({ tag, title, event_time: time || null })
+  if (error) throw error
+}
+
+export async function deleteTemplate(id) {
+  const { error } = await supabase.from('custom_templates').delete().eq('id', id)
+  if (error) throw error
 }
 
 async function uploadPhoto(coupleId, dataUrl) {

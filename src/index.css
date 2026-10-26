@@ -445,6 +445,54 @@ h3 {
   color: var(--muted);
 }
 
+.own-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+  border-style: dashed;
+  border-color: var(--tag);
+}
+
+.own-remove {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--blush);
+}
+
+.add-chip {
+  border-style: dashed;
+  color: var(--rose-deep);
+}
+
+.template-add {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--blush);
+}
+
+.template-add-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.template-add-actions .hint {
+  flex: 1;
+}
+
+.template-add .form-error {
+  grid-column: 1 / -1;
+}
+
 .cover-actions {
   display: flex;
   gap: 8px;

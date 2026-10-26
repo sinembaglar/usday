@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DEFAULT_TEASER, TAGS, TEMPLATES, isTemplateTitle } from '../lib/constants'
 import PhotoPicker from './PhotoPicker'
+import TemplateRow from './TemplateRow'
 
 const EMPTY = {
   title: '',
@@ -14,7 +15,17 @@ const EMPTY = {
   blurPhotos: false,
 }
 
-export default function EventForm({ initial, preset, defaultDate, onSave, onDelete, onCancel }) {
+export default function EventForm({
+  initial,
+  preset,
+  defaultDate,
+  templates = [],
+  onAddTemplate,
+  onDeleteTemplate,
+  onSave,
+  onDelete,
+  onCancel,
+}) {
   const [form, setForm] = useState(() => ({ ...EMPTY, date: defaultDate, ...preset, ...initial }))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -24,7 +35,8 @@ export default function EventForm({ initial, preset, defaultDate, onSave, onDele
 
   // Switching category drops a ready-made title from the previous one; typed titles stay.
   function chooseCategory(tag) {
-    setForm((f) => (isTemplateTitle(f.title) && f.tag !== tag ? { ...f, tag, title: '', time: '' } : { ...f, tag }))
+    const fromTemplate = (title) => isTemplateTitle(title) || templates.some((t) => t.title === title)
+    setForm((f) => (fromTemplate(f.title) && f.tag !== tag ? { ...f, tag, title: '', time: '' } : { ...f, tag }))
   }
 
   const category = TEMPLATES[form.tag]
@@ -70,22 +82,15 @@ export default function EventForm({ initial, preset, defaultDate, onSave, onDele
       </div>
 
       {!initial && category && (
-        <div className="template-group">
-          <small>{category.heading}</small>
-          <div className="templates" aria-label={category.heading}>
-            {category.items.map((t) => (
-              <button
-                type="button"
-                key={t.title}
-                className={`chip ${form.title === t.title ? 'is-active' : ''}`}
-                style={{ '--tag': TAGS[form.tag].color }}
-                onClick={() => setForm((f) => ({ ...f, ...t }))}
-              >
-                {t.title}
-              </button>
-            ))}
-          </div>
-        </div>
+        <TemplateRow
+          tag={form.tag}
+          custom={templates}
+          selectedTitle={form.title}
+          draft={form}
+          onPick={(t) => setForm((f) => ({ ...f, title: t.title, time: t.time }))}
+          onAdd={onAddTemplate}
+          onDelete={onDeleteTemplate}
+        />
       )}
 
       <input className="input title-input" placeholder="Ne yapıyoruz?" value={form.title} onChange={set('title')} />
