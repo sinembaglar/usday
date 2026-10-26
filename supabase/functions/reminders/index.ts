@@ -4,6 +4,7 @@ import {
   asPlan,
   eventUrl,
   formatWhen,
+  hiddenFrom,
   peopleIn,
   sendToUsers,
   shortTime,
@@ -49,7 +50,9 @@ type Job = {
 }
 
 function eventJobs(event: EventRow, person: Person, people: Person[], now: Now): Job[] {
-  const hidden = event.surprise && person.id !== event.created_by && (event.reveal_on ?? event.event_date) > now.today
+  const hidden = hiddenFrom(event, person.id, now.today)
+  // On reveal day the surprise opens for whoever it was hidden from.
+  const isTarget = event.couple_id ? person.id !== event.created_by : (event.hidden_from ?? []).includes(person.id)
   const time = shortTime(event.event_time)
   const span = event.end_time ? `${time}–${shortTime(event.end_time)}` : time
   const place = event.location ? ` · 📍 ${event.location}` : ''
@@ -90,7 +93,7 @@ function eventJobs(event: EventRow, person: Person, people: Person[], now: Now):
     }
   }
 
-  if (event.surprise && event.reveal_on === now.today && person.id !== event.created_by && now.minutes >= MORNING) {
+  if (event.surprise && event.reveal_on === now.today && isTarget && now.minutes >= MORNING) {
     const author = people.find((p) => p.id === event.created_by)?.name ?? 'Eşin'
     jobs.push(job('reveal', now.today, '🎁 Sürpriz açıldı!', `${author} sana: ${event.title} · ${formatWhen(event)}`))
   }
@@ -159,11 +162,21 @@ Deno.serve(async (req) => {
   const { data: going } = groupIds.length
     ? await admin.from('event_participants').select('event_id, user_id').in('event_id', groupIds).eq('status', 'accepted')
     : { data: [] }
+  const groupPeopleIds = [
+    ...new Set([
+      ...(events ?? []).filter((e) => !e.couple_id).map((e) => e.created_by),
+      ...(going ?? []).map((g) => g.user_id),
+    ]),
+  ]
+  const { data: groupNames } = groupPeopleIds.length
+    ? await admin.from('profiles').select('id, name').in('id', groupPeopleIds)
+    : { data: [] }
+  const nameOf = (id: string) => (groupNames ?? []).find((p) => p.id === id)?.name ?? ''
   const attendeesOf = (event: EventRow): Person[] =>
     event.couple_id
       ? membersOf(event.couple_id)
       : [event.created_by, ...(going ?? []).filter((g) => g.event_id === event.id).map((g) => g.user_id)].map(
-          (id) => ({ id, name: '', couple_id: '' }),
+          (id) => ({ id, name: nameOf(id), couple_id: '' }),
         )
 
   const jobs = [

@@ -75,6 +75,12 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
         <p className="reveal">
           {author.name} bir şeyler hazırlıyor… Açılmasına <strong>{days} gün</strong> var.
         </p>
+        {event.guests && (
+          <div className="status-box">
+            <strong>O gün boş musun?</strong>
+            <InvitationActions event={event} me={me} onAnswered={onAnswered} onToast={onToast} />
+          </div>
+        )}
         <button className="btn btn-primary" onClick={onClose}>
           Sabırsızlanıyorum 💕
         </button>
@@ -111,7 +117,15 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
       {event.note && <p className="note">{event.note}</p>}
       {event.photos.length > 0 && <PhotoGallery photos={event.photos} />}
 
-      {event.surprise && event.createdBy === me && (
+      {event.surprise && event.guests && event.hiddenFrom?.length > 0 && (
+        <div className="surprise-info">
+          🤫 {event.hiddenFrom.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} için sürpriz. Onlar şimdilik
+          sadece şunu görüyor: “{event.teaser}”. Buradaki yorumları göremezler. Detaylar{' '}
+          {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.
+        </div>
+      )}
+
+      {event.surprise && !event.guests && event.createdBy === me && (
         <div className="surprise-info">
           🎁 Bu bir sürpriz. {(partner ?? UNKNOWN_PERSON).name} şimdilik sadece şunu görüyor: “{event.teaser}”.
           Detaylar {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.

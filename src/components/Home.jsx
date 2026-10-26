@@ -326,13 +326,15 @@ export default function Home({ userId }) {
     // Several people picked: a group plan everyone is invited to.
     if (form.coupleIds.length > 1) {
       const guestIds = form.coupleIds.map((id) => byId[id]?.partnerId).filter(Boolean)
-      const id = await saveEvent(form, null, sheet.event, null, { guestIds })
+      const hiddenFrom = form.surprise ? form.hiddenFrom.filter((id) => guestIds.includes(id)) : []
+      const id = await saveEvent(form, null, sheet.event, null, { guestIds, hiddenFrom })
       setSheet(null)
       if (!form.coupleIds.every((cid) => selection.includes(cid))) choose([...new Set([...selection, ...form.coupleIds])])
       selectDay(parseISO(form.date))
       if (!sheet.event) {
         notifyPartner(id)
-        setToast(`👥 ${guestIds.length} kişiye davet gitti`)
+        const targets = hiddenFrom.map((pid) => (members[pid] ?? UNKNOWN_PERSON).name).join(', ')
+        setToast(hiddenFrom.length ? `🎁 Grup sürprizi hazır, ${targets} sadece ipucunu görecek` : `👥 ${guestIds.length} kişiye davet gitti`)
       }
       reload()
       return

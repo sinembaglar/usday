@@ -80,25 +80,48 @@ Deno.serve(async (req) => {
     const when = formatWhen(groupPlan)
     const others = guests.filter((g) => g.id !== userId)
     const names = (list: Guest[]) => list.map((g) => g.name).join(', ')
-    let to = others.map((g) => g.id)
-    let payload
+    // Guests the plan is still a surprise for; they hear only the teaser, and nothing of the planning.
+    const secretFor = new Set(others.filter((g) => hiddenFrom(groupPlan, g.id)).map((g) => g.id))
+    const insiders = others.filter((g) => !secretFor.has(g.id))
+    const targets = guests.filter((g) => secretFor.has(g.id))
+    const forWhom = targets.length ? ` · 🤫 ${names(targets)} için sürpriz` : ''
+    if (hiddenFrom(groupPlan, userId) && !body.response_event_id) return json({ error: 'not_found' }, 404)
+    let sent = 0
 
     if (body.event_id) {
       if (groupPlan.created_by !== userId) return json({ error: 'not_found' }, 404)
-      to = others.filter((g) => g.status !== 'maker').map((g) => g.id)
-      payload = { title: `👥 ${me.name} seni bir plana davet ediyor`, body: `${groupPlan.title} · ${when} — ${names(others)} davetli`, url, tag: groupPlan.id }
+      const invited = insiders.filter((g) => g.status !== 'maker').map((g) => g.id)
+      sent += await sendToUsers(
+        invited,
+        { title: `👥 ${me.name} seni bir plana davet ediyor`, body: `${groupPlan.title} · ${when}${forWhom} — ${names(others)} davetli`, url, tag: groupPlan.id },
+        groupPlan.id,
+      )
+      sent += await sendToUsers(
+        [...secretFor],
+        { title: `🎁 ${me.name} seni bir sürpriz için ayırtmak istiyor`, body: `${when} boş musun? “${groupPlan.teaser}”`, url, tag: groupPlan.id },
+        groupPlan.id,
+      )
     } else if (body.response_event_id) {
       if (me.status !== 'accepted' && me.status !== 'declined') return json({ error: 'not_answered' }, 409)
-      payload =
-        me.status === 'accepted'
+      // A target's answer is news for the insiders; an insider's answer never reaches a target.
+      const coming = me.status === 'accepted'
+      sent += await sendToUsers(
+        insiders.map((g) => g.id),
+        coming
           ? { title: `✅ ${me.name} katılıyor`, body: `${groupPlan.title} · ${when}`, url, tag: `${groupPlan.id}-answer-${userId}` }
-          : { title: `❌ ${me.name} katılamıyor`, body: groupPlan.title, url, tag: `${groupPlan.id}-answer-${userId}` }
+          : { title: `❌ ${me.name} katılamıyor`, body: groupPlan.title, url, tag: `${groupPlan.id}-answer-${userId}` },
+        groupPlan.id,
+      )
     } else {
-      payload = comment
-        ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: comment.body.slice(0, 180), url, tag: `${groupPlan.id}-chat` }
-        : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: groupPlan.title, url, tag: `${groupPlan.id}-react` }
+      sent += await sendToUsers(
+        insiders.map((g) => g.id),
+        comment
+          ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: comment.body.slice(0, 180), url, tag: `${groupPlan.id}-chat` }
+          : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: groupPlan.title, url, tag: `${groupPlan.id}-react` },
+        groupPlan.id,
+      )
     }
-    return json({ sent: await sendToUsers(to, payload, groupPlan.id) })
+    return json({ sent })
   }
 
   const found = eventId && (await eventWithPeople(eventId))

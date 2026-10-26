@@ -30,6 +30,7 @@ export type EventRow = {
   status: 'confirmed' | 'proposed' | 'declined'
   awaiting: string | null
   response_note: string | null
+  hidden_from: string[] | null
 }
 
 export type Person = { id: string; name: string; couple_id: string }
@@ -119,9 +120,16 @@ export const eventUrl = (id: string) => `/?event=${id}`
 // Today in Istanbul as YYYY-MM-DD (Türkiye has been UTC+3 all year since 2016).
 export const istanbulToday = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10)
 
-// A surprise stays hidden from the partner until its reveal day.
+// A surprise stays hidden until its reveal day: from the partner on a two-person plan,
+// from the chosen guests ("kimden gizli") on a group plan.
 export const hiddenFrom = (e: EventRow, userId: string, today = istanbulToday()) =>
-  e.surprise && e.created_by !== userId && (e.reveal_on ?? e.event_date) > today
+  e.surprise &&
+  (e.reveal_on ?? e.event_date) > today &&
+  (e.couple_id ? e.created_by !== userId : (e.hidden_from ?? []).includes(userId))
+
+// Who a surprise is for: the partner, or the group plan's chosen guests.
+export const surpriseTargets = (e: EventRow, people: { id: string }[]) =>
+  e.couple_id ? people.filter((p) => p.id !== e.created_by).map((p) => p.id) : (e.hidden_from ?? [])
 
 // Database row → the shape the shared recurrence helpers expect.
 export const asPlan = (e: EventRow) => ({

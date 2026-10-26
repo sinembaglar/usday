@@ -47,6 +47,7 @@ export default function EventForm({
       ...preset,
       ...initial,
       coupleIds,
+      hiddenFrom: initial?.hiddenFrom ?? [],
       // Keep asking while a plan is unanswered; a declined one is re-asked by default.
       propose: canAsk && (preset?.propose ?? (initial?.status === 'proposed' || initial?.status === 'declined')),
     }
@@ -78,7 +79,8 @@ export default function EventForm({
         ...f,
         coupleIds: next,
         propose: single && connections.find((x) => x.id === next[0])?.partnerName ? f.propose : false,
-        surprise: single ? f.surprise : false,
+        // Someone taken off the plan can no longer be the one it is hidden from.
+        hiddenFrom: f.hiddenFrom.filter((id) => next.some((cid) => connections.find((x) => x.id === cid)?.partnerId === id)),
       }
     })
   }
@@ -110,6 +112,10 @@ export default function EventForm({
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim() || !form.date || saving) return
+    if (group && form.surprise && !form.hiddenFrom.length) {
+      setError('Sürprizin kimden gizleneceğini seç.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -283,19 +289,60 @@ export default function EventForm({
         </label>
       )}
 
-      <label className={`surprise-toggle ${form.surprise ? 'is-on' : ''}`} hidden={group}>
+      <label className={`surprise-toggle ${form.surprise ? 'is-on' : ''}`}>
         <input type="checkbox" checked={form.surprise} onChange={toggleSurprise} />
         <span className="switch" />
         <span>
           <strong>🎁 Sürpriz modu</strong>
-          <small>{partnerName ?? 'Diğer kişi'} sadece ipucunu görür, detaylar açılış gününe kadar gizli kalır</small>
+          <small>
+            {group
+              ? 'Seçtiğin kişiler sadece ipucunu görür; diğerleri sürprizi seninle birlikte hazırlar'
+              : `${partnerName ?? 'Diğer kişi'} sadece ipucunu görür, detaylar açılış gününe kadar gizli kalır`}
+          </small>
         </span>
       </label>
 
       {form.surprise && (
         <div className="surprise-fields">
+          {group && (
+            <div className="field">
+              <span>Kimden gizli?</span>
+              <div className="chips" role="group" aria-label="Kimden gizli">
+                {picked.map((c) => (
+                  <button
+                    type="button"
+                    key={c.id}
+                    aria-pressed={form.hiddenFrom.includes(c.partnerId)}
+                    className={`chip ${form.hiddenFrom.includes(c.partnerId) ? 'is-active' : ''}`}
+                    style={{ '--tag': 'var(--gold)' }}
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        hiddenFrom: f.hiddenFrom.includes(c.partnerId)
+                          ? f.hiddenFrom.filter((id) => id !== c.partnerId)
+                          : [...f.hiddenFrom, c.partnerId],
+                      }))
+                    }
+                  >
+                    {form.hiddenFrom.includes(c.partnerId) ? '🎯 ' : ''}
+                    {c.partnerName}
+                  </button>
+                ))}
+              </div>
+              <small className="hint">
+                {form.hiddenFrom.length
+                  ? (() => {
+                      const insiders = picked.filter((c) => !form.hiddenFrom.includes(c.partnerId)).map((c) => c.partnerName)
+                      return insiders.length
+                        ? `🤫 Sen ve ${insiders.join(', ')} sürprizi biliyorsunuz; hazırlık sohbeti aranızda kalır.`
+                        : '🤫 Sürprizi sadece sen biliyorsun.'
+                    })()
+                  : 'Sürprizin kime olduğunu seç.'}
+              </small>
+            </div>
+          )}
           <label className="field">
-            <span>Eşine gidecek ipucu</span>
+            <span>{group ? 'Sürpriz olanlara gidecek ipucu' : `${partnerName ? dative(partnerName) : 'Eşine'} gidecek ipucu`}</span>
             <input className="input" placeholder={DEFAULT_TEASER} value={form.teaser} onChange={set('teaser')} />
           </label>
           <label className="field">

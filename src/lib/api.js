@@ -47,6 +47,7 @@ function fromRow(r, urlFor) {
     status: r.status,
     awaiting: r.awaiting,
     responseNote: r.response_note ?? '',
+    hiddenFrom: r.hidden_from ?? [],
     createdBy: r.created_by,
     createdAt: r.created_at,
     locked: false,
@@ -140,7 +141,12 @@ export async function loadEverything(userId) {
         coupleId: r.couple_id,
         guests: r.couple_id ? null : guestsOf(r.id),
       })),
-      ...teasers.map((t) => ({ ...fromTeaser(t, urlFor), coupleId: teaserCouple[t.id] })),
+      ...teasers.map((t) => ({
+        ...fromTeaser(t, urlFor),
+        coupleId: teaserCouple[t.id] ?? null,
+        // A group surprise for me: I only know my own invitation, not who else is in on it.
+        guests: teaserCouple[t.id] ? null : [{ id: userId, status: t.my_answer ?? 'pending', note: '' }],
+      })),
     ].map((e) => ({
       ...e,
       commentCount: commentCounts[e.id] ?? 0,
@@ -292,7 +298,12 @@ export async function saveEvent(form, coupleId, original, partnerId, group = nul
     ...(form.propose && partnerId
       ? { status: 'proposed', awaiting: partnerId, response_note: null }
       : { status: 'confirmed', awaiting: null }),
-    ...(group ? { surprise: false, teaser: null, reveal_on: null, blur_photos: false } : {}),
+    // A group plan is a surprise only for the guests picked in "kimden gizli".
+    ...(group
+      ? group.hiddenFrom?.length && form.surprise
+        ? { hidden_from: group.hiddenFrom }
+        : { surprise: false, teaser: null, reveal_on: null, blur_photos: false, hidden_from: null }
+      : { hidden_from: null }),
   }
 
   const { data, error } = original

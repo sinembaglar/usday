@@ -20,6 +20,7 @@ export function GuestList({ event, members }) {
             <span>
               {person.name}
               {g.status === 'maker' && <small> · planlayan</small>}
+              {event.hiddenFrom?.includes(g.id) && <small> · 🎯 sürpriz onun için</small>}
               {g.note && <small> · “{g.note}”</small>}
             </span>
             <span className="guest-mark" title={g.status}>
