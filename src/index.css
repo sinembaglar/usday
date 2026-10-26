@@ -735,6 +735,50 @@ h3 {
   color: var(--ink);
 }
 
+.inline-form {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-form .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.danger-link {
+  color: var(--danger);
+}
+
+.legal-links {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legal-links a {
+  color: var(--rose-deep);
+}
+
+.auth-heading strong {
+  display: block;
+  font-size: 17px;
+}
+
+.auth-heading small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.form-notice {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--blush);
+}
+
 .is-disabled {
   opacity: 0.5;
   pointer-events: none;

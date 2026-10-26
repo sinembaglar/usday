@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { calendarToken } from '../lib/api'
+import { calendarToken, deleteAccount } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
 
 const THEMES = [
@@ -12,6 +12,35 @@ const THEMES = [
 export default function SettingsSheet({ me, onClose, onToast }) {
   const [theme, setThemeState] = useState(getTheme)
   const [token, setToken] = useState(null)
+  const [changing, setChanging] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  async function changePassword(e) {
+    e.preventDefault()
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      onToast(error.code === 'same_password' ? 'Yeni şifre eskisiyle aynı olamaz' : 'Şifre değiştirilemedi')
+      return
+    }
+    setChanging(false)
+    setNewPassword('')
+    onToast('🔐 Şifren değiştirildi')
+  }
+
+  async function removeAccount() {
+    const answer = window.prompt(
+      'Hesabın, eklediğin tüm planlar, fotoğraflar ve şablonlar kalıcı olarak silinecek. Eşinin eklediği planlar onda kalır. Bu işlem geri alınamaz.\n\nOnaylamak için SİL yaz:',
+    )
+    if (answer?.trim().toLocaleUpperCase('tr') !== 'SİL') return
+    setDeleting(true)
+    try {
+      await deleteAccount()
+    } catch {
+      setDeleting(false)
+      onToast('Hesap silinemedi, tekrar dener misin?')
+    }
+  }
 
   useEffect(() => {
     calendarToken()
@@ -73,10 +102,44 @@ export default function SettingsSheet({ me, onClose, onToast }) {
       </section>
 
       <section className="settings-group">
+        <h4>Hesap</h4>
+        {changing ? (
+          <form className="inline-form" onSubmit={changePassword}>
+            <input
+              className="input"
+              type="password"
+              placeholder="Yeni şifre (en az 8 karakter)"
+              autoComplete="new-password"
+              minLength={8}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              autoFocus
+            />
+            <button className="btn btn-primary">Kaydet</button>
+          </form>
+        ) : (
+          <button className="btn btn-ghost bordered" onClick={() => setChanging(true)}>
+            🔐 Şifreyi değiştir
+          </button>
+        )}
         <button className="btn btn-ghost bordered" onClick={() => supabase.auth.signOut()}>
           Çıkış yap{me ? ` · ${me.name}` : ''}
         </button>
+        <button className="link-btn danger-link" onClick={removeAccount} disabled={deleting}>
+          {deleting ? 'Hesap siliniyor…' : 'Hesabımı kalıcı olarak sil'}
+        </button>
       </section>
+
+      <p className="legal-links">
+        <a href="/gizlilik" target="_blank" rel="noreferrer">
+          Gizlilik Politikası
+        </a>{' '}
+        ·{' '}
+        <a href="/kosullar" target="_blank" rel="noreferrer">
+          Kullanım Koşulları
+        </a>
+      </p>
 
       <div className="form-actions">
         <button className="btn btn-primary" onClick={onClose}>

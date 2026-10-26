@@ -154,6 +154,12 @@ export async function deleteEvent(event) {
   await removePhotos(event.photos.map((p) => p.path))
 }
 
+export async function deleteAccount() {
+  const { error } = await supabase.functions.invoke('delete-account')
+  if (error) throw error
+  await supabase.auth.signOut({ scope: 'local' })
+}
+
 export async function markSeen() {
   await supabase.rpc('mark_seen')
 }

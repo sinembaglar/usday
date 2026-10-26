@@ -8,15 +8,17 @@ const MESSAGES = {
   signup_disabled: 'Yeni kayıtlar kapalı.',
   weak_password: 'Şifre en az 8 karakter olmalı.',
   email_address_invalid: 'Geçerli bir e-posta adresi yaz.',
+  over_email_send_rate_limit: 'Çok sık denendi. Birkaç dakika sonra tekrar dene.',
 }
 
 const inviteFromUrl = new URLSearchParams(window.location.search).get('davet')?.toUpperCase() ?? ''
 
 export default function AuthScreen() {
-  const [mode, setMode] = useState(inviteFromUrl ? 'signup' : 'login')
+  const [mode, setMode] = useState(inviteFromUrl ? 'signup' : 'login') // login | signup | forgot
   const [form, setForm] = useState({ name: '', email: '', password: '', invite: inviteFromUrl })
   const [inviter, setInviter] = useState(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -33,11 +35,26 @@ export default function AuthScreen() {
     }
   }, [code])
 
+  function switchMode(next) {
+    setMode(next)
+    setError('')
+    setNotice('')
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setBusy(true)
     setError('')
+    setNotice('')
     const email = form.email.trim()
+
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` })
+      if (error) setError(MESSAGES[error.code] ?? 'E-posta gönderilemedi, tekrar dener misin?')
+      else setNotice('📬 Şifre yenileme bağlantısını e-postana gönderdik. Gelen kutunu (ve gereksiz klasörünü) kontrol et.')
+      setBusy(false)
+      return
+    }
 
     if (mode === 'signup' && code) {
       const name = await checkInvite(code).catch(() => null)
@@ -62,6 +79,7 @@ export default function AuthScreen() {
   }
 
   const signup = mode === 'signup'
+  const forgot = mode === 'forgot'
   const greeting = code.length === 6 && inviter
 
   return (
@@ -73,14 +91,21 @@ export default function AuthScreen() {
       </div>
 
       <form className="auth-card card" onSubmit={handleSubmit}>
-        <div className="auth-tabs">
-          <button type="button" className={!signup ? 'is-active' : ''} onClick={() => setMode('login')}>
-            Giriş yap
-          </button>
-          <button type="button" className={signup ? 'is-active' : ''} onClick={() => setMode('signup')}>
-            Kayıt ol
-          </button>
-        </div>
+        {forgot ? (
+          <div className="auth-heading">
+            <strong>Şifreni mi unuttun?</strong>
+            <small>E-postanı yaz, yeni şifre belirleme bağlantısı gönderelim.</small>
+          </div>
+        ) : (
+          <div className="auth-tabs">
+            <button type="button" className={!signup ? 'is-active' : ''} onClick={() => switchMode('login')}>
+              Giriş yap
+            </button>
+            <button type="button" className={signup ? 'is-active' : ''} onClick={() => switchMode('signup')}>
+              Kayıt ol
+            </button>
+          </div>
+        )}
 
         {signup && <input className="input" placeholder="Adın" value={form.name} onChange={set('name')} required />}
         <input
@@ -92,16 +117,18 @@ export default function AuthScreen() {
           onChange={set('email')}
           required
         />
-        <input
-          className="input"
-          type="password"
-          placeholder={signup ? 'Şifre (en az 8 karakter)' : 'Şifre'}
-          autoComplete={signup ? 'new-password' : 'current-password'}
-          minLength={8}
-          value={form.password}
-          onChange={set('password')}
-          required
-        />
+        {!forgot && (
+          <input
+            className="input"
+            type="password"
+            placeholder={signup ? 'Şifre (en az 8 karakter)' : 'Şifre'}
+            autoComplete={signup ? 'new-password' : 'current-password'}
+            minLength={8}
+            value={form.password}
+            onChange={set('password')}
+            required
+          />
+        )}
 
         {signup && (
           <label className="field">
@@ -123,11 +150,29 @@ export default function AuthScreen() {
         )}
 
         {error && <p className="form-error">{error}</p>}
+        {notice && <p className="form-notice">{notice}</p>}
 
         <button className="btn btn-primary" disabled={busy}>
-          {busy ? 'Bir saniye…' : signup ? 'Hesap oluştur' : 'Giriş yap'}
+          {busy ? 'Bir saniye…' : forgot ? 'Bağlantı gönder' : signup ? 'Hesap oluştur' : 'Giriş yap'}
         </button>
+
+        {mode === 'login' && (
+          <button type="button" className="link-btn" onClick={() => switchMode('forgot')}>
+            Şifremi unuttum
+          </button>
+        )}
+        {forgot && (
+          <button type="button" className="link-btn" onClick={() => switchMode('login')}>
+            Girişe dön
+          </button>
+        )}
       </form>
+
+      <p className="legal-links">
+        {signup && 'Kayıt olarak '}
+        <a href="/kosullar">Kullanım Koşulları</a> · <a href="/gizlilik">Gizlilik Politikası</a>
+        {signup && '’nı kabul etmiş olursun.'}
+      </p>
     </div>
   )
 }
