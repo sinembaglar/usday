@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { DEFAULT_TEASER, TAGS, TEMPLATES, isTemplateTitle } from '../lib/constants'
+import { REPEATS } from '../lib/recurrence'
 import PhotoPicker from './PhotoPicker'
 import TemplateRow from './TemplateRow'
 
 const EMPTY = {
   title: '',
   time: '',
+  endTime: '',
+  location: '',
+  repeat: 'none',
+  repeatUntil: '',
   tag: 'date',
   note: '',
   photos: [],
@@ -23,12 +28,13 @@ export default function EventForm({
   onAddTemplate,
   onDeleteTemplate,
   onSave,
-  onDelete,
+  onDelete, // (scope: 'one' | 'all') => void
   onCancel,
 }) {
   const [form, setForm] = useState(() => ({ ...EMPTY, date: defaultDate, ...preset, ...initial }))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const set = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
@@ -36,10 +42,20 @@ export default function EventForm({
   // Switching category drops a ready-made title from the previous one; typed titles stay.
   function chooseCategory(tag) {
     const fromTemplate = (title) => isTemplateTitle(title) || templates.some((t) => t.title === title)
-    setForm((f) => (fromTemplate(f.title) && f.tag !== tag ? { ...f, tag, title: '', time: '' } : { ...f, tag }))
+    setForm((f) =>
+      fromTemplate(f.title) && f.tag !== tag ? { ...f, tag, title: '', time: '', repeat: 'none' } : { ...f, tag },
+    )
+  }
+
+  // A surprise is a one-off plan.
+  function toggleSurprise(e) {
+    const surprise = e.target.checked
+    setForm((f) => ({ ...f, surprise, repeat: surprise ? 'none' : f.repeat }))
   }
 
   const category = TEMPLATES[form.tag]
+  const repeating = form.repeat !== 'none'
+  const wasRepeating = initial && initial.repeat !== 'none'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -48,11 +64,12 @@ export default function EventForm({
     setError('')
     try {
       await onSave({
-      ...form,
-      title: form.title.trim(),
-      teaser: form.surprise ? form.teaser.trim() || DEFAULT_TEASER : '',
-      revealOn: form.surprise ? form.revealOn || form.date : '',
-      blurPhotos: form.surprise && form.blurPhotos,
+        ...form,
+        title: form.title.trim(),
+        endTime: form.time ? form.endTime : '',
+        teaser: form.surprise ? form.teaser.trim() || DEFAULT_TEASER : '',
+        revealOn: form.surprise ? form.revealOn || form.date : '',
+        blurPhotos: form.surprise && form.blurPhotos,
       })
     } catch {
       setError('Kaydedilemedi. İnternet bağlantını kontrol edip tekrar dener misin?')
@@ -87,7 +104,9 @@ export default function EventForm({
           custom={templates}
           selectedTitle={form.title}
           draft={form}
-          onPick={(t) => setForm((f) => ({ ...f, title: t.title, time: t.time }))}
+          onPick={(t) =>
+            setForm((f) => ({ ...f, title: t.title, time: t.time, endTime: '', repeat: f.surprise ? 'none' : (t.repeat ?? 'none') }))
+          }
           onAdd={onAddTemplate}
           onDelete={onDeleteTemplate}
         />
@@ -97,21 +116,84 @@ export default function EventForm({
 
       <div className="row">
         <label className="field">
-          <span>Tarih</span>
+          <span>{repeating ? 'İlk gün' : 'Tarih'}</span>
           <input className="input" type="date" value={form.date} onChange={set('date')} required />
         </label>
+      </div>
+
+      <div className="row">
         <label className="field">
-          <span>Saat</span>
+          <span>Başlangıç</span>
           <input className="input" type="time" value={form.time} onChange={set('time')} />
         </label>
+        <label className="field">
+          <span>Bitiş</span>
+          <input
+            className="input"
+            type="time"
+            value={form.endTime}
+            onChange={set('endTime')}
+            disabled={!form.time}
+            aria-describedby={form.time ? undefined : 'end-hint'}
+          />
+        </label>
       </div>
+      {!form.time && (
+        <small id="end-hint" className="hint form-hint">
+          Saat girmezsen plan gün boyu sürer.
+        </small>
+      )}
+
+      <label className="field">
+        <span>Konum</span>
+        <input
+          className="input"
+          placeholder="📍 Nerede? (örn. Zorlu PSM)"
+          maxLength={200}
+          value={form.location}
+          onChange={set('location')}
+        />
+      </label>
+
+      {!form.surprise && (
+        <div className="field">
+          <span>Tekrar</span>
+          <div className="chips" role="radiogroup" aria-label="Tekrar">
+            {Object.entries(REPEATS).map(([key, label]) => (
+              <button
+                type="button"
+                key={key}
+                role="radio"
+                aria-checked={form.repeat === key}
+                className={`chip ${form.repeat === key ? 'is-active' : ''}`}
+                style={{ '--tag': TAGS[form.tag].color }}
+                onClick={() => setForm((f) => ({ ...f, repeat: key }))}
+              >
+                {key === 'none' ? label : `🔁 ${label}`}
+              </button>
+            ))}
+          </div>
+          {repeating && (
+            <label className="field repeat-until">
+              <span>Ne zamana kadar? (boş bırakırsan hep tekrarlanır)</span>
+              <input
+                className="input"
+                type="date"
+                min={form.date}
+                value={form.repeatUntil}
+                onChange={set('repeatUntil')}
+              />
+            </label>
+          )}
+        </div>
+      )}
 
       <textarea className="input" rows={2} placeholder="Not ekle…" value={form.note} onChange={set('note')} />
 
       <PhotoPicker photos={form.photos} onChange={(photos) => setForm((f) => ({ ...f, photos }))} />
 
       <label className={`surprise-toggle ${form.surprise ? 'is-on' : ''}`}>
-        <input type="checkbox" checked={form.surprise} onChange={set('surprise')} />
+        <input type="checkbox" checked={form.surprise} onChange={toggleSurprise} />
         <span className="switch" />
         <span>
           <strong>🎁 Sürpriz modu</strong>
@@ -138,21 +220,44 @@ export default function EventForm({
         </div>
       )}
 
+      {wasRepeating && (
+        <small className="hint form-hint">🔁 Bu plan tekrarlanıyor. Değişiklikler tüm tekrarlara uygulanır.</small>
+      )}
+
       {error && <p className="form-error">{error}</p>}
 
-      <div className="form-actions">
-        {onDelete && (
-          <button type="button" className="btn btn-ghost danger" onClick={onDelete}>
-            Sil
+      {confirmingDelete ? (
+        <div className="delete-choice">
+          <strong>Tekrarlanan planı sil</strong>
+          <button type="button" className="btn btn-ghost bordered" onClick={() => onDelete('one')}>
+            Sadece bu günü sil
           </button>
-        )}
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Vazgeç
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? 'Kaydediliyor…' : 'Kaydet'}
-        </button>
-      </div>
+          <button type="button" className="btn btn-ghost bordered danger" onClick={() => onDelete('all')}>
+            Tüm tekrarları sil
+          </button>
+          <button type="button" className="link-btn" onClick={() => setConfirmingDelete(false)}>
+            Vazgeç
+          </button>
+        </div>
+      ) : (
+        <div className="form-actions">
+          {onDelete && (
+            <button
+              type="button"
+              className="btn btn-ghost danger"
+              onClick={() => (wasRepeating ? setConfirmingDelete(true) : onDelete('all'))}
+            >
+              Sil
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+            Vazgeç
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
+      )}
     </form>
   )
 }

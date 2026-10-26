@@ -14,7 +14,7 @@ function countdownLabel(date) {
   return `${days} gün sonra`
 }
 
-export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings }) {
+export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings, dayCount }) {
   const inputRef = useRef(null)
   const [picked, setPicked] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -36,7 +36,14 @@ export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings })
     <header className="cover" style={photo ? { backgroundImage: `url(${photo})` } : undefined}>
       {photo && <div className="cover-shade" />}
       <div className="cover-top">
-        <span className="brand">UsDay</span>
+        <span className="brand-block">
+          <span className="brand">UsDay</span>
+          {dayCount > 0 && (
+            <button className="day-count" onClick={onSettings}>
+              💜 {dayCount.toLocaleString('tr-TR')}. günümüz
+            </button>
+          )}
+        </span>
         <span className="cover-actions">
           <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
             {uploading ? 'Yükleniyor…' : photo ? '📷 Değiştir' : '📷 Fotoğrafınızı ekleyin'}

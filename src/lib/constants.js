@@ -28,7 +28,7 @@ export const TEMPLATES = {
     items: [
       { title: '🛒 Market alışverişi', time: '18:30' },
       { title: '🧹 Ev temizliği', time: '10:00' },
-      { title: '🏋️ Spor', time: '08:00' },
+      { title: '🏋️ Spor', time: '08:00', repeat: 'weekly' },
       { title: '👨‍👩‍👧 Aile ziyareti', time: '13:00' },
       { title: '🥂 Arkadaşlarla buluşma', time: '20:00' },
       { title: '🩺 Doktor randevusu', time: '10:00' },
@@ -60,9 +60,9 @@ export const TEMPLATES = {
   ozel: {
     heading: 'Özel günler',
     items: [
-      { title: '🎂 Doğum günü', time: '' },
-      { title: '💍 Yıldönümü', time: '' },
-      { title: '💘 Sevgililer Günü', time: '' },
+      { title: '🎂 Doğum günü', time: '', repeat: 'yearly' },
+      { title: '💍 Yıldönümü', time: '', repeat: 'yearly' },
+      { title: '💘 Sevgililer Günü', time: '', repeat: 'yearly' },
       { title: '💒 Düğün', time: '19:00' },
       { title: '🎓 Mezuniyet', time: '14:00' },
       { title: '🌙 Bayram', time: '' },

@@ -1,0 +1,28 @@
+import { REPEATS } from './recurrence'
+import { format, parseISO } from 'date-fns'
+import { tr } from 'date-fns/locale'
+
+export const timeSpan = (e) => (e.time ? (e.endTime ? `${e.time}–${e.endTime}` : e.time) : '')
+
+export function repeatLabel(e) {
+  if (!e.repeat || e.repeat === 'none') return ''
+  const until = e.repeatUntil ? ` · ${format(parseISO(e.repeatUntil), 'd MMMM yyyy', { locale: tr })}’e kadar` : ''
+  return `🔁 ${REPEATS[e.repeat]}${until}`
+}
+
+// Apple Maps on iPhone, Google Maps everywhere else.
+export function mapsUrl(place) {
+  const q = encodeURIComponent(place)
+  return /iPhone|iPad|Macintosh/.test(navigator.userAgent)
+    ? `https://maps.apple.com/?q=${q}`
+    : `https://www.google.com/maps/search/?api=1&query=${q}`
+}
+
+export function timeAgo(iso) {
+  const minutes = Math.round((Date.now() - new Date(iso)) / 60_000)
+  if (minutes < 1) return 'şimdi'
+  if (minutes < 60) return `${minutes} dk`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} sa`
+  return format(new Date(iso), 'd MMM', { locale: tr })
+}

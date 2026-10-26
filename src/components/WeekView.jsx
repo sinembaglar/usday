@@ -7,19 +7,26 @@ const HOUR = 44 // px per hour
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
 const toMinutes = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
 
-// Plans have no end time, so each one fills an hour; overlapping ones share the column.
+// A plan without an end time fills an hour; one that ends after midnight is cut at 24:00.
+function minutesOf(event) {
+  const start = toMinutes(event.time)
+  const end = event.endTime ? toMinutes(event.endTime) : start + 60
+  return { start, end: end > start ? Math.min(end, 24 * 60) : 24 * 60 }
+}
+
+// Overlapping plans share the column side by side.
 function layout(dayEvents) {
   const timed = dayEvents.filter((e) => e.time).sort((a, b) => a.time.localeCompare(b.time))
   const lanes = []
   const placed = timed.map((event) => {
-    const start = toMinutes(event.time)
-    let lane = lanes.findIndex((end) => end <= start)
+    const { start, end } = minutesOf(event)
+    let lane = lanes.findIndex((laneEnd) => laneEnd <= start)
     if (lane === -1) lane = lanes.push(0) - 1
-    lanes[lane] = start + 60
-    return { event, start, lane }
+    lanes[lane] = end
+    return { event, start, end, lane }
   })
   return placed.map((p) => {
-    const overlapping = placed.filter((o) => Math.abs(o.start - p.start) < 60)
+    const overlapping = placed.filter((o) => o.start < p.end && p.start < o.end)
     const columns = Math.max(...overlapping.map((o) => o.lane)) + 1
     return { ...p, columns }
   })
@@ -104,14 +111,14 @@ export default function WeekView({ selected, onSelect, events, onOpen, onCreate 
           {keys.map((key, i) => (
             <div key={key} className="week-col" style={{ '--hour': `${HOUR}px` }} onClick={(e) => createAt(e, key)}>
               {isToday(days[i]) && <span className="now-line" style={{ top: nowTop }} />}
-              {layout(events.filter((e) => e.date === key)).map(({ event, start, lane, columns }) => (
+              {layout(events.filter((e) => e.date === key)).map(({ event, start, end, lane, columns }) => (
                 <button
                   key={event.id}
                   className="week-event"
                   style={{
                     '--tag': colorOf(event),
                     top: (start / 60) * HOUR,
-                    height: HOUR - 3,
+                    height: Math.max(((end - start) / 60) * HOUR - 3, 22),
                     left: `${(lane / columns) * 100}%`,
                     width: `calc(${100 / columns}% - 2px)`,
                   }}

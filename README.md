@@ -40,4 +40,7 @@ npm run dev
 - [x] Canlı güncelleme
 - [x] Davet koduyla eşleşme
 - [x] Web push bildirimleri ve hatırlatmalar (Edge Functions + pg_cron)
+- [x] Tekrarlayan planlar, konum ve bitiş saati
+- [x] Birliktelik sayacı ve yıldönümleri
+- [x] Plan yorumları ve emoji tepkileri
 - [ ] App Store sürümü

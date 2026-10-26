@@ -18,6 +18,11 @@ export type EventRow = {
   title: string
   event_date: string
   event_time: string | null
+  end_time: string | null
+  location: string | null
+  repeat: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+  repeat_until: string | null
+  skip_dates: string[]
   note: string | null
   surprise: boolean
   teaser: string | null
@@ -73,3 +78,18 @@ export const formatDay = (date: string) => dayFormat.format(new Date(`${date}T00
 export const shortTime = (time: string | null) => time?.slice(0, 5) ?? ''
 export const formatWhen = (e: EventRow) => [formatDay(e.event_date), shortTime(e.event_time)].filter(Boolean).join(' · ')
 export const eventUrl = (id: string) => `/?event=${id}`
+
+// Today in Istanbul as YYYY-MM-DD (Türkiye has been UTC+3 all year since 2016).
+export const istanbulToday = () => new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10)
+
+// A surprise stays hidden from the partner until its reveal day.
+export const hiddenFrom = (e: EventRow, userId: string, today = istanbulToday()) =>
+  e.surprise && e.created_by !== userId && (e.reveal_on ?? e.event_date) > today
+
+// Database row → the shape the shared recurrence helpers expect.
+export const asPlan = (e: EventRow) => ({
+  date: e.event_date,
+  repeat: e.repeat,
+  repeatUntil: e.repeat_until,
+  skipDates: e.skip_dates,
+})

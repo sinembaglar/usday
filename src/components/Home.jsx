@@ -18,8 +18,11 @@ import {
   markSeen,
   saveEvent,
   setCover,
+  setTogetherSince,
+  skipOccurrence,
 } from '../lib/api'
 import { TEMPLATES } from '../lib/constants'
+import { addDaysKey, dayNumber, expandEvents, milestones } from '../lib/recurrence'
 import InviteCard from './InviteCard'
 import NotificationCard from './NotificationCard'
 import { notifyPartner } from '../lib/push'
@@ -95,15 +98,39 @@ export default function Home({ userId }) {
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
   }, [reload])
 
+  const todayKey = format(new Date(), 'yyyy-MM-dd')
+  const monthKey = format(month, 'yyyy-MM-dd')
+
+  // Repeating plans become one entry per day, plus anniversaries and day-count milestones,
+  // over a window that covers both today's surroundings and the month being viewed.
+  const togetherSince = couple?.togetherSince
+  const shown = useMemo(() => {
+    const from = addDaysKey(monthKey < todayKey ? monthKey : todayKey, -7)
+    const to = addDaysKey(monthKey > todayKey ? monthKey : todayKey, 400)
+    const special = milestones(togetherSince, from, to).map((m) => ({
+      id: `milestone-${m.kind}-${m.count}`,
+      seriesId: null,
+      milestone: m.kind,
+      title: m.title,
+      date: m.date,
+      time: '',
+      tag: 'ozel',
+      photos: [],
+    }))
+    return [...expandEvents(events, from, to), ...special]
+  }, [events, togetherSince, monthKey, todayKey])
+
   useEffect(() => {
-    const event = pendingOpen && events.find((e) => e.id === pendingOpen)
+    if (!pendingOpen) return
+    const matches = shown.filter((e) => e.seriesId === pendingOpen)
+    const event = matches.find((e) => e.date >= todayKey) ?? matches[0]
     if (!event) return
     setSheet({ type: 'detail', event })
     setSelected(parseISO(event.date))
     setMonth(startOfMonth(parseISO(event.date)))
     setPendingOpen(null)
     window.history.replaceState(null, '', '/')
-  }, [pendingOpen, events])
+  }, [pendingOpen, shown, todayKey])
 
   useEffect(() => {
     if (!toast) return
@@ -112,12 +139,16 @@ export default function Home({ userId }) {
   }, [toast])
 
   const partner = Object.values(members).find((m) => m.id !== userId)
-  const todayKey = format(new Date(), 'yyyy-MM-dd')
   const selectedKey = format(selected, 'yyyy-MM-dd')
-  const sorted = useMemo(() => [...events].sort(byDateTime), [events])
+  const sorted = useMemo(() => [...shown].sort(byDateTime), [shown])
   const dayEvents = sorted.filter((e) => e.date === selectedKey)
-  const upcoming = sorted.filter((e) => e.date >= todayKey && e.date !== selectedKey).slice(0, 4)
+  // One line per plan in "Yaklaşanlar": a weekly plan shows only its next time.
+  const upcoming = sorted
+    .filter((e) => e.date >= todayKey && e.date !== selectedKey)
+    .filter((e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i)
+    .slice(0, 5)
   const nextDate = sorted.find((e) => e.date >= todayKey && (e.tag === 'date' || e.surprise))
+  const dayCount = couple?.togetherSince ? dayNumber(couple.togetherSince, todayKey) : 0
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
 
   function selectDay(day) {
@@ -149,13 +180,29 @@ export default function Home({ userId }) {
     reload()
   }
 
-  async function handleDelete(event) {
+  // scope 'one' drops just the opened day of a repeating plan.
+  async function handleDelete(scope) {
     try {
-      await deleteEvent(event)
+      if (scope === 'one') {
+        await skipOccurrence(sheet.occurrence)
+        setToast('🗓️ Sadece o gün silindi')
+      } else {
+        await deleteEvent(sheet.event)
+      }
       setSheet(null)
       reload()
     } catch {
       setToast('Silinemedi, tekrar dener misin?')
+    }
+  }
+
+  async function handleTogetherSince(date) {
+    try {
+      await setTogetherSince(couple.id, date)
+      setToast(date ? '💜 Birlikte olduğunuz gün kaydedildi' : 'Tarih kaldırıldı')
+      reload()
+    } catch {
+      setToast('Kaydedilemedi, tekrar dener misin?')
     }
   }
 
@@ -181,6 +228,7 @@ export default function Home({ userId }) {
         nextEvent={nextDate}
         onOpen={openDetail}
         onSettings={() => setSheet({ type: 'settings' })}
+        dayCount={dayCount}
       />
 
       <main className="content">
@@ -224,12 +272,12 @@ export default function Home({ userId }) {
           <WeekView
             selected={selected}
             onSelect={selectDay}
-            events={events}
+            events={shown}
             onOpen={openDetail}
             onCreate={(date, time) => openForm({ date, time })}
           />
         ) : (
-          <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={events} />
+          <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={shown} />
         )}
 
         <section className="agenda">
@@ -273,7 +321,13 @@ export default function Home({ userId }) {
       {sheet && (
         <Sheet onClose={() => setSheet(null)}>
           {sheet.type === 'settings' ? (
-            <SettingsSheet me={members[userId]} onClose={() => setSheet(null)} onToast={setToast} />
+            <SettingsSheet
+              me={members[userId]}
+              couple={couple}
+              onTogetherSince={handleTogetherSince}
+              onClose={() => setSheet(null)}
+              onToast={setToast}
+            />
           ) : sheet.type === 'form' ? (
             <EventForm
               initial={sheet.event}
@@ -290,7 +344,7 @@ export default function Home({ userId }) {
                 reload()
               }}
               onSave={handleSave}
-              onDelete={sheet.event ? () => handleDelete(sheet.event) : null}
+              onDelete={sheet.event ? handleDelete : null}
               onCancel={() => setSheet(null)}
             />
           ) : (
@@ -298,7 +352,10 @@ export default function Home({ userId }) {
               event={sheet.event}
               me={userId}
               members={members}
-              onEdit={() => setSheet({ type: 'form', event: sheet.event })}
+              onEdit={() =>
+                // The form edits the whole series from its first day; the opened day is kept for "sadece bu günü sil".
+                setSheet({ type: 'form', event: { ...sheet.event, date: sheet.event.seriesDate ?? sheet.event.date }, occurrence: sheet.event })
+              }
               onClose={() => setSheet(null)}
             />
           )}
