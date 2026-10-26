@@ -87,5 +87,5 @@ Deno.serve(async (req) => {
       : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: event.title, url, tag: `${event.id}-react` }
   }
 
-  return json({ sent: await sendToUsers([partner.id], payload) })
+  return json({ sent: await sendToUsers([partner.id], payload, event.id) })
 })

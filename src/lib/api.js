@@ -90,10 +90,12 @@ export async function loadEverything() {
     supabase.rpc('surprise_teasers'),
     supabase.from('custom_templates').select('id, tag, title, event_time').order('created_at'),
     supabase.from('event_comments').select('event_id'),
+    supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
   ])
   const failed = results.find((r) => r.error)
   if (failed) throw failed.error
   const [couple, profiles, rows, teasers, templates, comments] = results.map((r) => r.data)
+  const unreadNotifications = results[6].count ?? 0
 
   const commentCounts = {}
   for (const c of comments) commentCounts[c.event_id] = (commentCounts[c.event_id] ?? 0) + 1
@@ -116,7 +118,32 @@ export async function loadEverything() {
       commentCount: commentCounts[e.id] ?? 0,
     })),
     templates: templates.map((t) => ({ id: t.id, tag: t.tag, title: t.title, time: t.event_time?.slice(0, 5) ?? '' })),
+    unreadNotifications,
   }
+}
+
+export const NOTIFICATION_PAGE = 30
+
+// Newest first; pass the oldest shown created_at to get the page before it.
+export async function loadNotifications(before = null) {
+  let query = supabase
+    .from('notifications')
+    .select('id, event_id, title, body, created_at, read_at')
+    .order('created_at', { ascending: false })
+    .limit(NOTIFICATION_PAGE)
+  if (before) query = query.lt('created_at', before)
+  const { data, error } = await query
+  if (error) throw error
+  return data
+}
+
+export async function markNotificationsRead() {
+  await supabase.rpc('mark_notifications_read')
+}
+
+export async function clearNotifications() {
+  const { error } = await supabase.from('notifications').delete().not('id', 'is', null)
+  if (error) throw error
 }
 
 export async function addTemplate({ tag, title, time }) {

@@ -34,22 +34,23 @@ export type EventRow = {
 
 export type Person = { id: string; name: string; couple_id: string }
 
-// Plans the partner added since this person last opened the app (the icon badge).
+// Unread notifications in the app: the number on the icon.
 async function unreadCount(userId: string) {
-  const { data: me } = await admin.from('profiles').select('couple_id, last_seen_at').eq('id', userId).single()
-  if (!me) return 0
   const { count } = await admin
-    .from('events')
+    .from('notifications')
     .select('id', { count: 'exact', head: true })
-    .eq('couple_id', me.couple_id)
-    .neq('created_by', userId)
-    .gt('created_at', me.last_seen_at)
+    .eq('recipient', userId)
+    .is('read_at', null)
   return count ?? 0
 }
 
-// Sends to every device of the given people; drops subscriptions the push service no longer knows.
-export async function sendToUsers(userIds: string[], payload: Payload) {
+// Keeps the notification in the app's inbox, then sends it to every device of the given people.
+// Returns how many devices it reached; subscriptions the push service no longer knows are dropped.
+export async function sendToUsers(userIds: string[], payload: Payload, eventId: string | null = null) {
   if (!userIds.length) return 0
+  await admin.from('notifications').insert(
+    userIds.map((recipient) => ({ recipient, event_id: eventId, title: payload.title, body: payload.body, url: payload.url })),
+  )
   const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', userIds)
   const badges = Object.fromEntries(await Promise.all(userIds.map(async (id) => [id, await unreadCount(id)])))
   let sent = 0

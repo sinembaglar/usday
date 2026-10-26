@@ -25,6 +25,7 @@ import { TEMPLATES } from '../lib/constants'
 import { addDaysKey, dayNumber, expandEvents, milestones } from '../lib/recurrence'
 import InviteCard from './InviteCard'
 import ProposalCard from './ProposalCard'
+import NotificationsSheet from './NotificationsSheet'
 import { dative } from '../lib/format'
 import NotificationCard from './NotificationCard'
 import { notifyPartner } from '../lib/push'
@@ -51,6 +52,7 @@ export default function Home({ userId }) {
   const [selected, setSelected] = useState(() => new Date())
   const [sheet, setSheet] = useState(null) // { type: 'form' | 'detail' | 'settings', event?, preset? }
   const [toast, setToast] = useState(null)
+  const [unread, setUnread] = useState(0)
 
   // Opening the app (or coming back to it) counts as seeing everything: clears the icon badge.
   const reload = useCallback(
@@ -61,10 +63,15 @@ export default function Home({ userId }) {
         setMembers(data.members)
         setEvents(data.events)
         setTemplates(data.templates)
+        setUnread(data.unreadNotifications)
         if (markAsSeen) {
           setSeenAt(data.members[userId]?.lastSeenAt ?? null)
           await markSeen()
-          navigator.clearAppBadge?.().catch(() => {})
+          // The icon shows what is still unread in the app's inbox.
+          const badge = data.unreadNotifications
+            ? navigator.setAppBadge?.(data.unreadNotifications)
+            : navigator.clearAppBadge?.()
+          badge?.catch(() => {})
         }
       } catch {
         setToast('Bağlantı sorunu, birazdan tekrar deneyeceğim')
@@ -78,6 +85,11 @@ export default function Home({ userId }) {
     const channel = supabase
       .channel('events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => reload())
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userId}` },
+        () => reload(),
+      )
       .subscribe()
     const onVisible = () => document.visibilityState === 'visible' && reload({ markAsSeen: true })
     document.addEventListener('visibilitychange', onVisible)
@@ -85,7 +97,12 @@ export default function Home({ userId }) {
       supabase.removeChannel(channel)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [reload])
+  }, [reload, userId])
+
+  const inboxRead = useCallback(() => {
+    setUnread(0)
+    navigator.clearAppBadge?.().catch(() => {})
+  }, [])
 
   // A tapped notification opens its plan, both on a cold start (?event=) and while the app is open.
   const [pendingOpen, setPendingOpen] = useState(() => new URLSearchParams(window.location.search).get('event'))
@@ -236,6 +253,8 @@ export default function Home({ userId }) {
         nextEvent={nextDate}
         onOpen={openDetail}
         onSettings={() => setSheet({ type: 'settings' })}
+        onInbox={() => setSheet({ type: 'inbox' })}
+        unread={unread}
         dayCount={dayCount}
       />
 
@@ -340,7 +359,17 @@ export default function Home({ userId }) {
 
       {sheet && (
         <Sheet onClose={() => setSheet(null)}>
-          {sheet.type === 'settings' ? (
+          {sheet.type === 'inbox' ? (
+            <NotificationsSheet
+              onRead={inboxRead}
+              onOpenEvent={(id) => {
+                setSheet(null)
+                setPendingOpen(id)
+              }}
+              onClose={() => setSheet(null)}
+              onToast={setToast}
+            />
+          ) : sheet.type === 'settings' ? (
             <SettingsSheet
               me={members[userId]}
               couple={couple}

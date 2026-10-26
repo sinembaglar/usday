@@ -40,7 +40,12 @@ type Now = ReturnType<typeof istanbulNow>
 const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
 const occursOn = (event: EventRow, date: string) => occurrences(asPlan(event), date, date).length > 0
 
-type Job = { userId: string; claim: { table: string; row: Record<string, string> }; payload: Payload }
+type Job = {
+  userId: string
+  eventId: string | null
+  claim: { table: string; row: Record<string, string> }
+  payload: Payload
+}
 
 function eventJobs(event: EventRow, person: Person, people: Person[], now: Now): Job[] {
   const hidden = event.surprise && person.id !== event.created_by && (event.reveal_on ?? event.event_date) > now.today
@@ -50,6 +55,7 @@ function eventJobs(event: EventRow, person: Person, people: Person[], now: Now):
   const repeating = event.repeat !== 'none'
   const job = (kind: string, date: string, title: string, body: string): Job => ({
     userId: person.id,
+    eventId: event.id,
     // A repeating plan gets a fresh reminder for every day it happens.
     claim: { table: 'sent_notifications', row: { event_id: event.id, user_id: person.id, kind: repeating ? `${kind}:${date}` : kind } },
     payload: { title, body, url: eventUrl(event.id), tag: `${event.id}-${kind}` },
@@ -108,6 +114,7 @@ function milestoneJobs(coupleId: string, since: string, members: Person[], now: 
     for (const person of members) {
       jobs.push({
         userId: person.id,
+        eventId: null,
         claim: { table: 'sent_milestones', row: { couple_id: coupleId, user_id: person.id, key: `${m.kind}:${m.count}:${today ? 'day' : 'eve'}` } },
         payload: { title, body, url: '/', tag: `milestone-${m.kind}-${m.count}` },
       })
@@ -148,7 +155,7 @@ Deno.serve(async (req) => {
     // Claim first so a slow run never sends the same reminder twice.
     const { error } = await admin.from(j.claim.table).insert(j.claim.row)
     if (error) continue
-    sent += await sendToUsers([j.userId], j.payload)
+    sent += await sendToUsers([j.userId], j.payload, j.eventId)
   }
 
   return Response.json({ due: jobs.length, sent })

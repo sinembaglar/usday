@@ -14,7 +14,7 @@ function countdownLabel(date) {
   return `${days} gün sonra`
 }
 
-export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings, dayCount }) {
+export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings, onInbox, unread, dayCount }) {
   const inputRef = useRef(null)
   const [picked, setPicked] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -47,6 +47,14 @@ export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings, d
         <span className="cover-actions">
           <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
             {uploading ? 'Yükleniyor…' : photo ? '📷 Değiştir' : '📷 Fotoğrafınızı ekleyin'}
+          </button>
+          <button
+            className="cover-photo-btn cover-icon bell"
+            onClick={onInbox}
+            aria-label={unread ? `Bildirimler, ${unread} okunmamış` : 'Bildirimler'}
+          >
+            🔔
+            {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
           </button>
           <button className="cover-photo-btn cover-icon" onClick={onSettings} aria-label="Ayarlar">
             ⚙️
