@@ -5,14 +5,30 @@ import { timeSpan } from '../lib/format'
 
 const US = { name: 'İkiniz', short: '💜', color: 'var(--blush)' }
 
+// What a group plan says about me and the group.
+function groupLine(event, me) {
+  const mine = event.guests.find((g) => g.id === me)
+  const coming = event.guests.filter((g) => g.status === 'accepted').length + 1 // the maker counts
+  if (mine?.status === 'pending') return '📨 davet · yanıtını bekliyor'
+  if (mine?.status === 'declined') return '❌ katılmıyorsun'
+  return `✅ ${coming}/${event.guests.length + 1} geliyor`
+}
+
 // withWhom: "👯 Ayşe" when plans of several people are shown together.
-export default function EventCard({ event, members, onClick, showDate, isNew, withWhom }) {
+export default function EventCard({ event, members, onClick, showDate, isNew, withWhom, me }) {
   const hidden = event.locked
   const tag = TAGS[event.tag] ?? TAGS.plan
   const author = event.milestone ? US : (members[event.createdBy] ?? UNKNOWN_PERSON)
   const thumb = event.photos[0]
-  const status =
-    event.status === 'proposed' ? '⏳ yanıt bekleniyor' : event.status === 'declined' ? '❌ uygun değil' : null
+  const status = event.guests
+    ? groupLine(event, me)
+    : event.status === 'proposed'
+      ? '⏳ yanıt bekleniyor'
+      : event.status === 'declined'
+        ? '❌ uygun değil'
+        : null
+  const iDeclined = event.guests?.some((g) => g.id === me && g.status === 'declined')
+  const pendingForMe = event.guests?.some((g) => g.id === me && g.status === 'pending')
   const meta = [
     withWhom,
     status,
@@ -24,7 +40,9 @@ export default function EventCard({ event, members, onClick, showDate, isNew, wi
 
   return (
     <button
-      className={`event-card ${event.status && event.status !== 'confirmed' ? `is-${event.status}` : ''}`}
+      className={`event-card ${
+        iDeclined ? 'is-declined' : pendingForMe ? 'is-proposed' : event.status && event.status !== 'confirmed' ? `is-${event.status}` : ''
+      }`}
       onClick={onClick}
       style={{ '--tag': hidden ? SURPRISE_COLOR : tag.color }}
     >

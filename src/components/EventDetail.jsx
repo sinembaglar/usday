@@ -5,6 +5,7 @@ import { mapsUrl, repeatLabel, timeSpan } from '../lib/format'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
 import ProposalActions from './ProposalActions'
+import { GuestList, InvitationActions } from './GuestList'
 
 // Where a proposal stands, and the answer buttons when the question is mine.
 function ProposalStatus({ event, me, members, onAnswered, onToast }) {
@@ -82,7 +83,8 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
   }
 
   const tag = TAGS[event.tag] ?? TAGS.plan
-  const canEdit = !event.surprise || event.createdBy === me
+  // Group plans are edited by whoever made them; two-person plans by both (except surprises).
+  const canEdit = event.guests ? event.createdBy === me : !event.surprise || event.createdBy === me
 
   return (
     <div className="detail">
@@ -91,8 +93,15 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
       </span>
       <h3>{event.title}</h3>
       <p className="when">{when}</p>
-      {withWhom && <p className="meta-line">{withWhom} ile</p>}
+      {withWhom && !event.guests && <p className="meta-line">{withWhom} ile</p>}
       {status}
+      {event.guests && (
+        <div className="status-box">
+          <strong>👥 Davetliler</strong>
+          <GuestList event={event} members={members} />
+          <InvitationActions event={event} me={me} onAnswered={onAnswered} onToast={onToast} />
+        </div>
+      )}
       {repeatLabel(event) &&<p className="meta-line">{repeatLabel(event)}</p>}
       {event.location && (
         <a className="meta-line place" href={mapsUrl(event.location)} target="_blank" rel="noreferrer">

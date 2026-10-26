@@ -148,14 +148,27 @@ Deno.serve(async (req) => {
     admin.from('couples').select('id, together_since, relation').not('together_since', 'is', null),
   ])
 
-  const coupleIds = [...new Set([...(events ?? []).map((e) => e.couple_id), ...(couples ?? []).map((c) => c.id)])]
-  if (!coupleIds.length) return Response.json({ due: 0, sent: 0 })
+  const coupleIds = [
+    ...new Set([...(events ?? []).map((e) => e.couple_id).filter(Boolean), ...(couples ?? []).map((c) => c.id)]),
+  ]
   const people = await peopleIn(coupleIds)
   const membersOf = (coupleId: string) => people.filter((p) => p.couple_id === coupleId)
 
+  // Group plans remind their maker and everyone who said they are coming.
+  const groupIds = (events ?? []).filter((e) => !e.couple_id).map((e) => e.id)
+  const { data: going } = groupIds.length
+    ? await admin.from('event_participants').select('event_id, user_id').in('event_id', groupIds).eq('status', 'accepted')
+    : { data: [] }
+  const attendeesOf = (event: EventRow): Person[] =>
+    event.couple_id
+      ? membersOf(event.couple_id)
+      : [event.created_by, ...(going ?? []).filter((g) => g.event_id === event.id).map((g) => g.user_id)].map(
+          (id) => ({ id, name: '', couple_id: '' }),
+        )
+
   const jobs = [
     ...((events ?? []) as EventRow[]).flatMap((event) =>
-      membersOf(event.couple_id).flatMap((person) => eventJobs(event, person, membersOf(event.couple_id), now)),
+      attendeesOf(event).flatMap((person) => eventJobs(event, person, attendeesOf(event), now)),
     ),
     ...(couples ?? []).flatMap((c) => milestoneJobs(c.id, c.together_since, c.relation, membersOf(c.id), now)),
   ]

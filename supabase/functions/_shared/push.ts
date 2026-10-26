@@ -34,6 +34,25 @@ export type EventRow = {
 
 export type Person = { id: string; name: string; couple_id: string }
 
+export type Guest = { id: string; name: string; status: 'maker' | 'pending' | 'accepted' | 'declined' }
+
+// Everyone on a group plan: its maker plus the invited people and their answers.
+export async function guestsOf(event: EventRow): Promise<Guest[]> {
+  const { data } = await admin
+    .from('event_participants')
+    .select('user_id, status, profiles(id, name)')
+    .eq('event_id', event.id)
+  const { data: maker } = await admin.from('profiles').select('id, name').eq('id', event.created_by).single()
+  return [
+    { id: maker!.id, name: maker!.name, status: 'maker' as const },
+    ...(data ?? []).map((p: { status: Guest['status']; profiles: { id: string; name: string } }) => ({
+      id: p.profiles.id,
+      name: p.profiles.name,
+      status: p.status,
+    })),
+  ]
+}
+
 // The (at most two) people in each connection, as Person rows tagged with the connection.
 export async function peopleIn(coupleIds: string[]): Promise<Person[]> {
   if (!coupleIds.length) return []

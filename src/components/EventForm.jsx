@@ -28,30 +28,60 @@ export default function EventForm({
   templates = [],
   onAddTemplate,
   onDeleteTemplate,
-  connections = [], // [{ id, relation, partnerName, emoji }]
+  connections = [], // [{ id, relation, partnerName, partnerId, emoji }]
   defaultCoupleId,
-  onSave,
+  onSave, // gets the form with coupleIds: one id = two-person plan, several = group plan
   onDelete, // (scope: 'one' | 'all') => void
   onCancel,
 }) {
   const [form, setForm] = useState(() => {
-    const coupleId = initial?.coupleId ?? preset?.coupleId ?? defaultCoupleId ?? connections[0]?.id
-    const canAsk = Boolean(connections.find((c) => c.id === coupleId)?.partnerName)
+    // A group plan being edited: tick the people already invited.
+    const invited = initial?.guests
+      ? connections.filter((c) => initial.guests.some((g) => g.id === c.partnerId)).map((c) => c.id)
+      : null
+    const coupleIds = invited ?? [initial?.coupleId ?? preset?.coupleId ?? defaultCoupleId ?? connections[0]?.id]
+    const canAsk = coupleIds.length === 1 && Boolean(connections.find((c) => c.id === coupleIds[0])?.partnerName)
     return {
       ...EMPTY,
       date: defaultDate,
       ...preset,
       ...initial,
-      coupleId,
+      coupleIds,
       // Keep asking while a plan is unanswered; a declined one is re-asked by default.
       propose: canAsk && (preset?.propose ?? (initial?.status === 'proposed' || initial?.status === 'declined')),
     }
   })
 
-  const connection = connections.find((c) => c.id === form.coupleId)
-  const relation = connection?.relation ?? 'partner'
+  const group = form.coupleIds.length > 1
+  const picked = connections.filter((c) => form.coupleIds.includes(c.id))
+  const connection = group ? null : picked[0]
+  // A group of only partners is still worded as a date; anything mixed is a meetup.
+  const relation = picked.every((c) => c.relation === 'partner') ? 'partner' : 'friend'
   const partnerName = connection?.partnerName
-  const ownTemplates = templates.filter((t) => t.coupleId === form.coupleId)
+  const ownTemplates = group ? [] : templates.filter((t) => t.coupleId === connection?.id)
+  const linked = connections.filter((c) => c.partnerName)
+  // Editing a two-person plan keeps it with the same person; a group plan can change its guests.
+  const canChoose = (!initial || initial.guests) && connections.length > 1
+
+  function togglePerson(c) {
+    setForm((f) => {
+      const on = f.coupleIds.includes(c.id)
+      // Groups are only made of people who joined; an open invitation can only be a plan on its own.
+      const next = on
+        ? f.coupleIds.filter((id) => id !== c.id)
+        : c.partnerName && f.coupleIds.every((id) => linked.some((l) => l.id === id))
+          ? [...f.coupleIds, c.id]
+          : [c.id]
+      if (!next.length || (initial?.guests && next.length < 2)) return f
+      const single = next.length === 1
+      return {
+        ...f,
+        coupleIds: next,
+        propose: single && connections.find((x) => x.id === next[0])?.partnerName ? f.propose : false,
+        surprise: single ? f.surprise : false,
+      }
+    })
+  }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -101,26 +131,29 @@ export default function EventForm({
     <form className="event-form" onSubmit={handleSubmit}>
       <h3>{initial ? 'Planı düzenle' : 'Yeni plan'}</h3>
 
-      {!initial && connections.length > 1 && (
+      {canChoose && (
         <div className="field">
-          <span>Kiminle?</span>
-          <div className="chips" role="radiogroup" aria-label="Kiminle">
-            {connections.map((c) => (
+          <span>Kiminle? {group ? `· 👥 ${picked.length} kişilik grup planı` : '· birden fazla kişi seçebilirsin'}</span>
+          <div className="chips" role="group" aria-label="Kiminle">
+            {(initial?.guests ? linked : connections).map((c) => (
               <button
                 type="button"
                 key={c.id}
-                role="radio"
-                aria-checked={form.coupleId === c.id}
-                className={`chip ${form.coupleId === c.id ? 'is-active' : ''}`}
+                aria-pressed={form.coupleIds.includes(c.id)}
+                className={`chip ${form.coupleIds.includes(c.id) ? 'is-active' : ''}`}
                 style={{ '--tag': 'var(--rose)' }}
-                onClick={() =>
-                  setForm((f) => ({ ...f, coupleId: c.id, propose: c.partnerName ? f.propose : false }))
-                }
+                onClick={() => togglePerson(c)}
               >
+                {form.coupleIds.includes(c.id) && group ? '✓ ' : ''}
                 {c.emoji} {c.partnerName ?? 'Davet bekleyen'}
               </button>
             ))}
           </div>
+          {group && (
+            <small className="hint">
+              Herkese davet gider; “katılıyorum / katılamıyorum” der. Davetliler birbirinin adını bu planda görür.
+            </small>
+          )}
         </div>
       )}
 
@@ -151,7 +184,7 @@ export default function EventForm({
           onPick={(t) =>
             setForm((f) => ({ ...f, title: t.title, time: t.time, endTime: '', repeat: f.surprise ? 'none' : (t.repeat ?? 'none') }))
           }
-          onAdd={(t) => onAddTemplate({ ...t, coupleId: form.coupleId })}
+          onAdd={(t) => onAddTemplate({ ...t, coupleId: connection?.id })}
           onDelete={onDeleteTemplate}
         />
       )}
@@ -250,12 +283,12 @@ export default function EventForm({
         </label>
       )}
 
-      <label className={`surprise-toggle ${form.surprise ? 'is-on' : ''}`}>
+      <label className={`surprise-toggle ${form.surprise ? 'is-on' : ''}`} hidden={group}>
         <input type="checkbox" checked={form.surprise} onChange={toggleSurprise} />
         <span className="switch" />
         <span>
           <strong>🎁 Sürpriz modu</strong>
-          <small>Eşin sadece ipucunu görür, detaylar açılış gününe kadar gizli kalır</small>
+          <small>{partnerName ?? 'Diğer kişi'} sadece ipucunu görür, detaylar açılış gününe kadar gizli kalır</small>
         </span>
       </label>
 

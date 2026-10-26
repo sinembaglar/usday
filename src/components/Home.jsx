@@ -36,6 +36,7 @@ import WishDetail from './WishDetail'
 import { addDaysKey, dayNumber, expandEvents, milestones } from '../lib/recurrence'
 import InviteCard from './InviteCard'
 import ProposalCard from './ProposalCard'
+import InvitationCard from './InvitationCard'
 import NotificationsSheet from './NotificationsSheet'
 import { dative } from '../lib/format'
 import NotificationCard from './NotificationCard'
@@ -178,7 +179,7 @@ export default function Home({ userId }) {
       events.map((e) => ({
         ...e,
         partnerId: byId[e.coupleId]?.partnerId ?? null,
-        relation: byId[e.coupleId]?.relation ?? 'partner',
+        relation: e.guests ? 'friend' : (byId[e.coupleId]?.relation ?? 'partner'),
       })),
     [events, byId],
   )
@@ -187,6 +188,12 @@ export default function Home({ userId }) {
     const from = addDaysKey(monthKey < todayKey ? monthKey : todayKey, -7)
     const to = addDaysKey(monthKey > todayKey ? monthKey : todayKey, 400)
     const picked = new Set(selection)
+    // A group plan shows when anyone on it is one of the selected people.
+    const pickedPeople = new Set(selection.map((id) => byId[id]?.partnerId).filter(Boolean))
+    const onScreen = (e) =>
+      e.guests
+        ? [e.createdBy, ...e.guests.map((g) => g.id)].some((id) => pickedPeople.has(id))
+        : picked.has(e.coupleId)
     const special = selection.flatMap((id) => {
       const c = byId[id]
       if (!c?.partnerId) return []
@@ -203,14 +210,18 @@ export default function Home({ userId }) {
         photos: [],
       }))
     })
-    return [...expandEvents(withPartner.filter((e) => picked.has(e.coupleId)), from, to), ...special]
+    return [...expandEvents(withPartner.filter(onScreen), from, to), ...special]
   }, [withPartner, selection, byId, members, monthKey, todayKey])
 
   // Opening a plan of someone who is not selected adds them to the selection first.
   useEffect(() => {
     if (!pendingOpen || !connections) return
     const raw = events.find((e) => e.id === pendingOpen)
-    if (raw && !selection.includes(raw.coupleId)) {
+    if (raw?.guests && !shown.some((e) => e.seriesId === raw.id)) {
+      choose(all.map((c) => c.id)) // a group plan: show everyone
+      return
+    }
+    if (raw && !raw.guests && !selection.includes(raw.coupleId)) {
       choose([...selection, raw.coupleId])
       return
     }
@@ -251,8 +262,10 @@ export default function Home({ userId }) {
 
   // Cover cards: the next confirmed plan of each kind that has not ended yet.
   const nowHM = format(new Date(), 'HH:mm')
+  const iDeclined = (e) => e.guests?.some((g) => g.id === userId && g.status === 'declined')
   const stillAhead = (e) =>
     (e.status ?? 'confirmed') === 'confirmed' &&
+    !iDeclined(e) &&
     (e.date > todayKey || (e.date === todayKey && (!e.time || (e.endTime || e.time) > nowHM)))
   const ahead = sorted.filter(stillAhead)
   const firstOf = (test) => ahead.find(test)
@@ -272,6 +285,7 @@ export default function Home({ userId }) {
     .map((h) => ({ ...h, text: h.event.locked ? '🎁 Bir sürpriz yaklaşıyor' : h.event.title }))
 
   const waitingForMe = withPartner.filter((e) => e.status === 'proposed' && e.awaiting === userId)
+  const invitedMe = withPartner.filter((e) => e.guests?.some((g) => g.id === userId && g.status === 'pending'))
   const pending = selection.map((id) => byId[id]).filter((c) => c && !c.partnerId)
   const counter =
     single?.partnerId && single.togetherSince && relationOf(single).counter
@@ -280,6 +294,10 @@ export default function Home({ userId }) {
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
   // With plans of several people on screen, each says who it is with.
   const withWhom = (e) => {
+    if (e.guests) {
+      const others = [e.createdBy, ...e.guests.map((g) => g.id)].filter((id) => id !== userId)
+      return `👥 ${others.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')}`
+    }
     const c = byId[e.coupleId]
     return linked.length > 1 && c?.partnerId ? `${relationOf(c).emoji} ${personOf(c).name}` : null
   }
@@ -288,6 +306,7 @@ export default function Home({ userId }) {
     relation: c.relation,
     emoji: relationOf(c).emoji,
     partnerName: personOf(c)?.name,
+    partnerId: c.partnerId,
   }))
   const defaultCoupleId = single?.id ?? selection.find((id) => byId[id]?.partnerId) ?? selection[0]
 
@@ -304,14 +323,30 @@ export default function Home({ userId }) {
   // Actions ------------------------------------------------------------------------
 
   async function handleSave(form) {
-    const connection = byId[form.coupleId]
+    // Several people picked: a group plan everyone is invited to.
+    if (form.coupleIds.length > 1) {
+      const guestIds = form.coupleIds.map((id) => byId[id]?.partnerId).filter(Boolean)
+      const id = await saveEvent(form, null, sheet.event, null, { guestIds })
+      setSheet(null)
+      if (!form.coupleIds.every((cid) => selection.includes(cid))) choose([...new Set([...selection, ...form.coupleIds])])
+      selectDay(parseISO(form.date))
+      if (!sheet.event) {
+        notifyPartner(id)
+        setToast(`👥 ${guestIds.length} kişiye davet gitti`)
+      }
+      reload()
+      return
+    }
+
+    const coupleId = form.coupleIds[0]
+    const connection = byId[coupleId]
     const partner = personOf(connection)
-    const id = await saveEvent(form, form.coupleId, sheet.event, connection?.partnerId)
+    const id = await saveEvent(form, coupleId, sheet.event, connection?.partnerId)
     // A surprise made from someone's wish quietly claims that wish.
     if (sheet.fromWish && form.surprise) await claimWish(sheet.fromWish, id).catch(() => {})
     setSheet(null)
     if (sheet.fromWish) setTab('takvim')
-    if (!selection.includes(form.coupleId)) choose([...selection, form.coupleId])
+    if (!selection.includes(coupleId)) choose([...selection, coupleId])
     selectDay(parseISO(form.date))
     const asking = form.propose && partner
     if (!sheet.event || asking) {
@@ -501,6 +536,18 @@ export default function Home({ userId }) {
 
             <NotificationCard partnerName={personOf(single)?.name} onToast={setToast} />
 
+            {invitedMe.map((e) => (
+              <InvitationCard
+                key={e.id}
+                event={e}
+                me={userId}
+                members={members}
+                onOpen={openDetail}
+                onAnswered={() => reload()}
+                onToast={setToast}
+              />
+            ))}
+
             {waitingForMe.map((e) => (
               <ProposalCard
                 key={e.id}
@@ -570,6 +617,7 @@ export default function Home({ userId }) {
                       members={members}
                       isNew={isNew(e)}
                       withWhom={withWhom(e)}
+                      me={userId}
                       onClick={() => openDetail(e)}
                     />
                   ))}
@@ -592,6 +640,7 @@ export default function Home({ userId }) {
                       members={members}
                       isNew={isNew(e)}
                       withWhom={withWhom(e)}
+                      me={userId}
                       showDate
                       onClick={() => openDetail(e)}
                     />

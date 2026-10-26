@@ -96,11 +96,15 @@ export async function loadEverything(userId) {
     supabase.from('wish_claims').select('wish_id, plan_id'),
     supabase.from('couple_members').select('couple_id, user_id'),
     supabase.rpc('surprise_teaser_connections'),
+    supabase.from('event_participants').select('event_id, user_id, status, note'),
   ])
   const failed = results.find((r) => r.error)
   if (failed) throw failed.error
-  const [couples, profiles, rows, teasers, templates, comments, , wishRows, claims, memberRows, teaserCouples] =
+  const [couples, profiles, rows, teasers, templates, comments, , wishRows, claims, memberRows, teaserCouples, guestRows] =
     results.map((r) => r.data)
+  // Group plans: who is invited and what they answered.
+  const guestsOf = (eventId) =>
+    guestRows.filter((g) => g.event_id === eventId).map((g) => ({ id: g.user_id, status: g.status, note: g.note ?? '' }))
   const unreadNotifications = results[6].count ?? 0
   const myClaims = Object.fromEntries(claims.map((c) => [c.wish_id, { planId: c.plan_id }]))
   const teaserCouple = Object.fromEntries(teaserCouples.map((t) => [t.id, t.couple_id]))
@@ -131,7 +135,11 @@ export async function loadEverything(userId) {
     })),
     members: Object.fromEntries(profiles.map((p) => [p.id, toPerson(p)])),
     events: [
-      ...rows.map((r) => ({ ...fromRow(r, urlFor), coupleId: r.couple_id })),
+      ...rows.map((r) => ({
+        ...fromRow(r, urlFor),
+        coupleId: r.couple_id,
+        guests: r.couple_id ? null : guestsOf(r.id),
+      })),
       ...teasers.map((t) => ({ ...fromTeaser(t, urlFor), coupleId: teaserCouple[t.id] })),
     ].map((e) => ({
       ...e,
@@ -258,8 +266,12 @@ async function removePhotos(paths) {
 }
 
 // form.propose = ask the partner first; the plan waits for their answer.
-export async function saveEvent(form, coupleId, original, partnerId) {
-  const photos = await Promise.all(form.photos.map((p) => (p.dataUrl ? uploadPhoto(coupleId, p.dataUrl) : p.path)))
+// A group plan has coupleId null and group = { guestIds }. Its id is chosen here so its photos
+// can go into its own private folder ("g-<id>") before the row exists.
+export async function saveEvent(form, coupleId, original, partnerId, group = null) {
+  const planId = group ? (original?.seriesId ?? original?.id ?? crypto.randomUUID()) : null
+  const folder = coupleId ?? `g-${planId}`
+  const photos = await Promise.all(form.photos.map((p) => (p.dataUrl ? uploadPhoto(folder, p.dataUrl) : p.path)))
   const uploaded = photos.filter((path, i) => form.photos[i].dataUrl)
 
   const row = {
@@ -280,13 +292,14 @@ export async function saveEvent(form, coupleId, original, partnerId) {
     ...(form.propose && partnerId
       ? { status: 'proposed', awaiting: partnerId, response_note: null }
       : { status: 'confirmed', awaiting: null }),
+    ...(group ? { surprise: false, teaser: null, reveal_on: null, blur_photos: false } : {}),
   }
 
   const { data, error } = original
     ? await supabase.from('events').update(row).eq('id', original.seriesId ?? original.id).select('id').single()
     : await supabase
         .from('events')
-        .insert({ ...row, couple_id: coupleId })
+        .insert({ ...row, couple_id: coupleId, ...(planId ? { id: planId } : {}) })
         .select('id')
         .single()
 
@@ -295,7 +308,29 @@ export async function saveEvent(form, coupleId, original, partnerId) {
     throw error
   }
   if (original) await removePhotos(original.photos.map((p) => p.path).filter((p) => !photos.includes(p)))
+  if (group) await syncGuests(data.id, group.guestIds, original?.guests ?? [])
   return data.id
+}
+
+// Invite the newly picked people and drop the ones no longer picked; answers already given stay.
+async function syncGuests(eventId, guestIds, current) {
+  const have = current.map((g) => g.id)
+  const add = guestIds.filter((id) => !have.includes(id))
+  const drop = have.filter((id) => !guestIds.includes(id))
+  if (add.length) {
+    const { error } = await supabase.from('event_participants').insert(add.map((user_id) => ({ event_id: eventId, user_id })))
+    if (error) throw error
+  }
+  if (drop.length) {
+    const { error } = await supabase.from('event_participants').delete().eq('event_id', eventId).in('user_id', drop)
+    if (error) throw error
+  }
+}
+
+// "Katılıyorum" / "Katılamıyorum" on a group plan I am invited to.
+export async function answerInvitation(eventId, status, note = null) {
+  const { error } = await supabase.rpc('answer_invitation', { p_event: eventId, p_status: status, p_note: note })
+  if (error) throw error
 }
 
 export async function deleteEvent(event) {

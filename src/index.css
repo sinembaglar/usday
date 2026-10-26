@@ -993,6 +993,35 @@ p.empty {
   color: var(--muted);
 }
 
+/* Group plans */
+.guest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guest-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.guest-list li > span:nth-child(2) {
+  flex: 1;
+}
+
+.guest-list small {
+  color: var(--muted);
+}
+
+.guest-mark {
+  font-size: 15px;
+}
+
 /* Proposals */
 .event-card.is-proposed {
   border: 1.5px dashed var(--tag);
@@ -1853,6 +1882,10 @@ p.empty {
 }
 
 .surprise-toggle input {
+  display: none;
+}
+
+.surprise-toggle[hidden] {
   display: none;
 }
 

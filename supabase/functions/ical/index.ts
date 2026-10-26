@@ -116,14 +116,22 @@ Deno.serve(async (req) => {
   // Every connection of the owner goes into one calendar.
   const { data: memberships } = await admin.from('couple_members').select('couple_id').eq('user_id', owner.user_id)
   const coupleIds = (memberships ?? []).map((m) => m.couple_id)
-  const [people, { data: events }, { data: couples }] = await Promise.all([
+  const [people, { data: coupleEvents }, { data: couples }, { data: invitedTo }, { data: made }] = await Promise.all([
     peopleIn(coupleIds),
     admin.from('events').select('*').in('couple_id', coupleIds),
     admin.from('couples').select('id, together_since, relation').in('id', coupleIds),
+    // Group plans: the ones I made, and the ones I have not turned down.
+    admin.from('event_participants').select('event_id').eq('user_id', owner.user_id).neq('status', 'declined'),
+    admin.from('events').select('*').is('couple_id', null).eq('created_by', owner.user_id),
   ])
+  const { data: joined } = invitedTo?.length
+    ? await admin.from('events').select('*').in('id', invitedTo.map((p) => p.event_id))
+    : { data: [] }
+  const events = [...(coupleEvents ?? []), ...(made ?? []), ...(joined ?? [])]
   // With several connections, say who a plan is with: "Brunch · Ayşe".
   const many = coupleIds.length > 1
-  const withWhom = (coupleId: string) => {
+  const withWhom = (coupleId: string | null) => {
+    if (!coupleId) return ' · 👥'
     const other = people.find((p) => p.couple_id === coupleId && p.id !== owner.user_id)
     return many && other ? ` · ${other.name}` : ''
   }

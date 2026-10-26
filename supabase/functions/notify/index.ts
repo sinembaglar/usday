@@ -1,6 +1,16 @@
 // Called by the app when someone adds or proposes a plan, answers a proposal, writes a comment
 // or reacts: tells the partner.
-import { admin, eventUrl, formatWhen, hiddenFrom, peopleIn, sendToUsers, type EventRow } from '../_shared/push.ts'
+import {
+  admin,
+  eventUrl,
+  formatWhen,
+  guestsOf,
+  hiddenFrom,
+  peopleIn,
+  sendToUsers,
+  type EventRow,
+  type Guest,
+} from '../_shared/push.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -56,6 +66,39 @@ Deno.serve(async (req) => {
   } else if (body.reaction_event_id) {
     if (!REACTIONS.includes(body.emoji)) return json({ error: 'bad_emoji' }, 400)
     eventId = body.reaction_event_id
+  }
+
+  // Group plans: everyone on the plan hears it, except the person who did it.
+  const { data: groupPlan } = eventId
+    ? await admin.from('events').select('*').eq('id', eventId).is('couple_id', null).maybeSingle<EventRow>()
+    : { data: null }
+  if (groupPlan) {
+    const guests = await guestsOf(groupPlan)
+    const me = guests.find((g) => g.id === userId)
+    if (!me) return json({ error: 'not_found' }, 404)
+    const url = eventUrl(groupPlan.id)
+    const when = formatWhen(groupPlan)
+    const others = guests.filter((g) => g.id !== userId)
+    const names = (list: Guest[]) => list.map((g) => g.name).join(', ')
+    let to = others.map((g) => g.id)
+    let payload
+
+    if (body.event_id) {
+      if (groupPlan.created_by !== userId) return json({ error: 'not_found' }, 404)
+      to = others.filter((g) => g.status !== 'maker').map((g) => g.id)
+      payload = { title: `👥 ${me.name} seni bir plana davet ediyor`, body: `${groupPlan.title} · ${when} — ${names(others)} davetli`, url, tag: groupPlan.id }
+    } else if (body.response_event_id) {
+      if (me.status !== 'accepted' && me.status !== 'declined') return json({ error: 'not_answered' }, 409)
+      payload =
+        me.status === 'accepted'
+          ? { title: `✅ ${me.name} katılıyor`, body: `${groupPlan.title} · ${when}`, url, tag: `${groupPlan.id}-answer-${userId}` }
+          : { title: `❌ ${me.name} katılamıyor`, body: groupPlan.title, url, tag: `${groupPlan.id}-answer-${userId}` }
+    } else {
+      payload = comment
+        ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: comment.body.slice(0, 180), url, tag: `${groupPlan.id}-chat` }
+        : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: groupPlan.title, url, tag: `${groupPlan.id}-react` }
+    }
+    return json({ sent: await sendToUsers(to, payload, groupPlan.id) })
   }
 
   const found = eventId && (await eventWithPeople(eventId))

@@ -36,6 +36,10 @@ Deno.serve(async (req) => {
       files.push(...(mine ?? []).flatMap((e) => e.photos))
     }
   }
+  // Group plans I made go away with me, and so do their photo folders.
+  const { data: groups } = await admin.from('events').select('id').is('couple_id', null).eq('created_by', user.id)
+  for (const { id } of groups ?? []) files.push(...(await listFolder(`g-${id}`)))
+
   if (files.length) await admin.storage.from('photos').remove(files)
 
   // Cascades to profile, memberships, own plans, wishes, templates, devices and calendar link.
