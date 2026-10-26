@@ -126,6 +126,7 @@ Deno.serve(async (req) => {
     admin
       .from('events')
       .select('*')
+      .eq('status', 'confirmed') // an unanswered or declined proposal is not a plan yet
       .or(`event_date.in.(${now.today},${now.tomorrow}),reveal_on.eq.${now.today},repeat.neq.none`),
     admin.from('couples').select('id, together_since').not('together_since', 'is', null),
   ])

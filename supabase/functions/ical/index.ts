@@ -60,9 +60,11 @@ function timing(e: EventRow) {
 }
 
 function vevent(e: EventRow & { created_at: string }, viewer: string, people: Person[], today: string) {
+  if (e.status === 'declined') return []
   const hidden = hiddenFrom(e, viewer, today)
   const author = people.find((p) => p.id === e.created_by)?.name ?? ''
-  const summary = hidden ? '🎁 Sürpriz!' : e.title
+  const tentative = e.status === 'proposed'
+  const summary = (tentative ? '❓ ' : '') + (hidden ? '🎁 Sürpriz!' : e.title)
   const description = hidden
     ? `${author} bir sürpriz hazırlıyor: “${e.teaser ?? ''}”`
     : [e.note, author && `${author} ekledi`].filter(Boolean).join('\n')
@@ -83,6 +85,7 @@ function vevent(e: EventRow & { created_at: string }, viewer: string, people: Pe
     ...t.lines,
     ...repeat,
     `SUMMARY:${escape(summary)}`,
+    tentative && 'STATUS:TENTATIVE',
     description && `DESCRIPTION:${escape(description)}`,
     !hidden && e.location && `LOCATION:${escape(e.location)}`,
     `URL:https://usday.app/?event=${e.id}`,

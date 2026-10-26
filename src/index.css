@@ -565,6 +565,109 @@ h3 {
   color: var(--danger);
 }
 
+/* Proposals */
+.event-card.is-proposed {
+  border: 1.5px dashed var(--tag);
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+.event-card.is-declined strong {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.event-card.is-declined {
+  opacity: 0.7;
+}
+
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1.5px solid var(--rose);
+}
+
+.proposal-head {
+  display: flex;
+  gap: 12px;
+  text-align: left;
+}
+
+.proposal-head > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.proposal-head small {
+  font-size: 12px;
+  color: var(--rose-deep);
+  font-weight: 600;
+}
+
+.proposal-head strong {
+  font-size: 17px;
+}
+
+.proposal-when {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.proposal-note,
+.status-box em {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.proposal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.proposal-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.proposal-buttons .btn {
+  flex: 1;
+  padding: 11px 6px;
+  font-size: 14px;
+}
+
+.status-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--blush);
+  font-size: 14px;
+}
+
+.status-box.is-asking {
+  background: color-mix(in srgb, var(--rose) 16%, var(--card));
+  border: 1px solid var(--rose);
+}
+
+.status-box.is-declined small {
+  color: var(--muted);
+}
+
+.surprise-toggle.propose-toggle.is-on {
+  border-color: var(--rose);
+  background: color-mix(in srgb, var(--rose) 14%, var(--card));
+}
+
+.propose-toggle.is-on .switch.switch {
+  background: var(--rose);
+}
+
 /* Comments and reactions */
 .conversation {
   width: 100%;

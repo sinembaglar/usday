@@ -2,7 +2,16 @@ import { REPEATS } from './recurrence'
 import { format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
 
-export const timeSpan = (e) => (e.time ? (e.endTime ? `${e.time}–${e.endTime}` : e.time) : '')
+// Turkish dative: "Serhat Han’a", "Sinem’e", "Ayşe’ye".
+export function dative(name) {
+  const lower = name.toLocaleLowerCase('tr')
+  const vowels = [...lower].filter((c) => 'aeıioöuü'.includes(c))
+  const back = 'aıou'.includes(vowels.at(-1) ?? 'e')
+  const endsWithVowel = 'aeıioöuü'.includes(lower.at(-1))
+  return `${name}’${endsWithVowel ? 'y' : ''}${back ? 'a' : 'e'}`
+}
+
+export const timeSpan =(e) => (e.time ? (e.endTime ? `${e.time}–${e.endTime}` : e.time) : '')
 
 export function repeatLabel(e) {
   if (!e.repeat || e.repeat === 'none') return ''

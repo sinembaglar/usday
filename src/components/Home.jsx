@@ -24,6 +24,8 @@ import {
 import { TEMPLATES } from '../lib/constants'
 import { addDaysKey, dayNumber, expandEvents, milestones } from '../lib/recurrence'
 import InviteCard from './InviteCard'
+import ProposalCard from './ProposalCard'
+import { dative } from '../lib/format'
 import NotificationCard from './NotificationCard'
 import { notifyPartner } from '../lib/push'
 
@@ -147,7 +149,10 @@ export default function Home({ userId }) {
     .filter((e) => e.date >= todayKey && e.date !== selectedKey)
     .filter((e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i)
     .slice(0, 5)
-  const nextDate = sorted.find((e) => e.date >= todayKey && (e.tag === 'date' || e.surprise))
+  const nextDate = sorted.find(
+    (e) => e.date >= todayKey && (e.tag === 'date' || e.surprise) && (e.status ?? 'confirmed') === 'confirmed',
+  )
+  const waitingForMe = events.filter((e) => e.status === 'proposed' && e.awaiting === userId)
   const dayCount = couple?.togetherSince ? dayNumber(couple.togetherSince, todayKey) : 0
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
 
@@ -166,15 +171,18 @@ export default function Home({ userId }) {
   }
 
   async function handleSave(form) {
-    const id = await saveEvent(form, couple.id, sheet.event)
+    const id = await saveEvent(form, couple.id, sheet.event, partner?.id)
     setSheet(null)
     selectDay(parseISO(form.date))
-    if (!sheet.event) {
+    const asking = form.propose && partner
+    if (!sheet.event || asking) {
       if (partner) notifyPartner(id)
       setToast(
-        form.surprise
-          ? `🎁 Sürpriz eklendi, ${partner?.name ?? 'eşin'} sadece ipucunu görecek`
-          : '✨ Ortak takvime eklendi',
+        asking
+          ? `📨 ${dative(partner.name)} soruldu, yanıtını bildireceğiz`
+          : form.surprise
+            ? `🎁 Sürpriz eklendi, ${partner?.name ?? 'eşin'} sadece ipucunu görecek`
+            : '✨ Ortak takvime eklendi',
       )
     }
     reload()
@@ -233,6 +241,18 @@ export default function Home({ userId }) {
 
       <main className="content">
         <NotificationCard partnerName={partner?.name} onToast={setToast} />
+
+        {waitingForMe.map((e) => (
+          <ProposalCard
+            key={e.id}
+            event={{ ...e, seriesId: e.id, seriesDate: e.date }}
+            me={userId}
+            members={members}
+            onOpen={openDetail}
+            onAnswered={() => reload()}
+            onToast={setToast}
+          />
+        ))}
 
         {!partner && (
           <InviteCard
@@ -334,6 +354,7 @@ export default function Home({ userId }) {
               preset={sheet.preset}
               defaultDate={selectedKey}
               templates={templates}
+              partnerName={partner?.name}
               onAddTemplate={async (t) => {
                 await addTemplate(t)
                 setToast('✨ Şablon eklendi')
@@ -357,6 +378,11 @@ export default function Home({ userId }) {
                 setSheet({ type: 'form', event: { ...sheet.event, date: sheet.event.seriesDate ?? sheet.event.date }, occurrence: sheet.event })
               }
               onClose={() => setSheet(null)}
+              onAnswered={() => {
+                setSheet(null)
+                reload()
+              }}
+              onToast={setToast}
             />
           )}
         </Sheet>

@@ -44,6 +44,9 @@ function fromRow(r, urlFor) {
     teaser: r.teaser ?? '',
     revealOn: r.reveal_on ?? '',
     blurPhotos: r.blur_photos,
+    status: r.status,
+    awaiting: r.awaiting,
+    responseNote: r.response_note ?? '',
     createdBy: r.created_by,
     createdAt: r.created_at,
     locked: false,
@@ -70,6 +73,9 @@ function fromTeaser(t, urlFor) {
     teaser: t.teaser ?? '',
     revealOn: t.reveal_on,
     blurPhotos: blurred,
+    status: t.status,
+    awaiting: t.awaiting,
+    responseNote: t.response_note ?? '',
     createdBy: t.created_by,
     createdAt: t.created_at,
     locked: true,
@@ -135,7 +141,8 @@ async function removePhotos(paths) {
   if (paths.length) await supabase.storage.from(BUCKET).remove(paths)
 }
 
-export async function saveEvent(form, coupleId, original) {
+// form.propose = ask the partner first; the plan waits for their answer.
+export async function saveEvent(form, coupleId, original, partnerId) {
   const photos = await Promise.all(form.photos.map((p) => (p.dataUrl ? uploadPhoto(coupleId, p.dataUrl) : p.path)))
   const uploaded = photos.filter((path, i) => form.photos[i].dataUrl)
 
@@ -154,6 +161,9 @@ export async function saveEvent(form, coupleId, original) {
     teaser: form.surprise ? form.teaser : null,
     reveal_on: form.surprise ? form.revealOn : null,
     blur_photos: form.blurPhotos,
+    ...(form.propose && partnerId
+      ? { status: 'proposed', awaiting: partnerId, response_note: null }
+      : { status: 'confirmed', awaiting: null }),
   }
 
   const { data, error } = original
@@ -180,6 +190,18 @@ export async function skipOccurrence(event) {
     .from('events')
     .update({ skip_dates: [...(event.skipDates ?? []), event.date] })
     .eq('id', event.seriesId)
+  if (error) throw error
+}
+
+// answer: 'accept' | 'decline' | 'counter' (counter needs a new date, time optional)
+export async function respondToPlan(eventId, answer, { date = null, time = null, note = null } = {}) {
+  const { error } = await supabase.rpc('respond_to_plan', {
+    p_event: eventId,
+    p_answer: answer,
+    p_date: date,
+    p_time: time || null,
+    p_note: note,
+  })
   if (error) throw error
 }
 

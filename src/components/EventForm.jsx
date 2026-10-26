@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DEFAULT_TEASER, TAGS, TEMPLATES, isTemplateTitle } from '../lib/constants'
 import { REPEATS } from '../lib/recurrence'
+import { dative } from '../lib/format'
 import PhotoPicker from './PhotoPicker'
 import TemplateRow from './TemplateRow'
 
@@ -27,11 +28,19 @@ export default function EventForm({
   templates = [],
   onAddTemplate,
   onDeleteTemplate,
+  partnerName, // set when there is someone to ask
   onSave,
   onDelete, // (scope: 'one' | 'all') => void
   onCancel,
 }) {
-  const [form, setForm] = useState(() => ({ ...EMPTY, date: defaultDate, ...preset, ...initial }))
+  const [form, setForm] = useState(() => ({
+    ...EMPTY,
+    date: defaultDate,
+    ...preset,
+    ...initial,
+    // Keep asking while a plan is unanswered; a declined one is re-asked by default.
+    propose: Boolean(partnerName) && (initial?.status === 'proposed' || initial?.status === 'declined'),
+  }))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -192,6 +201,20 @@ export default function EventForm({
 
       <PhotoPicker photos={form.photos} onChange={(photos) => setForm((f) => ({ ...f, photos }))} />
 
+      {partnerName && (
+        <label className={`surprise-toggle propose-toggle ${form.propose ? 'is-on' : ''}`}>
+          <input type="checkbox" checked={form.propose} onChange={set('propose')} />
+          <span className="switch" />
+          <span>
+            <strong>📨 Önce {dative(partnerName)} sor</strong>
+            <small>
+              “Uygunum” derse plan kesinleşir; başka bir zaman da önerebilir.
+              {form.surprise && ' Sürpriz olduğu için sadece ipucu ve zaman gider.'}
+            </small>
+          </span>
+        </label>
+      )}
+
       <label className={`surprise-toggle ${form.surprise ? 'is-on' : ''}`}>
         <input type="checkbox" checked={form.surprise} onChange={toggleSurprise} />
         <span className="switch" />
@@ -254,7 +277,7 @@ export default function EventForm({
             Vazgeç
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Kaydediliyor…' : 'Kaydet'}
+            {saving ? 'Kaydediliyor…' : form.propose ? 'Sor 📨' : 'Kaydet'}
           </button>
         </div>
       )}

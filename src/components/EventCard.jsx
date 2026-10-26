@@ -10,7 +10,10 @@ export default function EventCard({ event, members, onClick, showDate, isNew }) 
   const tag = TAGS[event.tag] ?? TAGS.plan
   const author = event.milestone ? US : (members[event.createdBy] ?? UNKNOWN_PERSON)
   const thumb = event.photos[0]
+  const status =
+    event.status === 'proposed' ? '⏳ yanıt bekleniyor' : event.status === 'declined' ? '❌ uygun değil' : null
   const meta = [
+    status,
     showDate && format(parseISO(event.date), 'd MMMM EEE', { locale: tr }),
     timeSpan(event),
     !hidden && event.location && `📍 ${event.location}`,
@@ -18,7 +21,11 @@ export default function EventCard({ event, members, onClick, showDate, isNew }) 
   ].filter(Boolean)
 
   return (
-    <button className="event-card" onClick={onClick} style={{ '--tag': hidden ? SURPRISE_COLOR : tag.color }}>
+    <button
+      className={`event-card ${event.status && event.status !== 'confirmed' ? `is-${event.status}` : ''}`}
+      onClick={onClick}
+      style={{ '--tag': hidden ? SURPRISE_COLOR : tag.color }}
+    >
       <span className="event-emoji">{hidden ? '🎁' : event.milestone ? '🥂' : tag.emoji}</span>
       <span className="event-body">
         <strong>

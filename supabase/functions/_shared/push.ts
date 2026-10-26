@@ -27,6 +27,9 @@ export type EventRow = {
   surprise: boolean
   teaser: string | null
   reveal_on: string | null
+  status: 'confirmed' | 'proposed' | 'declined'
+  awaiting: string | null
+  response_note: string | null
 }
 
 export type Person = { id: string; name: string; couple_id: string }

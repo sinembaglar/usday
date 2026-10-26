@@ -1,4 +1,5 @@
-// Called by the app when someone adds a plan, writes a comment or reacts: tells the partner.
+// Called by the app when someone adds or proposes a plan, answers a proposal, writes a comment
+// or reacts: tells the partner.
 import { admin, eventUrl, formatWhen, hiddenFrom, sendToUsers, type EventRow, type Person } from '../_shared/push.ts'
 
 const cors = {
@@ -18,6 +19,9 @@ async function eventWithPeople(eventId: string) {
   return { event, members: (members ?? []) as Person[] }
 }
 
+// What the recipient may know about the plan.
+const nameFor = (e: EventRow, recipient: string) => (hiddenFrom(e, recipient) ? `🎁 Sürpriz (“${e.teaser}”)` : e.title)
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -29,7 +33,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}))
 
   // Which plan, and is the caller allowed to talk about it?
-  let eventId = body.event_id
+  let eventId = body.event_id ?? body.response_event_id
   let comment: { body: string } | null = null
   if (body.comment_id) {
     const { data } = await admin.from('event_comments').select('event_id, author, body').eq('id', body.comment_id).maybeSingle()
@@ -46,8 +50,7 @@ Deno.serve(async (req) => {
   const { event, members } = found
   const me = members.find((m) => m.id === userId)
   const partner = members.find((m) => m.id !== userId)
-  if (!me || hiddenFrom(event, userId)) return json({ error: 'not_found' }, 404)
-  if (body.event_id && event.created_by !== userId) return json({ error: 'not_found' }, 404)
+  if (!me) return json({ error: 'not_found' }, 404)
   if (!partner) return json({ sent: 0 })
 
   const url = eventUrl(event.id)
@@ -55,12 +58,30 @@ Deno.serve(async (req) => {
   let payload
 
   if (body.event_id) {
+    // A new plan or proposal: only its creator announces it.
+    if (event.created_by !== userId) return json({ error: 'not_found' }, 404)
+    const asking = event.status === 'proposed'
     payload = event.surprise
-      ? { title: `🎁 ${me.name} bir sürpriz hazırladı`, body: `“${event.teaser}” · ${when}`, url, tag: event.id }
-      : { title: `💌 ${me.name} yeni bir plan ekledi`, body: `${event.title} · ${when}`, url, tag: event.id }
+      ? asking
+        ? { title: `🎁 ${me.name} seni bir sürpriz için ayırtmak istiyor`, body: `${when} uygun musun? “${event.teaser}”`, url, tag: event.id }
+        : { title: `🎁 ${me.name} bir sürpriz hazırladı`, body: `“${event.teaser}” · ${when}`, url, tag: event.id }
+      : asking
+        ? { title: `📨 ${me.name} bir plan teklif ediyor`, body: `${event.title} · ${when} — uygun musun?`, url, tag: event.id }
+        : { title: `💌 ${me.name} yeni bir plan ekledi`, body: `${event.title} · ${when}`, url, tag: event.id }
+  } else if (body.response_event_id) {
+    // An answer to a proposal goes to whoever asked; the caller must have just answered it.
+    if (event.status === 'proposed' && event.awaiting === userId) return json({ error: 'not_answered' }, 409)
+    const plan = nameFor(event, partner.id)
+    const note = event.response_note ? ` · “${event.response_note}”` : ''
+    payload =
+      event.status === 'confirmed'
+        ? { title: `✅ ${me.name} uygun!`, body: `${plan} · ${when}${note}`, url, tag: `${event.id}-answer` }
+        : event.status === 'declined'
+          ? { title: `❌ ${me.name} o zaman uygun değil`, body: `${plan}${note}`, url, tag: `${event.id}-answer` }
+          : { title: `🕐 ${me.name} başka bir zaman önerdi`, body: `${plan} · ${when}${note}`, url, tag: `${event.id}-answer` }
   } else {
-    // Talking about my own still-hidden surprise must not reach my partner.
-    if (hiddenFrom(event, partner.id)) return json({ sent: 0 })
+    // Talking about a still-hidden surprise must not reach the person it is hidden from.
+    if (hiddenFrom(event, userId) || hiddenFrom(event, partner.id)) return json({ sent: 0 })
     payload = comment
       ? { title: `💬 ${me.name} · ${event.title}`, body: comment.body.slice(0, 180), url, tag: `${event.id}-chat` }
       : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: event.title, url, tag: `${event.id}-react` }

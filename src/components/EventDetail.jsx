@@ -4,8 +4,41 @@ import { TAGS, UNKNOWN_PERSON } from '../lib/constants'
 import { mapsUrl, repeatLabel, timeSpan } from '../lib/format'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
+import ProposalActions from './ProposalActions'
 
-export default function EventDetail({ event, me, members, onEdit, onClose }) {
+// Where a proposal stands, and the answer buttons when the question is mine.
+function ProposalStatus({ event, me, members, onAnswered, onToast }) {
+  if (event.status === 'proposed') {
+    if (event.awaiting === me) {
+      return (
+        <div className="status-box is-asking">
+          <strong>📨 Bu plan senin yanıtını bekliyor</strong>
+          {event.responseNote && <em>“{event.responseNote}”</em>}
+          <ProposalActions event={event} onAnswered={onAnswered} onToast={onToast} />
+        </div>
+      )
+    }
+    return (
+      <div className="status-box">
+        ⏳ {(members[event.awaiting] ?? UNKNOWN_PERSON).name} henüz yanıt vermedi.
+        {event.responseNote && <em> “{event.responseNote}”</em>}
+      </div>
+    )
+  }
+  if (event.status === 'declined') {
+    const by = Object.values(members).find((m) => m.id !== event.createdBy) ?? UNKNOWN_PERSON
+    return (
+      <div className="status-box is-declined">
+        ❌ {by.name} o zaman uygun değil.{event.responseNote && <em> “{event.responseNote}”</em>}
+        {event.createdBy === me && <small>“Düzenle”den başka bir zaman seçip tekrar sorabilirsin.</small>}
+      </div>
+    )
+  }
+  return null
+}
+
+export default function EventDetail({ event, me, members, onEdit, onClose, onAnswered, onToast }) {
+  const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
   const when = [format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr }), timeSpan(event)]
     .filter(Boolean)
     .join(' · ')
@@ -34,6 +67,7 @@ export default function EventDetail({ event, me, members, onEdit, onClose }) {
         <h3>Sürpriz!</h3>
         <p className="teaser">“{event.teaser}”</p>
         <p className="when">{when}</p>
+        {status}
         {event.photos.length > 0 && <PhotoGallery photos={event.photos} />}
         <p className="reveal">
           {author.name} bir şeyler hazırlıyor… Açılmasına <strong>{days} gün</strong> var.
@@ -55,7 +89,8 @@ export default function EventDetail({ event, me, members, onEdit, onClose }) {
       </span>
       <h3>{event.title}</h3>
       <p className="when">{when}</p>
-      {repeatLabel(event) && <p className="meta-line">{repeatLabel(event)}</p>}
+      {status}
+      {repeatLabel(event) &&<p className="meta-line">{repeatLabel(event)}</p>}
       {event.location && (
         <a className="meta-line place" href={mapsUrl(event.location)} target="_blank" rel="noreferrer">
           📍 {event.location} <span>Haritada aç ›</span>
