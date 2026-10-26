@@ -32,6 +32,19 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}))
 
+  // A new wish: tell the partner (a good gift idea). Claims are never mentioned.
+  if (body.wish_id) {
+    const { data: wish } = await admin.from('wishes').select('id, owner, couple_id, title, category').eq('id', body.wish_id).maybeSingle()
+    if (!wish || wish.owner !== userId) return json({ error: 'not_found' }, 404)
+    const { data: people } = await admin.from('profiles').select('id, name').eq('couple_id', wish.couple_id)
+    const me = people?.find((p) => p.id === userId)
+    const partner = people?.find((p) => p.id !== userId)
+    if (!partner) return json({ sent: 0 })
+    const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
+    const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: '/?tab=dilekler', tag: `wish-${wish.id}` }
+    return json({ sent: await sendToUsers([partner.id], payload) })
+  }
+
   // Which plan, and is the caller allowed to talk about it?
   let eventId = body.event_id ?? body.response_event_id
   let comment: { body: string } | null = null

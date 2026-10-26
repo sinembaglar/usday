@@ -38,6 +38,10 @@ export function notifyPartner(eventId) {
   return supabase.functions.invoke('notify', { body: { event_id: eventId } }).catch(() => {})
 }
 
+export function notifyWish(wishId) {
+  return supabase.functions.invoke('notify', { body: { wish_id: wishId } }).catch(() => {})
+}
+
 export function notifyAnswer(eventId) {
   return supabase.functions.invoke('notify', { body: { response_event_id: eventId } }).catch(() => {})
 }

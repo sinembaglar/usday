@@ -11,7 +11,16 @@ export function dative(name) {
   return `${name}’${endsWithVowel ? 'y' : ''}${back ? 'a' : 'e'}`
 }
 
-export const timeSpan =(e) => (e.time ? (e.endTime ? `${e.time}–${e.endTime}` : e.time) : '')
+// Turkish genitive: "Serhat Han’ın", "Sinem’in", "Ayşe’nin", "Burcu’nun".
+export function genitive(name) {
+  const lower = name.toLocaleLowerCase('tr')
+  const last = [...lower].filter((c) => 'aeıioöuü'.includes(c)).at(-1) ?? 'e'
+  const vowel = { a: 'ı', ı: 'ı', e: 'i', i: 'i', o: 'u', u: 'u', ö: 'ü', ü: 'ü' }[last]
+  const endsWithVowel = 'aeıioöuü'.includes(lower.at(-1))
+  return `${name}’${endsWithVowel ? 'n' : ''}${vowel}n`
+}
+
+export const timeSpan = (e) =>(e.time ? (e.endTime ? `${e.time}–${e.endTime}` : e.time) : '')
 
 export function repeatLabel(e) {
   if (!e.repeat || e.repeat === 'none') return ''

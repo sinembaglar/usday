@@ -91,17 +91,25 @@ export async function loadEverything() {
     supabase.from('custom_templates').select('id, tag, title, event_time').order('created_at'),
     supabase.from('event_comments').select('event_id'),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
+    supabase.from('wishes').select('*').order('created_at', { ascending: false }),
+    supabase.from('wish_claims').select('wish_id, plan_id'),
   ])
   const failed = results.find((r) => r.error)
   if (failed) throw failed.error
-  const [couple, profiles, rows, teasers, templates, comments] = results.map((r) => r.data)
+  const [couple, profiles, rows, teasers, templates, comments, , wishRows, claims] = results.map((r) => r.data)
   const unreadNotifications = results[6].count ?? 0
+  const myClaims = Object.fromEntries(claims.map((c) => [c.wish_id, { planId: c.plan_id }]))
 
   const commentCounts = {}
   for (const c of comments) commentCounts[c.event_id] = (commentCounts[c.event_id] ?? 0) + 1
 
   const urlFor = await signedUrls(
-    [couple.cover_path, ...rows.flatMap((r) => r.photos), ...teasers.flatMap((t) => t.photos)].filter(Boolean),
+    [
+      couple.cover_path,
+      ...rows.flatMap((r) => r.photos),
+      ...teasers.flatMap((t) => t.photos),
+      ...wishRows.map((w) => w.photo_path),
+    ].filter(Boolean),
   )
 
   return {
@@ -119,7 +127,67 @@ export async function loadEverything() {
     })),
     templates: templates.map((t) => ({ id: t.id, tag: t.tag, title: t.title, time: t.event_time?.slice(0, 5) ?? '' })),
     unreadNotifications,
+    wishes: wishRows.map((w) => ({
+      id: w.id,
+      owner: w.owner,
+      category: w.category,
+      title: w.title,
+      link: w.link ?? '',
+      price: w.price ?? '',
+      note: w.note ?? '',
+      photo: w.photo_path ? { path: w.photo_path, url: urlFor(w.photo_path) } : null,
+      loved: w.loved,
+      status: w.status,
+      doneAt: w.done_at,
+      createdAt: w.created_at,
+      claim: myClaims[w.id] ?? null, // only ever set on the partner's wishes I claimed
+    })),
   }
+}
+
+export async function saveWish(form, coupleId, original) {
+  const newPhoto = form.photo?.dataUrl ? await uploadPhoto(coupleId, form.photo.dataUrl) : null
+  const row = {
+    category: form.category,
+    title: form.title.trim(),
+    link: form.link.trim() || null,
+    price: form.price.trim() || null,
+    note: form.note.trim() || null,
+    photo_path: newPhoto ?? form.photo?.path ?? null,
+    loved: form.loved,
+  }
+  const { data, error } = original
+    ? await supabase.from('wishes').update(row).eq('id', original.id).select('id').single()
+    : await supabase.from('wishes').insert(row).select('id').single()
+  if (error) {
+    if (newPhoto) await removePhotos([newPhoto])
+    throw error
+  }
+  const oldPhoto = original?.photo?.path
+  if (oldPhoto && oldPhoto !== row.photo_path) await removePhotos([oldPhoto])
+  return data.id
+}
+
+export async function deleteWish(wish) {
+  const { error } = await supabase.from('wishes').delete().eq('id', wish.id)
+  if (error) throw error
+  if (wish.photo) await removePhotos([wish.photo.path])
+}
+
+// "Bunu ben alıyorum": secret from the wish owner. planId links the surprise made from it.
+export async function claimWish(wishId, planId = null) {
+  const { error } = await supabase.from('wish_claims').upsert({ wish_id: wishId, plan_id: planId })
+  if (error) throw error
+}
+
+export async function unclaimWish(wishId) {
+  const { error } = await supabase.from('wish_claims').delete().eq('wish_id', wishId)
+  if (error) throw error
+}
+
+export async function completeWish(wishId) {
+  const { error } = await supabase.rpc('complete_wish', { p_wish: wishId })
+  if (error) throw error
 }
 
 export const NOTIFICATION_PAGE = 30

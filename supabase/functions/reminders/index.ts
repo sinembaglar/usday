@@ -150,6 +150,18 @@ Deno.serve(async (req) => {
     ...(couples ?? []).flatMap((c) => milestoneJobs(c.id, c.together_since, membersOf(c.id), now)),
   ]
 
+  // A surprise made from a wish makes that wish come true on its reveal morning.
+  if (now.minutes >= MORNING) {
+    const revealed = ((events ?? []) as EventRow[]).filter((e) => e.surprise && e.reveal_on === now.today).map((e) => e.id)
+    if (revealed.length) {
+      const { data: claims } = await admin.from('wish_claims').select('wish_id').in('plan_id', revealed)
+      const wishIds = (claims ?? []).map((c) => c.wish_id)
+      if (wishIds.length) {
+        await admin.from('wishes').update({ status: 'done', done_at: new Date().toISOString() }).in('id', wishIds).eq('status', 'open')
+      }
+    }
+  }
+
   let sent = 0
   for (const j of jobs) {
     // Claim first so a slow run never sends the same reminder twice.

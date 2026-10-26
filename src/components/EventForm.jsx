@@ -39,7 +39,9 @@ export default function EventForm({
     ...preset,
     ...initial,
     // Keep asking while a plan is unanswered; a declined one is re-asked by default.
-    propose: Boolean(partnerName) && (initial?.status === 'proposed' || initial?.status === 'declined'),
+    propose:
+      Boolean(partnerName) &&
+      (preset?.propose ?? (initial?.status === 'proposed' || initial?.status === 'declined')),
   }))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

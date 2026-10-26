@@ -73,6 +73,13 @@ export const TEMPLATES = {
 export const isTemplateTitle = (title) =>
   Object.values(TEMPLATES).some((c) => c.items.some((t) => t.title === title))
 
+// Wish categories, and the plan category a wish becomes.
+export const WISH_CATEGORIES = {
+  gift: { label: 'Hediye', emoji: '🎁', planTag: 'ozel', placeholder: 'Örn. 👟 Beyaz sneaker' },
+  travel: { label: 'Gezi', emoji: '✈️', planTag: 'tatil', placeholder: 'Örn. 🎈 Kapadokya balon turu' },
+  experience: { label: 'Deneyim', emoji: '🍽️', planTag: 'date', placeholder: 'Örn. 🎶 Tarkan konseri' },
+}
+
 export const SURPRISE_COLOR = '#E0B25C'
 
 export const DEFAULT_TEASER = 'O günü boş tut, sana bir sürprizim var 💌'
