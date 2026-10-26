@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { RELATIONS, UNKNOWN_PERSON } from '../lib/constants'
 
 // One connection in settings: who they are to me, since when, or withdraw an open invitation.
-function ConnectionRow({ connection, members, onRelation, onSince, onCancel }) {
+function ConnectionRow({ connection, members, onRelation, onSince, onCancel, onReport }) {
   const [since, setSince] = useState(connection.togetherSince)
   const person = connection.partnerId ? (members[connection.partnerId] ?? UNKNOWN_PERSON) : null
   const relation = RELATIONS[connection.relation] ?? RELATIONS.partner
@@ -48,11 +48,16 @@ function ConnectionRow({ connection, members, onRelation, onSince, onCancel }) {
           Bu daveti iptal et
         </button>
       )}
+      {person && (
+        <button className="link-btn danger-link" onClick={() => onReport(person)}>
+          🚩 {person.name} hakkında şikayet et
+        </button>
+      )}
     </div>
   )
 }
 
-export default function ConnectionSettings({ connections, members, onRelation, onSince, onCancel }) {
+export default function ConnectionSettings({ connections, members, onRelation, onSince, onCancel, onReport }) {
   return (
     <section className="settings-group">
       <h4>👥 Kişiler</h4>
@@ -67,6 +72,7 @@ export default function ConnectionSettings({ connections, members, onRelation, o
           onRelation={onRelation}
           onSince={onSince}
           onCancel={onCancel}
+          onReport={onReport}
         />
       ))}
     </section>

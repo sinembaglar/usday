@@ -463,3 +463,58 @@ export async function setCover(couple, dataUrl) {
   }
   if (couple.coverPath) await removePhotos([couple.coverPath])
 }
+
+// Feedback, reports and the admin panel -------------------------------------------
+
+const device = () =>
+  [
+    /iPhone|iPad/.test(navigator.userAgent) ? 'iOS' : /Android/.test(navigator.userAgent) ? 'Android' : 'Web',
+    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone ? 'ana ekran' : 'tarayıcı',
+    navigator.userAgent,
+  ]
+    .join(' · ')
+    .slice(0, 300)
+
+export async function sendFeedback(userId, kind, message) {
+  const id = crypto.randomUUID()
+  const { error } = await supabase.from('feedback').insert({ id, author: userId, kind, message: message.trim(), device: device() })
+  if (error) throw error
+  supabase.functions.invoke('notify', { body: { feedback_id: id } }).catch(() => {})
+}
+
+export async function reportPerson(userId, reported, reason, message) {
+  const id = crypto.randomUUID()
+  const { error } = await supabase
+    .from('reports')
+    .insert({ id, reporter: userId, reported, reason, message: message.trim() || null })
+  if (error) throw error
+  supabase.functions.invoke('notify', { body: { report_id: id } }).catch(() => {})
+}
+
+export async function isAdmin() {
+  const { data } = await supabase.rpc('is_admin')
+  return data === true
+}
+
+async function rpc(name, args) {
+  const { data, error } = await supabase.rpc(name, args)
+  if (error) throw error
+  return data
+}
+
+export const adminOverview = () => rpc('admin_overview')
+export const adminUsers = (search) => rpc('admin_users', { search: search || null })
+export const adminFeedback = () => rpc('admin_feedback')
+export const adminReports = () => rpc('admin_reports')
+
+export async function setStatus(table, id, status) {
+  const { error } = await supabase.from(table).update({ status }).eq('id', id)
+  if (error) throw error
+}
+
+export async function setBanned(userId, banned, reason = null) {
+  const { error } = await supabase.functions.invoke('admin', {
+    body: { action: banned ? 'ban' : 'unban', user_id: userId, reason },
+  })
+  if (error) throw error
+}

@@ -10,7 +10,7 @@ const THEMES = [
   { id: 'dark', label: '🌙 Koyu' },
 ]
 
-export default function SettingsSheet({ me, connections, members, connectionActions, onClose, onToast }) {
+export default function SettingsSheet({ me, admin, connections, members, connectionActions, onFeedback, onAdmin, onClose, onToast }) {
   const [theme, setThemeState] = useState(getTheme)
   const [token, setToken] = useState(null)
   const [changing, setChanging] = useState(false)
@@ -102,6 +102,18 @@ export default function SettingsSheet({ me, connections, members, connectionActi
         <button className="link-btn" onClick={renew} disabled={!token}>
           Linki yenile (eskisini geçersiz kıl)
         </button>
+      </section>
+
+      <section className="settings-group">
+        <h4>Destek</h4>
+        <button className="btn btn-ghost bordered" onClick={onFeedback}>
+          💬 Geri bildirim gönder
+        </button>
+        {admin && (
+          <button className="btn btn-ghost bordered" onClick={onAdmin}>
+            🛠 Yönetim paneli
+          </button>
+        )}
       </section>
 
       <section className="settings-group">

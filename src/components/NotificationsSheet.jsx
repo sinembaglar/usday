@@ -11,7 +11,7 @@ function groupOf(iso) {
 }
 
 // The in-app inbox: everything that was (or would have been) sent to the phone.
-export default function NotificationsSheet({ onOpenEvent, onRead, onClose, onToast }) {
+export default function NotificationsSheet({ onOpenEvent, onOpenAdmin, onRead, onClose, onToast }) {
   const [items, setItems] = useState(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -83,20 +83,24 @@ export default function NotificationsSheet({ onOpenEvent, onRead, onClose, onToa
       {groups.map((group) => (
         <section key={group.name} className="inbox-group">
           <small>{group.name}</small>
-          {group.items.map((n) => (
-            <button
-              key={n.id}
-              className={`inbox-item ${n.read_at ? '' : 'is-unread'}`}
-              onClick={() => n.event_id && onOpenEvent(n.event_id)}
-              disabled={!n.event_id}
-            >
-              <span className="inbox-text">
-                <strong>{n.title}</strong>
-                {n.body && <span>{n.body}</span>}
-              </span>
-              <small>{timeAgo(n.created_at)}</small>
-            </button>
-          ))}
+          {group.items.map((n) => {
+            // Admin notifications open their part of the panel.
+            const section = onOpenAdmin && n.url?.startsWith('/?admin=') ? n.url.slice(8) : null
+            return (
+              <button
+                key={n.id}
+                className={`inbox-item ${n.read_at ? '' : 'is-unread'}`}
+                onClick={() => (section ? onOpenAdmin(section) : n.event_id && onOpenEvent(n.event_id))}
+                disabled={!n.event_id && !section}
+              >
+                <span className="inbox-text">
+                  <strong>{n.title}</strong>
+                  {n.body && <span>{n.body}</span>}
+                </span>
+                <small>{timeAgo(n.created_at)}</small>
+              </button>
+            )
+          })}
         </section>
       ))}
 

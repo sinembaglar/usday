@@ -27,6 +27,7 @@ import {
   setRelation,
   setTogetherSince,
   skipOccurrence,
+  isAdmin,
 } from '../lib/api'
 import { RELATIONS, UNKNOWN_PERSON, WISH_CATEGORIES, templatesFor } from '../lib/constants'
 import TabBar from './TabBar'
@@ -38,9 +39,15 @@ import InviteCard from './InviteCard'
 import ProposalCard from './ProposalCard'
 import InvitationCard from './InvitationCard'
 import NotificationsSheet from './NotificationsSheet'
+import FeedbackSheet from './FeedbackSheet'
+import ReportSheet from './ReportSheet'
+import AdminPanel from './AdminPanel'
 import { dative } from '../lib/format'
 import NotificationCard from './NotificationCard'
 import { notifyPartner, notifyWish } from '../lib/push'
+
+// ?admin=feedback or ?admin=reports (from an admin notification) opens that part of the panel.
+const adminFromUrl = (url) => new URL(url, window.location.origin).searchParams.get('admin')
 
 const tabFromUrl = (url) =>
   new URL(url, window.location.origin).searchParams.get('tab') === 'dilekler' ? 'dilekler' : null
@@ -84,6 +91,15 @@ export default function Home({ userId }) {
   const [sheet, setSheet] = useState(null)
   const [toast, setToast] = useState(null)
   const [unread, setUnread] = useState(0)
+  const [admin, setAdmin] = useState(false)
+
+  useEffect(() => {
+    isAdmin().then((yes) => {
+      setAdmin(yes)
+      const section = adminFromUrl(window.location.href)
+      if (yes && section) setSheet({ type: 'admin', section })
+    })
+  }, [userId])
 
   // Opening the app (or coming back to it) counts as seeing everything: clears the icon badge.
   const reload = useCallback(
@@ -145,6 +161,8 @@ export default function Home({ userId }) {
       if (e.data?.type !== 'open') return
       const wantedTab = tabFromUrl(e.data.url)
       if (wantedTab) setTab(wantedTab)
+      const section = adminFromUrl(e.data.url)
+      if (section) setSheet({ type: 'admin', section })
       setPendingOpen(new URL(e.data.url, window.location.origin).searchParams.get('event'))
       reload({ markAsSeen: true })
     }
@@ -246,7 +264,8 @@ export default function Home({ userId }) {
 
   // ?tab=dilekler (from a wish notification) is used once, then the address is cleaned.
   useEffect(() => {
-    if (tabFromUrl(window.location.href) && !pendingOpen) window.history.replaceState(null, '', '/')
+    const url = window.location.href
+    if ((tabFromUrl(url) || adminFromUrl(url)) && !pendingOpen) window.history.replaceState(null, '', '/')
   }, [pendingOpen])
 
   // What the screen shows -------------------------------------------------------
@@ -417,6 +436,7 @@ export default function Home({ userId }) {
         setToast('İptal edilemedi. Bu bağlantıda plan varsa önce onları sil.')
       }
     },
+    onReport: (person) => setSheet({ type: 'report', person }),
   }
 
   const openForm = (preset) => setSheet({ type: 'form', preset })
@@ -457,6 +477,11 @@ export default function Home({ userId }) {
     } catch {
       setToast('Silinemedi, tekrar dener misin?')
     }
+  }
+
+  function closeWith(message) {
+    setSheet(null)
+    setToast(message)
   }
 
   function connectionReady(id, message) {
@@ -707,12 +732,33 @@ export default function Home({ userId }) {
                 setSheet(null)
                 setPendingOpen(id)
               }}
+              onOpenAdmin={admin ? (section) => setSheet({ type: 'admin', section }) : null}
               onClose={() => setSheet(null)}
               onToast={setToast}
             />
+          ) : sheet.type === 'feedback' ? (
+            <FeedbackSheet
+              userId={userId}
+              onDone={closeWith}
+              onCancel={() => setSheet({ type: 'settings' })}
+              onToast={setToast}
+            />
+          ) : sheet.type === 'report' ? (
+            <ReportSheet
+              userId={userId}
+              person={sheet.person}
+              onDone={closeWith}
+              onCancel={() => setSheet({ type: 'settings' })}
+              onToast={setToast}
+            />
+          ) : sheet.type === 'admin' ? (
+            <AdminPanel initialSection={sheet.section} onClose={() => setSheet(null)} onToast={setToast} />
           ) : sheet.type === 'settings' ? (
             <SettingsSheet
               me={members[userId]}
+              admin={admin}
+              onFeedback={() => setSheet({ type: 'feedback' })}
+              onAdmin={() => setSheet({ type: 'admin', section: 'overview' })}
               connections={all}
               members={members}
               connectionActions={connectionActions}

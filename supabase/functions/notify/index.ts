@@ -55,6 +55,25 @@ Deno.serve(async (req) => {
     return json({ sent: await sendToUsers(others, payload) })
   }
 
+  // New feedback or a report: tells the admins. Only its sender can announce it.
+  if (body.feedback_id || body.report_id) {
+    const { data: item } = body.feedback_id
+      ? await admin.from('feedback').select('author, kind, message').eq('id', body.feedback_id).maybeSingle()
+      : await admin.from('reports').select('reporter, reason, message').eq('id', body.report_id).maybeSingle()
+    if (!item || (item.author ?? item.reporter) !== userId) return json({ error: 'not_found' }, 404)
+    const { data: admins } = await admin.from('admins').select('user_id')
+    const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
+    const payload = body.feedback_id
+      ? {
+          title: `${{ idea: '💡', bug: '🐞', love: '💜' }[item.kind as string] ?? '💬'} ${me?.name} geri bildirim gönderdi`,
+          body: item.message.slice(0, 180),
+          url: '/?admin=feedback',
+          tag: `feedback-${body.feedback_id}`,
+        }
+      : { title: `🚩 Yeni şikayet`, body: (item.message ?? '').slice(0, 180) || 'Yönetim panelinde incele', url: '/?admin=reports', tag: `report-${body.report_id}` }
+    return json({ sent: await sendToUsers((admins ?? []).map((a) => a.user_id), payload) })
+  }
+
   // Which plan, and is the caller allowed to talk about it?
   let eventId = body.event_id ?? body.response_event_id
   let comment: { body: string } | null = null
