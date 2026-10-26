@@ -1,20 +1,12 @@
 import { useRef, useState } from 'react'
-import { differenceInCalendarDays, format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { resizeImage } from '../lib/image'
 import ImageCropper from './ImageCropper'
+import Highlights from './Highlights'
 import Sheet from './Sheet'
 
 export const COVER_ASPECT = 5 / 4
 
-function countdownLabel(date) {
-  const days = differenceInCalendarDays(parseISO(date), new Date())
-  if (days === 0) return 'Bugün'
-  if (days === 1) return 'Yarın'
-  return `${days} gün sonra`
-}
-
-export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings, onInbox, unread, dayCount }) {
+export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, onInbox, unread, dayCount }) {
   const inputRef = useRef(null)
   const [picked, setPicked] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -63,22 +55,7 @@ export default function Cover({ photo, onPhoto, nextEvent, onOpen, onSettings, o
         <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />
       </div>
 
-      {nextEvent ? (
-        <button className="countdown" onClick={() => onOpen(nextEvent)}>
-          <small>Sıradaki date</small>
-          <strong>{countdownLabel(nextEvent.date)}</strong>
-          <span>
-            {nextEvent.locked ? '🎁 Bir sürpriz yaklaşıyor' : nextEvent.title}
-            {' · '}
-            {format(parseISO(nextEvent.date), 'd MMMM', { locale: tr })}
-          </span>
-        </button>
-      ) : (
-        <div className="countdown">
-          <small>Sıradaki date</small>
-          <span>Henüz plan yok, bir tane ekleyelim mi? 💕</span>
-        </div>
-      )}
+      <Highlights key={highlights.map((h) => h.kind).join()} items={highlights} onOpen={onOpen} />
 
       {picked && (
         <Sheet onClose={() => setPicked(null)}>

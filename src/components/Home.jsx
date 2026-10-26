@@ -188,9 +188,22 @@ export default function Home({ userId }) {
     .filter((e) => e.date >= todayKey && e.date !== selectedKey)
     .filter((e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i)
     .slice(0, 5)
-  const nextDate = sorted.find(
-    (e) => e.date >= todayKey && (e.tag === 'date' || e.surprise) && (e.status ?? 'confirmed') === 'confirmed',
-  )
+  // Cover cards: the next confirmed plan of each kind that has not ended yet.
+  const nowHM = format(new Date(), 'HH:mm')
+  const stillAhead = (e) =>
+    (e.status ?? 'confirmed') === 'confirmed' &&
+    (e.date > todayKey || (e.date === todayKey && (!e.time || (e.endTime || e.time) > nowHM)))
+  const ahead = sorted.filter(stillAhead)
+  const firstOf = (test) => ahead.find(test)
+  const highlights = [
+    { kind: 'date', label: 'Sıradaki date', event: firstOf((e) => e.tag === 'date' && !e.surprise) },
+    { kind: 'surprise', label: 'Sıradaki sürpriz', event: firstOf((e) => e.surprise) },
+    { kind: 'special', label: 'Sıradaki özel gün', event: firstOf((e) => e.tag === 'ozel' || e.milestone) },
+    { kind: 'trip', label: 'Sıradaki tatil', event: firstOf((e) => e.tag === 'tatil') },
+    { kind: 'any', label: 'Sıradaki plan', event: ahead[0] },
+  ]
+    .filter((h) => h.event)
+    .map((h) => ({ ...h, text: h.event.locked ? '🎁 Bir sürpriz yaklaşıyor' : h.event.title }))
   const waitingForMe = events.filter((e) => e.status === 'proposed' && e.awaiting === userId)
   const dayCount = couple?.togetherSince ? dayNumber(couple.togetherSince, todayKey) : 0
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
@@ -347,7 +360,7 @@ export default function Home({ userId }) {
           <Cover
             photo={couple.coverUrl}
             onPhoto={handleCover}
-            nextEvent={nextDate}
+            highlights={highlights}
             onOpen={openDetail}
             onSettings={() => setSheet({ type: 'settings' })}
             onInbox={() => setSheet({ type: 'inbox' })}
