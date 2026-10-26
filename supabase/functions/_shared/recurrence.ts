@@ -65,19 +65,33 @@ export function expandEvents(events, from, to) {
 const DAY_MILESTONES = [100, 200, 300, 400, 500]
 for (let n = 1000; n <= 20000; n += 500) DAY_MILESTONES.push(n)
 
+// How a connection's anniversaries and day counts are worded.
+export const MILESTONE_WORDS = {
+  partner: {
+    year: (n) => `💍 ${n}. yıldönümümüz`,
+    day: (n) => `💜 Birlikte ${n.toLocaleString('tr-TR')}. günümüz`,
+  },
+  friend: {
+    year: (n) => `🥂 Arkadaşlığımızın ${n}. yılı`,
+    day: (n) => `💛 Arkadaşlığımızın ${n.toLocaleString('tr-TR')}. günü`,
+  },
+}
+
 // "Together since" turns into anniversaries and day-count milestones (day 1 is the first day).
-export function milestones(since, from, to) {
-  if (!since) return []
+// Only partners and friends count days; siblings and family do not.
+export function milestones(since, from, to, relation = 'partner') {
+  const words = MILESTONE_WORDS[relation]
+  if (!since || !words) return []
   const list = []
   for (let years = 1; years <= 80; years++) {
     const date = addMonthsKey(since, 12 * years)
     if (date > to) break
-    if (date >= from) list.push({ date, kind: 'anniversary', count: years, title: `💍 ${years}. yıldönümümüz` })
+    if (date >= from) list.push({ date, kind: 'anniversary', count: years, title: words.year(years) })
   }
   for (const n of DAY_MILESTONES) {
     const date = addDaysKey(since, n - 1)
     if (date > to) break
-    if (date >= from) list.push({ date, kind: 'days', count: n, title: `💜 Birlikte ${n.toLocaleString('tr-TR')}. günümüz` })
+    if (date >= from) list.push({ date, kind: 'days', count: n, title: words.day(n) })
   }
   return list
 }

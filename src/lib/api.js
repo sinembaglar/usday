@@ -82,30 +82,35 @@ function fromTeaser(t, urlFor) {
   }
 }
 
-export async function loadEverything() {
+// Everything the signed-in person can see, across all their connections.
+export async function loadEverything(userId) {
   const results = await Promise.all([
-    supabase.from('couples').select('id, cover_path, invite_code, together_since').single(),
+    supabase.from('couples').select('id, cover_path, invite_code, together_since, relation, created_by, created_at').order('created_at'),
     supabase.from('profiles').select('id, name, color, last_seen_at').order('created_at'),
     supabase.from('events').select('*'),
     supabase.rpc('surprise_teasers'),
-    supabase.from('custom_templates').select('id, tag, title, event_time').order('created_at'),
+    supabase.from('custom_templates').select('id, couple_id, tag, title, event_time').order('created_at'),
     supabase.from('event_comments').select('event_id'),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
     supabase.from('wishes').select('*').order('created_at', { ascending: false }),
     supabase.from('wish_claims').select('wish_id, plan_id'),
+    supabase.from('couple_members').select('couple_id, user_id'),
+    supabase.rpc('surprise_teaser_connections'),
   ])
   const failed = results.find((r) => r.error)
   if (failed) throw failed.error
-  const [couple, profiles, rows, teasers, templates, comments, , wishRows, claims] = results.map((r) => r.data)
+  const [couples, profiles, rows, teasers, templates, comments, , wishRows, claims, memberRows, teaserCouples] =
+    results.map((r) => r.data)
   const unreadNotifications = results[6].count ?? 0
   const myClaims = Object.fromEntries(claims.map((c) => [c.wish_id, { planId: c.plan_id }]))
+  const teaserCouple = Object.fromEntries(teaserCouples.map((t) => [t.id, t.couple_id]))
 
   const commentCounts = {}
   for (const c of comments) commentCounts[c.event_id] = (commentCounts[c.event_id] ?? 0) + 1
 
   const urlFor = await signedUrls(
     [
-      couple.cover_path,
+      ...couples.map((c) => c.cover_path),
       ...rows.flatMap((r) => r.photos),
       ...teasers.flatMap((t) => t.photos),
       ...wishRows.map((w) => w.photo_path),
@@ -113,19 +118,32 @@ export async function loadEverything() {
   )
 
   return {
-    couple: {
-      id: couple.id,
-      inviteCode: couple.invite_code,
-      coverPath: couple.cover_path,
-      coverUrl: couple.cover_path ? urlFor(couple.cover_path) : null,
-      togetherSince: couple.together_since ?? '',
-    },
+    // One entry per connection; partnerId is null while the invitation is still open.
+    connections: couples.map((c) => ({
+      id: c.id,
+      inviteCode: c.invite_code,
+      coverPath: c.cover_path,
+      coverUrl: c.cover_path ? urlFor(c.cover_path) : null,
+      togetherSince: c.together_since ?? '',
+      relation: c.relation,
+      createdBy: c.created_by,
+      partnerId: memberRows.find((m) => m.couple_id === c.id && m.user_id !== userId)?.user_id ?? null,
+    })),
     members: Object.fromEntries(profiles.map((p) => [p.id, toPerson(p)])),
-    events: [...rows.map((r) => fromRow(r, urlFor)), ...teasers.map((t) => fromTeaser(t, urlFor))].map((e) => ({
+    events: [
+      ...rows.map((r) => ({ ...fromRow(r, urlFor), coupleId: r.couple_id })),
+      ...teasers.map((t) => ({ ...fromTeaser(t, urlFor), coupleId: teaserCouple[t.id] })),
+    ].map((e) => ({
       ...e,
       commentCount: commentCounts[e.id] ?? 0,
     })),
-    templates: templates.map((t) => ({ id: t.id, tag: t.tag, title: t.title, time: t.event_time?.slice(0, 5) ?? '' })),
+    templates: templates.map((t) => ({
+      id: t.id,
+      coupleId: t.couple_id,
+      tag: t.tag,
+      title: t.title,
+      time: t.event_time?.slice(0, 5) ?? '',
+    })),
     unreadNotifications,
     wishes: wishRows.map((w) => ({
       id: w.id,
@@ -145,8 +163,9 @@ export async function loadEverything() {
   }
 }
 
-export async function saveWish(form, coupleId, original) {
-  const newPhoto = form.photo?.dataUrl ? await uploadPhoto(coupleId, form.photo.dataUrl) : null
+// Wish photos live in the owner's own folder, visible to everyone they are connected with.
+export async function saveWish(form, userId, original) {
+  const newPhoto = form.photo?.dataUrl ? await uploadPhoto(userId, form.photo.dataUrl) : null
   const row = {
     category: form.category,
     title: form.title.trim(),
@@ -214,8 +233,10 @@ export async function clearNotifications() {
   if (error) throw error
 }
 
-export async function addTemplate({ tag, title, time }) {
-  const { error } = await supabase.from('custom_templates').insert({ tag, title, event_time: time || null })
+export async function addTemplate({ coupleId, tag, title, time }) {
+  const { error } = await supabase
+    .from('custom_templates')
+    .insert({ couple_id: coupleId, tag, title, event_time: time || null })
   if (error) throw error
 }
 
@@ -263,7 +284,11 @@ export async function saveEvent(form, coupleId, original, partnerId) {
 
   const { data, error } = original
     ? await supabase.from('events').update(row).eq('id', original.seriesId ?? original.id).select('id').single()
-    : await supabase.from('events').insert(row).select('id').single()
+    : await supabase
+        .from('events')
+        .insert({ ...row, couple_id: coupleId })
+        .select('id')
+        .single()
 
   if (error) {
     await removePhotos(uploaded)
@@ -358,8 +383,28 @@ export async function checkInvite(code) {
   return data
 }
 
+// Joins someone's connection with their code; returns that connection's id.
 export async function joinCouple(code) {
-  const { error } = await supabase.rpc('join_couple', { code })
+  const { data, error } = await supabase.rpc('join_couple', { code })
+  if (error) throw error
+  return data
+}
+
+// A new connection to invite someone into: partner, friend, sibling or family.
+export async function createConnection(relation) {
+  const { data, error } = await supabase.rpc('create_connection', { p_relation: relation })
+  if (error) throw error
+  return data
+}
+
+// Withdraws an invitation nobody has accepted yet.
+export async function cancelConnection(coupleId) {
+  const { error } = await supabase.rpc('cancel_connection', { p_couple: coupleId })
+  if (error) throw error
+}
+
+export async function setRelation(coupleId, relation) {
+  const { error } = await supabase.from('couples').update({ relation }).eq('id', coupleId)
   if (error) throw error
 }
 

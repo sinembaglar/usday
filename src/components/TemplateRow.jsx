@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { TAGS, TEMPLATES } from '../lib/constants'
+import { TAGS, templatesFor } from '../lib/constants'
 
-// Ready-made ideas for the chosen category, plus the couple's own ones and a way to add more.
-export default function TemplateRow({ tag, custom, selectedTitle, draft, onPick, onAdd, onDelete }) {
+// Ready-made ideas for the chosen category (worded for this connection), plus the connection's
+// own ones and a way to add more.
+export default function TemplateRow({ tag, relation, custom, selectedTitle, draft, onPick, onAdd, onDelete }) {
   const [adding, setAdding] = useState(false)
   const [entry, setEntry] = useState({ title: '', time: '' })
   const [error, setError] = useState('')
 
-  const category = TEMPLATES[tag]
+  const category = templatesFor(tag, relation)
   const color = TAGS[tag].color
   const own = custom.filter((t) => t.tag === tag)
 

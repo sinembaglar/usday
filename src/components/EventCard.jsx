@@ -1,11 +1,12 @@
 import { format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { SURPRISE_COLOR, TAGS, UNKNOWN_PERSON } from '../lib/constants'
+import { SURPRISE_COLOR, TAGS, UNKNOWN_PERSON, tagEmoji } from '../lib/constants'
 import { timeSpan } from '../lib/format'
 
 const US = { name: 'İkiniz', short: '💜', color: 'var(--blush)' }
 
-export default function EventCard({ event, members, onClick, showDate, isNew }) {
+// withWhom: "👯 Ayşe" when plans of several people are shown together.
+export default function EventCard({ event, members, onClick, showDate, isNew, withWhom }) {
   const hidden = event.locked
   const tag = TAGS[event.tag] ?? TAGS.plan
   const author = event.milestone ? US : (members[event.createdBy] ?? UNKNOWN_PERSON)
@@ -13,6 +14,7 @@ export default function EventCard({ event, members, onClick, showDate, isNew }) 
   const status =
     event.status === 'proposed' ? '⏳ yanıt bekleniyor' : event.status === 'declined' ? '❌ uygun değil' : null
   const meta = [
+    withWhom,
     status,
     showDate && format(parseISO(event.date), 'd MMMM EEE', { locale: tr }),
     timeSpan(event),
@@ -26,7 +28,9 @@ export default function EventCard({ event, members, onClick, showDate, isNew }) 
       onClick={onClick}
       style={{ '--tag': hidden ? SURPRISE_COLOR : tag.color }}
     >
-      <span className="event-emoji">{hidden ? '🎁' : event.milestone ? '🥂' : tag.emoji}</span>
+      <span className="event-emoji">
+        {hidden ? '🎁' : event.milestone ? '🥂' : tagEmoji(event.tag, event.relation)}
+      </span>
       <span className="event-body">
         <strong>
           {hidden ? 'Sürpriz!' : event.title}

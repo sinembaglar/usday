@@ -6,7 +6,7 @@ import ProposalActions from './ProposalActions'
 
 // A plan waiting for my answer, shown at the top of the home screen.
 export default function ProposalCard({ event, me, members, onOpen, onAnswered, onToast }) {
-  const other = Object.values(members).find((m) => m.id !== me) ?? UNKNOWN_PERSON
+  const other = members[event.partnerId] ?? UNKNOWN_PERSON
   // If I made the plan, the question is back with me because my partner suggested another time.
   const counter = event.createdBy === me
   const when = [format(parseISO(event.seriesDate ?? event.date), 'd MMMM EEEE', { locale: tr }), timeSpan(event)]

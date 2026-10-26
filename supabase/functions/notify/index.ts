@@ -1,6 +1,6 @@
 // Called by the app when someone adds or proposes a plan, answers a proposal, writes a comment
 // or reacts: tells the partner.
-import { admin, eventUrl, formatWhen, hiddenFrom, sendToUsers, type EventRow, type Person } from '../_shared/push.ts'
+import { admin, eventUrl, formatWhen, hiddenFrom, peopleIn, sendToUsers, type EventRow } from '../_shared/push.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -15,8 +15,7 @@ const REACTIONS = ['😍', '🥳', '👍', '😂', '🙈']
 async function eventWithPeople(eventId: string) {
   const { data: event } = await admin.from('events').select('*').eq('id', eventId).maybeSingle<EventRow>()
   if (!event) return null
-  const { data: members } = await admin.from('profiles').select('id, name, couple_id').eq('couple_id', event.couple_id)
-  return { event, members: (members ?? []) as Person[] }
+  return { event, members: await peopleIn([event.couple_id]) }
 }
 
 // What the recipient may know about the plan.
@@ -32,17 +31,18 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}))
 
-  // A new wish: tell the partner (a good gift idea). Claims are never mentioned.
+  // A new wish: tell everyone the owner is connected with (a good gift idea). Claims are never mentioned.
   if (body.wish_id) {
-    const { data: wish } = await admin.from('wishes').select('id, owner, couple_id, title, category').eq('id', body.wish_id).maybeSingle()
+    const { data: wish } = await admin.from('wishes').select('id, owner, title, category').eq('id', body.wish_id).maybeSingle()
     if (!wish || wish.owner !== userId) return json({ error: 'not_found' }, 404)
-    const { data: people } = await admin.from('profiles').select('id, name').eq('couple_id', wish.couple_id)
-    const me = people?.find((p) => p.id === userId)
-    const partner = people?.find((p) => p.id !== userId)
-    if (!partner) return json({ sent: 0 })
+    const { data: mine } = await admin.from('couple_members').select('couple_id').eq('user_id', userId)
+    const people = await peopleIn((mine ?? []).map((m) => m.couple_id))
+    const me = people.find((p) => p.id === userId)
+    const others = [...new Set(people.filter((p) => p.id !== userId).map((p) => p.id))]
+    if (!others.length) return json({ sent: 0 })
     const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
     const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: '/?tab=dilekler', tag: `wish-${wish.id}` }
-    return json({ sent: await sendToUsers([partner.id], payload) })
+    return json({ sent: await sendToUsers(others, payload) })
   }
 
   // Which plan, and is the caller allowed to talk about it?

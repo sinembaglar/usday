@@ -624,6 +624,108 @@ h3 {
   color: var(--danger);
 }
 
+/* People bar: pick one or several connections */
+.people-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 2px 16px 4px;
+  scrollbar-width: none;
+}
+
+.people-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.people-wrap {
+  padding-top: 6px;
+}
+
+.person-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.person-chip.is-active {
+  border-color: var(--rose);
+  background: color-mix(in srgb, var(--rose) 16%, var(--card));
+  color: var(--ink);
+}
+
+.person-chip.is-pending {
+  border-style: dashed;
+}
+
+.person-chip.add {
+  border-style: dashed;
+  color: var(--rose-deep);
+}
+
+.person-avatar {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.person-avatar i {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.person-avatar.all {
+  background: var(--blush);
+  font-size: 15px;
+}
+
+.person-avatar.add {
+  background: var(--blush);
+  color: var(--rose-deep);
+  font-size: 18px;
+}
+
+.categories.relations {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.connection-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.chips.whose {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chips.whose .chip {
+  flex: none;
+}
+
 /* Tab bar and pages */
 .app.has-tabbar {
   padding-bottom: calc(env(safe-area-inset-bottom) + 160px);

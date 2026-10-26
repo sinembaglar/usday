@@ -70,8 +70,72 @@ export const TEMPLATES = {
   },
 }
 
+// Who a connection is with. Partners count days and have "date"s; friends count days too.
+export const RELATIONS = {
+  partner: {
+    label: 'Sevgilim / Eşim',
+    emoji: '💕',
+    invite: 'Sevgilini davet et',
+    dateLabel: 'Date',
+    since: 'Birlikte olduğumuz gün',
+    counter: (n) => `💜 ${n}. günümüz`,
+  },
+  friend: {
+    label: 'Arkadaşım',
+    emoji: '👯',
+    invite: 'Arkadaşını davet et',
+    dateLabel: 'Buluşma',
+    since: 'Arkadaşlığımızın başladığı gün',
+    counter: (n) => `💛 Arkadaşlığımızın ${n}. günü`,
+  },
+  sibling: { label: 'Kardeşim', emoji: '👭', invite: 'Kardeşini davet et', dateLabel: 'Buluşma', since: null },
+  family: { label: 'Ailem', emoji: '👨‍👩‍👧', invite: 'Aileden birini davet et', dateLabel: 'Buluşma', since: null },
+}
+
+// The "date" category becomes "buluşma" outside couples, with fitting ideas.
+const MEETUPS = {
+  friend: [
+    { title: '🥞 Brunch', time: '11:00' },
+    { title: '☕ Kahve molası', time: '15:00' },
+    { title: '🛍️ Alışveriş', time: '14:00' },
+    { title: '🎬 Sinema', time: '21:00' },
+    { title: '🎶 Konser', time: '21:00' },
+    { title: '💅 Spa / kuaför günü', time: '13:00' },
+    { title: '🍷 Dostlar gecesi', time: '20:00' },
+    { title: '🚶 Yürüyüş', time: '18:00' },
+    { title: '🎳 Bowling', time: '19:00' },
+    { title: '🍿 Film gecesi', time: '21:00' },
+  ],
+  family: [
+    { title: '🍽️ Aile yemeği', time: '19:00' },
+    { title: '🥐 Pazar kahvaltısı', time: '10:00' },
+    { title: '☕ Kahve', time: '15:00' },
+    { title: '🛍️ Alışveriş', time: '14:00' },
+    { title: '🎬 Sinema', time: '21:00' },
+    { title: '🧺 Piknik', time: '12:00' },
+    { title: '📞 Görüntülü arama', time: '20:00' },
+    { title: '🌙 Bayram ziyareti', time: '' },
+  ],
+}
+
+export function templatesFor(tag, relation = 'partner') {
+  if (tag === 'date' && relation !== 'partner') {
+    return { heading: 'Buluşma fikirleri', items: MEETUPS[relation === 'friend' ? 'friend' : 'family'] }
+  }
+  return TEMPLATES[tag]
+}
+
+export const tagLabel = (tag, relation = 'partner') =>
+  tag === 'date' ? RELATIONS[relation]?.dateLabel ?? 'Date' : TAGS[tag]?.label
+
+// A "date" between friends or family is a meetup: no hearts.
+export const tagEmoji = (tag, relation = 'partner') =>
+  tag === 'date' && relation !== 'partner' ? '🥂' : (TAGS[tag] ?? TAGS.plan).emoji
+
 export const isTemplateTitle = (title) =>
-  Object.values(TEMPLATES).some((c) => c.items.some((t) => t.title === title))
+  [...Object.values(TEMPLATES), { items: [...MEETUPS.friend, ...MEETUPS.family] }].some((c) =>
+    c.items.some((t) => t.title === title),
+  )
 
 // Wish categories, and the plan category a wish becomes.
 export const WISH_CATEGORIES = {

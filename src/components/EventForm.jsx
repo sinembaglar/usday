@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DEFAULT_TEASER, TAGS, TEMPLATES, isTemplateTitle } from '../lib/constants'
+import { DEFAULT_TEASER, TAGS, isTemplateTitle, tagEmoji, tagLabel, templatesFor } from '../lib/constants'
 import { REPEATS } from '../lib/recurrence'
 import { dative } from '../lib/format'
 import PhotoPicker from './PhotoPicker'
@@ -28,21 +28,30 @@ export default function EventForm({
   templates = [],
   onAddTemplate,
   onDeleteTemplate,
-  partnerName, // set when there is someone to ask
+  connections = [], // [{ id, relation, partnerName, emoji }]
+  defaultCoupleId,
   onSave,
   onDelete, // (scope: 'one' | 'all') => void
   onCancel,
 }) {
-  const [form, setForm] = useState(() => ({
-    ...EMPTY,
-    date: defaultDate,
-    ...preset,
-    ...initial,
-    // Keep asking while a plan is unanswered; a declined one is re-asked by default.
-    propose:
-      Boolean(partnerName) &&
-      (preset?.propose ?? (initial?.status === 'proposed' || initial?.status === 'declined')),
-  }))
+  const [form, setForm] = useState(() => {
+    const coupleId = initial?.coupleId ?? preset?.coupleId ?? defaultCoupleId ?? connections[0]?.id
+    const canAsk = Boolean(connections.find((c) => c.id === coupleId)?.partnerName)
+    return {
+      ...EMPTY,
+      date: defaultDate,
+      ...preset,
+      ...initial,
+      coupleId,
+      // Keep asking while a plan is unanswered; a declined one is re-asked by default.
+      propose: canAsk && (preset?.propose ?? (initial?.status === 'proposed' || initial?.status === 'declined')),
+    }
+  })
+
+  const connection = connections.find((c) => c.id === form.coupleId)
+  const relation = connection?.relation ?? 'partner'
+  const partnerName = connection?.partnerName
+  const ownTemplates = templates.filter((t) => t.coupleId === form.coupleId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -64,7 +73,7 @@ export default function EventForm({
     setForm((f) => ({ ...f, surprise, repeat: surprise ? 'none' : f.repeat }))
   }
 
-  const category = TEMPLATES[form.tag]
+  const category = templatesFor(form.tag, relation)
   const repeating = form.repeat !== 'none'
   const wasRepeating = initial && initial.repeat !== 'none'
 
@@ -92,6 +101,29 @@ export default function EventForm({
     <form className="event-form" onSubmit={handleSubmit}>
       <h3>{initial ? 'Planı düzenle' : 'Yeni plan'}</h3>
 
+      {!initial && connections.length > 1 && (
+        <div className="field">
+          <span>Kiminle?</span>
+          <div className="chips" role="radiogroup" aria-label="Kiminle">
+            {connections.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                role="radio"
+                aria-checked={form.coupleId === c.id}
+                className={`chip ${form.coupleId === c.id ? 'is-active' : ''}`}
+                style={{ '--tag': 'var(--rose)' }}
+                onClick={() =>
+                  setForm((f) => ({ ...f, coupleId: c.id, propose: c.partnerName ? f.propose : false }))
+                }
+              >
+                {c.emoji} {c.partnerName ?? 'Davet bekleyen'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="categories" role="radiogroup" aria-label="Kategori">
         {Object.entries(TAGS).map(([key, tag]) => (
           <button
@@ -103,8 +135,8 @@ export default function EventForm({
             style={{ '--tag': tag.color }}
             onClick={() => chooseCategory(key)}
           >
-            <span>{tag.emoji}</span>
-            {tag.label}
+            <span>{tagEmoji(key, relation)}</span>
+            {tagLabel(key, relation)}
           </button>
         ))}
       </div>
@@ -112,13 +144,14 @@ export default function EventForm({
       {!initial && category && (
         <TemplateRow
           tag={form.tag}
-          custom={templates}
+          relation={relation}
+          custom={ownTemplates}
           selectedTitle={form.title}
           draft={form}
           onPick={(t) =>
             setForm((f) => ({ ...f, title: t.title, time: t.time, endTime: '', repeat: f.surprise ? 'none' : (t.repeat ?? 'none') }))
           }
-          onAdd={onAddTemplate}
+          onAdd={(t) => onAddTemplate({ ...t, coupleId: form.coupleId })}
           onDelete={onDeleteTemplate}
         />
       )}

@@ -1,5 +1,5 @@
-// Permanently deletes the signed-in user: their plans, photos, templates and devices.
-// The partner keeps their own plans; a calendar left with nobody in it is removed entirely.
+// Permanently deletes the signed-in user: their plans, photos, wishes, templates and devices.
+// In each connection the other person keeps their own plans; a connection left empty is removed.
 import { admin } from '../_shared/push.ts'
 
 const cors = {
@@ -23,20 +23,22 @@ Deno.serve(async (req) => {
   const user = auth.user
   if (!user) return json({ error: 'unauthorized' }, 401)
 
-  const { data: me } = await admin.from('profiles').select('couple_id').eq('id', user.id).maybeSingle()
-  if (me) {
-    const { count } = await admin.from('profiles').select('id', { count: 'exact', head: true }).eq('couple_id', me.couple_id)
-    const lastOne = (count ?? 0) <= 1
+  const { data: memberships } = await admin.from('couple_members').select('couple_id').eq('user_id', user.id)
+  const files: string[] = await listFolder(user.id) // wish photos
 
-    const files = lastOne
-      ? await listFolder(me.couple_id)
-      : ((await admin.from('events').select('photos').eq('created_by', user.id)).data ?? []).flatMap((e) => e.photos)
-    if (files.length) await admin.storage.from('photos').remove(files)
-
-    if (lastOne) await admin.from('couples').delete().eq('id', me.couple_id)
+  for (const { couple_id } of memberships ?? []) {
+    const { count } = await admin.from('couple_members').select('user_id', { count: 'exact', head: true }).eq('couple_id', couple_id)
+    if ((count ?? 0) <= 1) {
+      files.push(...(await listFolder(couple_id)))
+      await admin.from('couples').delete().eq('id', couple_id)
+    } else {
+      const { data: mine } = await admin.from('events').select('photos').eq('couple_id', couple_id).eq('created_by', user.id)
+      files.push(...(mine ?? []).flatMap((e) => e.photos))
+    }
   }
+  if (files.length) await admin.storage.from('photos').remove(files)
 
-  // Cascades to profile, own plans, templates, push devices and calendar link.
+  // Cascades to profile, memberships, own plans, wishes, templates, devices and calendar link.
   const { error } = await admin.auth.admin.deleteUser(user.id)
   if (error) return json({ error: error.message }, 500)
   return json({ deleted: true })

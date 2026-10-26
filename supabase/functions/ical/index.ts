@@ -1,6 +1,6 @@
 // Read-only calendar feed for Apple / Google Calendar: /cal/<token>.ics on usday.app.
 // Shows what the token owner may see: a partner's hidden surprise appears only as its teaser.
-import { admin, hiddenFrom, istanbulToday, type EventRow, type Person } from '../_shared/push.ts'
+import { admin, hiddenFrom, istanbulToday, peopleIn, type EventRow, type Person } from '../_shared/push.ts'
 import { addDaysKey, milestones } from '../_shared/recurrence.ts'
 
 const UTC_OFFSET_HOURS = 3 // Europe/Istanbul, no daylight saving since 2016
@@ -59,12 +59,12 @@ function timing(e: EventRow) {
   }
 }
 
-function vevent(e: EventRow & { created_at: string }, viewer: string, people: Person[], today: string) {
+function vevent(e: EventRow & { created_at: string }, viewer: string, people: Person[], today: string, suffix = '') {
   if (e.status === 'declined') return []
   const hidden = hiddenFrom(e, viewer, today)
   const author = people.find((p) => p.id === e.created_by)?.name ?? ''
   const tentative = e.status === 'proposed'
-  const summary = (tentative ? '❓ ' : '') + (hidden ? '🎁 Sürpriz!' : e.title)
+  const summary = (tentative ? '❓ ' : '') + (hidden ? '🎁 Sürpriz!' : e.title) + suffix
   const description = hidden
     ? `${author} bir sürpriz hazırlıyor: “${e.teaser ?? ''}”`
     : [e.note, author && `${author} ekledi`].filter(Boolean).join('\n')
@@ -94,14 +94,14 @@ function vevent(e: EventRow & { created_at: string }, viewer: string, people: Pe
 }
 
 // Anniversaries and day-count milestones for the next few years, as all-day events.
-function milestoneEvents(coupleId: string, since: string, today: string) {
-  return milestones(since, addDaysKey(today, -365), addDaysKey(today, 5 * 365)).flatMap((m) => [
+function milestoneEvents(couple: { id: string; together_since: string; relation: string }, today: string, suffix: string) {
+  return milestones(couple.together_since, addDaysKey(today, -365), addDaysKey(today, 5 * 365), couple.relation).flatMap((m) => [
     'BEGIN:VEVENT',
-    `UID:${m.kind}-${m.count}-${coupleId}@usday.app`,
+    `UID:${m.kind}-${m.count}-${couple.id}@usday.app`,
     `DTSTAMP:${compactDate(today)}T000000Z`,
     `DTSTART;VALUE=DATE:${compactDate(m.date)}`,
     `DTEND;VALUE=DATE:${compactDate(addDaysKey(m.date, 1))}`,
-    `SUMMARY:${escape(m.title)}`,
+    `SUMMARY:${escape(m.title + suffix)}`,
     'END:VEVENT',
   ])
 }
@@ -113,12 +113,20 @@ Deno.serve(async (req) => {
   const { data: owner } = await admin.from('calendar_tokens').select('user_id').eq('token', token).maybeSingle()
   if (!owner) return new Response('not found', { status: 404 })
 
-  const { data: me } = await admin.from('profiles').select('couple_id').eq('id', owner.user_id).single()
-  const [{ data: people }, { data: events }, { data: couple }] = await Promise.all([
-    admin.from('profiles').select('id, name, couple_id').eq('couple_id', me!.couple_id),
-    admin.from('events').select('*').eq('couple_id', me!.couple_id),
-    admin.from('couples').select('together_since').eq('id', me!.couple_id).single(),
+  // Every connection of the owner goes into one calendar.
+  const { data: memberships } = await admin.from('couple_members').select('couple_id').eq('user_id', owner.user_id)
+  const coupleIds = (memberships ?? []).map((m) => m.couple_id)
+  const [people, { data: events }, { data: couples }] = await Promise.all([
+    peopleIn(coupleIds),
+    admin.from('events').select('*').in('couple_id', coupleIds),
+    admin.from('couples').select('id, together_since, relation').in('id', coupleIds),
   ])
+  // With several connections, say who a plan is with: "Brunch · Ayşe".
+  const many = coupleIds.length > 1
+  const withWhom = (coupleId: string) => {
+    const other = people.find((p) => p.couple_id === coupleId && p.id !== owner.user_id)
+    return many && other ? ` · ${other.name}` : ''
+  }
 
   const today = istanbulToday()
   const lines = [
@@ -131,8 +139,8 @@ Deno.serve(async (req) => {
     'X-WR-TIMEZONE:Europe/Istanbul',
     'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
     'X-PUBLISHED-TTL:PT1H',
-    ...(events ?? []).flatMap((e) => vevent(e, owner.user_id, people as Person[], today)),
-    ...(couple?.together_since ? milestoneEvents(me!.couple_id, couple.together_since, today) : []),
+    ...(events ?? []).flatMap((e) => vevent(e, owner.user_id, people, today, withWhom(e.couple_id))),
+    ...(couples ?? []).filter((c) => c.together_since).flatMap((c) => milestoneEvents(c, today, withWhom(c.id))),
     'END:VCALENDAR',
   ]
 

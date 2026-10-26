@@ -9,9 +9,12 @@ import Sheet from './Sheet'
 import EventForm from './EventForm'
 import EventDetail from './EventDetail'
 import SettingsSheet from './SettingsSheet'
+import PeopleBar from './PeopleBar'
+import AddPersonSheet from './AddPersonSheet'
 import { supabase } from '../lib/supabase'
 import {
   addTemplate,
+  cancelConnection,
   claimWish,
   deleteEvent,
   deleteTemplate,
@@ -21,10 +24,11 @@ import {
   saveEvent,
   saveWish,
   setCover,
+  setRelation,
   setTogetherSince,
   skipOccurrence,
 } from '../lib/api'
-import { TEMPLATES, WISH_CATEGORIES } from '../lib/constants'
+import { RELATIONS, UNKNOWN_PERSON, WISH_CATEGORIES, templatesFor } from '../lib/constants'
 import TabBar from './TabBar'
 import WishesView from './WishesView'
 import WishForm from './WishForm'
@@ -42,27 +46,41 @@ const tabFromUrl = (url) =>
 
 const byDateTime = (a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`)
 
-const VIEW_KEY = 'usday:view'
-function savedView() {
+// Small per-device memories: calendar view and which people are selected.
+function remembered(key, fallback) {
+  let raw = null
   try {
-    return localStorage.getItem(VIEW_KEY) ?? 'month'
+    raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
   } catch {
-    return 'month'
+    return raw ?? fallback // older versions stored plain strings
   }
 }
 
+function remember(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // not remembered in private mode
+  }
+}
+
+const VIEW_KEY = 'usday:view'
+const PEOPLE_KEY = 'usday:people'
+
 export default function Home({ userId }) {
-  const [couple, setCouple] = useState(null)
+  const [connections, setConnections] = useState(null)
   const [members, setMembers] = useState({})
   const [events, setEvents] = useState([])
   const [templates, setTemplates] = useState([])
   const [wishes, setWishes] = useState([])
+  const [chosen, setChosen] = useState(() => remembered(PEOPLE_KEY, []))
   const [tab, setTab] = useState(() => tabFromUrl(window.location.href) ?? 'takvim')
   const [seenAt, setSeenAt] = useState(null) // last visit before this one: newer partner plans get a "yeni" pill
-  const [view, setView] = useState(savedView)
+  const [view, setView] = useState(() => (remembered(VIEW_KEY, 'month') === 'week' ? 'week' : 'month'))
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [selected, setSelected] = useState(() => new Date())
-  const [sheet, setSheet] = useState(null) // { type: 'form' | 'detail' | 'settings', event?, preset? }
+  const [sheet, setSheet] = useState(null)
   const [toast, setToast] = useState(null)
   const [unread, setUnread] = useState(0)
 
@@ -70,8 +88,8 @@ export default function Home({ userId }) {
   const reload = useCallback(
     async ({ markAsSeen = false } = {}) => {
       try {
-        const data = await loadEverything()
-        setCouple(data.couple)
+        const data = await loadEverything(userId)
+        setConnections(data.connections)
         setMembers(data.members)
         setEvents(data.events)
         setTemplates(data.templates)
@@ -133,30 +151,69 @@ export default function Home({ userId }) {
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
   }, [reload])
 
+  // People ---------------------------------------------------------------------
+
+  const all = useMemo(() => connections ?? [], [connections])
+  const byId = useMemo(() => Object.fromEntries(all.map((c) => [c.id, c])), [all])
+  // The people bar's choice; nothing (or nothing still valid) means everyone.
+  const selection = useMemo(() => {
+    const valid = chosen.filter((id) => byId[id])
+    return valid.length ? valid : all.map((c) => c.id)
+  }, [chosen, byId, all])
+  const single = selection.length === 1 ? byId[selection[0]] : null
+  const linked = all.filter((c) => c.partnerId) // connections someone has joined
+  const personOf = (c) => (c?.partnerId ? (members[c.partnerId] ?? UNKNOWN_PERSON) : null)
+  const relationOf = (c) => RELATIONS[c?.relation] ?? RELATIONS.partner
+
+  function choose(ids) {
+    setChosen(ids)
+    remember(PEOPLE_KEY, ids)
+  }
+
+  // Plans of the selected people, plus their anniversaries and day-count milestones.
   const todayKey = format(new Date(), 'yyyy-MM-dd')
   const monthKey = format(month, 'yyyy-MM-dd')
+  const withPartner = useMemo(
+    () =>
+      events.map((e) => ({
+        ...e,
+        partnerId: byId[e.coupleId]?.partnerId ?? null,
+        relation: byId[e.coupleId]?.relation ?? 'partner',
+      })),
+    [events, byId],
+  )
 
-  // Repeating plans become one entry per day, plus anniversaries and day-count milestones,
-  // over a window that covers both today's surroundings and the month being viewed.
-  const togetherSince = couple?.togetherSince
   const shown = useMemo(() => {
     const from = addDaysKey(monthKey < todayKey ? monthKey : todayKey, -7)
     const to = addDaysKey(monthKey > todayKey ? monthKey : todayKey, 400)
-    const special = milestones(togetherSince, from, to).map((m) => ({
-      id: `milestone-${m.kind}-${m.count}`,
-      seriesId: null,
-      milestone: m.kind,
-      title: m.title,
-      date: m.date,
-      time: '',
-      tag: 'ozel',
-      photos: [],
-    }))
-    return [...expandEvents(events, from, to), ...special]
-  }, [events, togetherSince, monthKey, todayKey])
+    const picked = new Set(selection)
+    const special = selection.flatMap((id) => {
+      const c = byId[id]
+      if (!c?.partnerId) return []
+      const suffix = selection.length > 1 ? ` · ${members[c.partnerId]?.name ?? ''}` : ''
+      return milestones(c.togetherSince, from, to, c.relation).map((m) => ({
+        id: `milestone-${c.id}-${m.kind}-${m.count}`,
+        seriesId: null,
+        coupleId: c.id,
+        milestone: m.kind,
+        title: m.title + suffix,
+        date: m.date,
+        time: '',
+        tag: 'ozel',
+        photos: [],
+      }))
+    })
+    return [...expandEvents(withPartner.filter((e) => picked.has(e.coupleId)), from, to), ...special]
+  }, [withPartner, selection, byId, members, monthKey, todayKey])
 
+  // Opening a plan of someone who is not selected adds them to the selection first.
   useEffect(() => {
-    if (!pendingOpen) return
+    if (!pendingOpen || !connections) return
+    const raw = events.find((e) => e.id === pendingOpen)
+    if (raw && !selection.includes(raw.coupleId)) {
+      choose([...selection, raw.coupleId])
+      return
+    }
     const matches = shown.filter((e) => e.seriesId === pendingOpen)
     const event = matches.find((e) => e.date >= todayKey) ?? matches[0]
     if (!event) return
@@ -166,7 +223,9 @@ export default function Home({ userId }) {
     setMonth(startOfMonth(parseISO(event.date)))
     setPendingOpen(null)
     window.history.replaceState(null, '', '/')
-  }, [pendingOpen, shown, todayKey])
+    // choose is stable enough for this one-off jump
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOpen, shown, todayKey, events, selection, connections])
 
   useEffect(() => {
     if (!toast) return
@@ -179,7 +238,8 @@ export default function Home({ userId }) {
     if (tabFromUrl(window.location.href) && !pendingOpen) window.history.replaceState(null, '', '/')
   }, [pendingOpen])
 
-  const partner = Object.values(members).find((m) => m.id !== userId)
+  // What the screen shows -------------------------------------------------------
+
   const selectedKey = format(selected, 'yyyy-MM-dd')
   const sorted = useMemo(() => [...shown].sort(byDateTime), [shown])
   const dayEvents = sorted.filter((e) => e.date === selectedKey)
@@ -188,6 +248,7 @@ export default function Home({ userId }) {
     .filter((e) => e.date >= todayKey && e.date !== selectedKey)
     .filter((e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i)
     .slice(0, 5)
+
   // Cover cards: the next confirmed plan of each kind that has not ended yet.
   const nowHM = format(new Date(), 'HH:mm')
   const stillAhead = (e) =>
@@ -195,8 +256,13 @@ export default function Home({ userId }) {
     (e.date > todayKey || (e.date === todayKey && (!e.time || (e.endTime || e.time) > nowHM)))
   const ahead = sorted.filter(stillAhead)
   const firstOf = (test) => ahead.find(test)
+  const onlyPartners = selection.every((id) => byId[id]?.relation === 'partner')
   const highlights = [
-    { kind: 'date', label: 'Sıradaki date', event: firstOf((e) => e.tag === 'date' && !e.surprise) },
+    {
+      kind: 'date',
+      label: onlyPartners ? 'Sıradaki date' : 'Sıradaki buluşma',
+      event: firstOf((e) => e.tag === 'date' && !e.surprise),
+    },
     { kind: 'surprise', label: 'Sıradaki sürpriz', event: firstOf((e) => e.surprise) },
     { kind: 'special', label: 'Sıradaki özel gün', event: firstOf((e) => e.tag === 'ozel' || e.milestone) },
     { kind: 'trip', label: 'Sıradaki tatil', event: firstOf((e) => e.tag === 'tatil') },
@@ -204,9 +270,26 @@ export default function Home({ userId }) {
   ]
     .filter((h) => h.event)
     .map((h) => ({ ...h, text: h.event.locked ? '🎁 Bir sürpriz yaklaşıyor' : h.event.title }))
-  const waitingForMe = events.filter((e) => e.status === 'proposed' && e.awaiting === userId)
-  const dayCount = couple?.togetherSince ? dayNumber(couple.togetherSince, todayKey) : 0
+
+  const waitingForMe = withPartner.filter((e) => e.status === 'proposed' && e.awaiting === userId)
+  const pending = selection.map((id) => byId[id]).filter((c) => c && !c.partnerId)
+  const counter =
+    single?.partnerId && single.togetherSince && relationOf(single).counter
+      ? relationOf(single).counter(dayNumber(single.togetherSince, todayKey).toLocaleString('tr-TR'))
+      : null
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
+  // With plans of several people on screen, each says who it is with.
+  const withWhom = (e) => {
+    const c = byId[e.coupleId]
+    return linked.length > 1 && c?.partnerId ? `${relationOf(c).emoji} ${personOf(c).name}` : null
+  }
+  const formConnections = all.map((c) => ({
+    id: c.id,
+    relation: c.relation,
+    emoji: relationOf(c).emoji,
+    partnerName: personOf(c)?.name,
+  }))
+  const defaultCoupleId = single?.id ?? selection.find((id) => byId[id]?.partnerId) ?? selection[0]
 
   function selectDay(day) {
     setSelected(day)
@@ -215,19 +298,20 @@ export default function Home({ userId }) {
 
   function changeView(next) {
     setView(next)
-    try {
-      localStorage.setItem(VIEW_KEY, next)
-    } catch {
-      // not remembered in private mode
-    }
+    remember(VIEW_KEY, next)
   }
 
+  // Actions ------------------------------------------------------------------------
+
   async function handleSave(form) {
-    const id = await saveEvent(form, couple.id, sheet.event, partner?.id)
-    // A surprise made from the partner's wish quietly claims that wish.
+    const connection = byId[form.coupleId]
+    const partner = personOf(connection)
+    const id = await saveEvent(form, form.coupleId, sheet.event, connection?.partnerId)
+    // A surprise made from someone's wish quietly claims that wish.
     if (sheet.fromWish && form.surprise) await claimWish(sheet.fromWish, id).catch(() => {})
     setSheet(null)
     if (sheet.fromWish) setTab('takvim')
+    if (!selection.includes(form.coupleId)) choose([...selection, form.coupleId])
     selectDay(parseISO(form.date))
     const asking = form.propose && partner
     if (!sheet.event || asking) {
@@ -236,7 +320,7 @@ export default function Home({ userId }) {
         asking
           ? `📨 ${dative(partner.name)} soruldu, yanıtını bildireceğiz`
           : form.surprise
-            ? `🎁 Sürpriz eklendi, ${partner?.name ?? 'eşin'} sadece ipucunu görecek`
+            ? `🎁 Sürpriz eklendi, ${partner?.name ?? 'o'} sadece ipucunu görecek`
             : '✨ Ortak takvime eklendi',
       )
     }
@@ -259,30 +343,51 @@ export default function Home({ userId }) {
     }
   }
 
-  async function handleTogetherSince(date) {
-    try {
-      await setTogetherSince(couple.id, date)
-      setToast(date ? '💜 Birlikte olduğunuz gün kaydedildi' : 'Tarih kaldırıldı')
-      reload()
-    } catch {
-      setToast('Kaydedilemedi, tekrar dener misin?')
-    }
-  }
-
   async function handleCover(dataUrl) {
     try {
-      await setCover(couple, dataUrl)
+      await setCover(single, dataUrl)
       reload()
     } catch {
       setToast('Fotoğraf yüklenemedi')
     }
   }
 
+  const connectionActions = {
+    onRelation: async (c, relation) => {
+      try {
+        await setRelation(c.id, relation)
+        reload()
+      } catch {
+        setToast('Kaydedilemedi, tekrar dener misin?')
+      }
+    },
+    onSince: async (c, date) => {
+      try {
+        await setTogetherSince(c.id, date)
+        setToast(date ? '💜 Tarih kaydedildi' : 'Tarih kaldırıldı')
+        reload()
+      } catch {
+        setToast('Kaydedilemedi, tekrar dener misin?')
+      }
+    },
+    onCancel: async (c) => {
+      if (!window.confirm('Bu davet iptal edilsin mi? Kod artık çalışmayacak.')) return
+      try {
+        await cancelConnection(c.id)
+        setToast('Davet iptal edildi')
+        reload()
+      } catch {
+        setToast('İptal edilemedi. Bu bağlantıda plan varsa önce onları sil.')
+      }
+    },
+  }
+
   const openForm = (preset) => setSheet({ type: 'form', preset })
 
-  // A wish becomes a plan: the owner plans it openly, the partner as a surprise (asking first).
+  // A wish becomes a plan: the owner plans it openly, others as a surprise (asking first).
   function planFromWish(wish, surprise) {
     const extra = [wish.note, wish.link, wish.price && `💸 ${wish.price}`].filter(Boolean).join('\n')
+    const withOwner = all.find((c) => c.partnerId === wish.owner)
     setSheet({
       type: 'form',
       fromWish: wish.id,
@@ -293,14 +398,15 @@ export default function Home({ userId }) {
         surprise,
         propose: surprise,
         date: todayKey,
+        coupleId: wish.owner === userId ? defaultCoupleId : withOwner?.id,
       },
     })
   }
 
   async function handleWishSave(form) {
-    const id = await saveWish(form, couple.id, sheet.wish)
+    const id = await saveWish(form, userId, sheet.wish)
     setSheet(null)
-    if (!sheet.wish && partner) notifyWish(id)
+    if (!sheet.wish && linked.length) notifyWish(id)
     setToast(sheet.wish ? 'Dilek güncellendi' : '✨ Dilek listene eklendi')
     reload()
   }
@@ -316,6 +422,13 @@ export default function Home({ userId }) {
     }
   }
 
+  function connectionReady(id, message) {
+    setSheet(null)
+    choose([id])
+    setToast(message)
+    reload()
+  }
+
   const headerButtons = (
     <span className="cover-actions">
       <button
@@ -326,18 +439,30 @@ export default function Home({ userId }) {
         🔔
         {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
-      <button
-        className="cover-photo-btn cover-icon"
-        onClick={() => setSheet({ type: 'settings' })}
-        aria-label="Ayarlar"
-      >
+      <button className="cover-photo-btn cover-icon" onClick={() => setSheet({ type: 'settings' })} aria-label="Ayarlar">
         ⚙️
       </button>
     </span>
   )
+
+  const peopleBar = (
+    <PeopleBar
+      connections={all}
+      members={members}
+      selected={selection}
+      onChange={choose}
+      onAdd={() => setSheet({ type: 'addPerson' })}
+    />
+  )
+
   const openDetail = (event) => setSheet({ type: 'detail', event })
 
-  if (!couple) return <div className="splash">UsDay</div>
+  if (!connections) return <div className="splash">UsDay</div>
+
+  const welcomeIdeas = templatesFor('date', single?.relation ?? 'partner').items.slice(0, 6)
+  const visiblePeople = [...new Set(selection.map((id) => byId[id]?.partnerId).filter(Boolean))].map(
+    (id) => members[id] ?? UNKNOWN_PERSON,
+  )
 
   return (
     <div className="app has-tabbar">
@@ -345,31 +470,36 @@ export default function Home({ userId }) {
         <WishesView
           wishes={wishes}
           me={userId}
-          partner={partner}
+          people={visiblePeople}
           onOpen={(wish) => setSheet({ type: 'wishDetail', wish })}
           onAdd={() => setSheet({ type: 'wishForm' })}
           header={
-            <header className="page-head">
-              <h1>🎁 Dilekler</h1>
-              {headerButtons}
-            </header>
+            <>
+              <header className="page-head">
+                <h1>🎁 Dilekler</h1>
+                {headerButtons}
+              </header>
+              <div className="content people-wrap">{peopleBar}</div>
+            </>
           }
         />
       ) : (
         <>
           <Cover
-            photo={couple.coverUrl}
-            onPhoto={handleCover}
+            photo={single?.coverUrl ?? null}
+            onPhoto={single ? handleCover : null}
             highlights={highlights}
             onOpen={openDetail}
             onSettings={() => setSheet({ type: 'settings' })}
             onInbox={() => setSheet({ type: 'inbox' })}
             unread={unread}
-            dayCount={dayCount}
+            counter={counter}
           />
 
           <main className="content">
-            <NotificationCard partnerName={partner?.name} onToast={setToast} />
+            {peopleBar}
+
+            <NotificationCard partnerName={personOf(single)?.name} onToast={setToast} />
 
             {waitingForMe.map((e) => (
               <ProposalCard
@@ -383,23 +513,23 @@ export default function Home({ userId }) {
               />
             ))}
 
-            {!partner && (
+            {pending.map((c) => (
               <InviteCard
-                code={couple.inviteCode}
+                key={c.id}
+                code={c.inviteCode}
+                relation={c.relation}
+                showJoin={all.length === 1}
                 onToast={setToast}
-                onJoined={() => {
-                  setToast('💜 Takvimleriniz birleşti!')
-                  reload()
-                }}
+                onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
               />
-            )}
+            ))}
 
-            {events.length === 0 && (
+            {shown.filter((e) => !e.milestone).length === 0 && (
               <section className="welcome card">
-                <strong>UsDay’e hoş geldiniz 💜</strong>
-                <small>İlk planınızı ekleyin. Bir şablona dokunmanız yeterli:</small>
+                <strong>UsDay’e hoş geldin 💜</strong>
+                <small>İlk planı ekle. Bir şablona dokunman yeterli:</small>
                 <div className="templates">
-                  {TEMPLATES.date.items.slice(0, 6).map((t) => (
+                  {welcomeIdeas.map((t) => (
                     <button key={t.title} className="chip" onClick={() => openForm({ ...t, tag: 'date' })}>
                       {t.title}
                     </button>
@@ -426,13 +556,7 @@ export default function Home({ userId }) {
                 onCreate={(date, time) => openForm({ date, time })}
               />
             ) : (
-              <MonthCalendar
-                month={month}
-                onMonthChange={setMonth}
-                selected={selected}
-                onSelect={selectDay}
-                events={shown}
-              />
+              <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={shown} />
             )}
 
             <section className="agenda">
@@ -440,7 +564,14 @@ export default function Home({ userId }) {
               {dayEvents.length ? (
                 <div className="event-list">
                   {dayEvents.map((e) => (
-                    <EventCard key={e.id} event={e} members={members} isNew={isNew(e)} onClick={() => openDetail(e)} />
+                    <EventCard
+                      key={e.id}
+                      event={e}
+                      members={members}
+                      isNew={isNew(e)}
+                      withWhom={withWhom(e)}
+                      onClick={() => openDetail(e)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -460,6 +591,7 @@ export default function Home({ userId }) {
                       event={e}
                       members={members}
                       isNew={isNew(e)}
+                      withWhom={withWhom(e)}
                       showDate
                       onClick={() => openDetail(e)}
                     />
@@ -489,7 +621,13 @@ export default function Home({ userId }) {
 
       {sheet && (
         <Sheet onClose={() => setSheet(null)}>
-          {sheet.type === 'wishForm' ? (
+          {sheet.type === 'addPerson' ? (
+            <AddPersonSheet
+              onCreated={(id) => connectionReady(id, '💌 Davet kodun hazır, gönderebilirsin')}
+              onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
+              onClose={() => setSheet(null)}
+            />
+          ) : sheet.type === 'wishForm' ? (
             <WishForm
               initial={sheet.wish}
               onSave={handleWishSave}
@@ -524,8 +662,9 @@ export default function Home({ userId }) {
           ) : sheet.type === 'settings' ? (
             <SettingsSheet
               me={members[userId]}
-              couple={couple}
-              onTogetherSince={handleTogetherSince}
+              connections={all}
+              members={members}
+              connectionActions={connectionActions}
               onClose={() => setSheet(null)}
               onToast={setToast}
             />
@@ -535,7 +674,8 @@ export default function Home({ userId }) {
               preset={sheet.preset}
               defaultDate={selectedKey}
               templates={templates}
-              partnerName={partner?.name}
+              connections={formConnections}
+              defaultCoupleId={defaultCoupleId}
               onAddTemplate={async (t) => {
                 await addTemplate(t)
                 setToast('✨ Şablon eklendi')
@@ -554,6 +694,7 @@ export default function Home({ userId }) {
               event={sheet.event}
               me={userId}
               members={members}
+              withWhom={withWhom(sheet.event)}
               onEdit={() =>
                 // The form edits the whole series from its first day; the opened day is kept for "sadece bu günü sil".
                 setSheet({

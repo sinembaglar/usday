@@ -6,7 +6,8 @@ import Sheet from './Sheet'
 
 export const COVER_ASPECT = 5 / 4
 
-export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, onInbox, unread, dayCount }) {
+// onPhoto is only given when one person is selected: each connection has its own cover.
+export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, onInbox, unread, counter }) {
   const inputRef = useRef(null)
   const [picked, setPicked] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -30,16 +31,18 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
       <div className="cover-top">
         <span className="brand-block">
           <span className="brand">UsDay</span>
-          {dayCount > 0 && (
+          {counter && (
             <button className="day-count" onClick={onSettings}>
-              💜 {dayCount.toLocaleString('tr-TR')}. günümüz
+              {counter}
             </button>
           )}
         </span>
         <span className="cover-actions">
-          <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
-            {uploading ? 'Yükleniyor…' : photo ? '📷 Değiştir' : '📷 Fotoğrafınızı ekleyin'}
-          </button>
+          {onPhoto && (
+            <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
+              {uploading ? 'Yükleniyor…' : photo ? '📷 Değiştir' : '📷 Fotoğrafınızı ekleyin'}
+            </button>
+          )}
           <button
             className="cover-photo-btn cover-icon bell"
             onClick={onInbox}

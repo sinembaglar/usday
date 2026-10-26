@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calendarToken, deleteAccount } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
+import ConnectionSettings from './ConnectionSettings'
 
 const THEMES = [
   { id: 'system', label: '📱 Telefona göre' },
@@ -9,9 +10,8 @@ const THEMES = [
   { id: 'dark', label: '🌙 Koyu' },
 ]
 
-export default function SettingsSheet({ me, couple, onTogetherSince, onClose, onToast }) {
+export default function SettingsSheet({ me, connections, members, connectionActions, onClose, onToast }) {
   const [theme, setThemeState] = useState(getTheme)
-  const [since, setSince] = useState(couple.togetherSince)
   const [token, setToken] = useState(null)
   const [changing, setChanging] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -71,23 +71,7 @@ export default function SettingsSheet({ me, couple, onTogetherSince, onClose, on
     <div className="settings">
       <h3>Ayarlar</h3>
 
-      <section className="settings-group">
-        <h4>💜 Birlikte olduğumuz gün</h4>
-        <p className="hint">Kapakta kaçıncı gününüz olduğu görünür. Yıldönümleriniz ve özel günleriniz (100., 1000. gün…) takvime kendiliğinden eklenir, sabah bildirim gelir.</p>
-        <div className="inline-form">
-          <input
-            className="input"
-            type="date"
-            max={new Date().toISOString().slice(0, 10)}
-            value={since}
-            onChange={(e) => setSince(e.target.value)}
-            aria-label="Birlikte olduğumuz gün"
-          />
-          <button className="btn btn-primary" disabled={since === couple.togetherSince} onClick={() => onTogetherSince(since)}>
-            Kaydet
-          </button>
-        </div>
-      </section>
+      <ConnectionSettings connections={connections} members={members} {...connectionActions} />
 
       <section className="settings-group">
         <h4>Tema</h4>

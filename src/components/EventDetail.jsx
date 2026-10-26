@@ -1,6 +1,6 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { TAGS, UNKNOWN_PERSON } from '../lib/constants'
+import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
 import { mapsUrl, repeatLabel, timeSpan } from '../lib/format'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
@@ -26,7 +26,8 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     )
   }
   if (event.status === 'declined') {
-    const by = Object.values(members).find((m) => m.id !== event.createdBy) ?? UNKNOWN_PERSON
+    // The asked person is whoever did not make the plan.
+    const by = (event.createdBy === me ? members[event.partnerId] : members[me]) ?? UNKNOWN_PERSON
     return (
       <div className="status-box is-declined">
         ❌ {by.name} o zaman uygun değil.{event.responseNote && <em> “{event.responseNote}”</em>}
@@ -37,13 +38,14 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
   return null
 }
 
-export default function EventDetail({ event, me, members, onEdit, onClose, onAnswered, onToast }) {
+export default function EventDetail({ event, me, members, withWhom, onEdit, onClose, onAnswered, onToast }) {
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
   const when = [format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr }), timeSpan(event)]
     .filter(Boolean)
     .join(' · ')
   const author = members[event.createdBy] ?? UNKNOWN_PERSON
-  const partner = Object.values(members).find((m) => m.id !== me)
+  // The other person in this plan's connection.
+  const partner = event.partnerId ? members[event.partnerId] : Object.values(members).find((m) => m.id !== me)
 
   if (event.milestone) {
     return (
@@ -85,10 +87,11 @@ export default function EventDetail({ event, me, members, onEdit, onClose, onAns
   return (
     <div className="detail">
       <span className="chip is-active" style={{ '--tag': tag.color }}>
-        {tag.emoji} {tag.label}
+        {tagEmoji(event.tag, event.relation)} {tagLabel(event.tag, event.relation)}
       </span>
       <h3>{event.title}</h3>
       <p className="when">{when}</p>
+      {withWhom && <p className="meta-line">{withWhom} ile</p>}
       {status}
       {repeatLabel(event) &&<p className="meta-line">{repeatLabel(event)}</p>}
       {event.location && (

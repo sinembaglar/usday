@@ -34,6 +34,20 @@ export type EventRow = {
 
 export type Person = { id: string; name: string; couple_id: string }
 
+// The (at most two) people in each connection, as Person rows tagged with the connection.
+export async function peopleIn(coupleIds: string[]): Promise<Person[]> {
+  if (!coupleIds.length) return []
+  const { data } = await admin
+    .from('couple_members')
+    .select('couple_id, profiles(id, name)')
+    .in('couple_id', coupleIds)
+  return (data ?? []).map((m: { couple_id: string; profiles: { id: string; name: string } }) => ({
+    id: m.profiles.id,
+    name: m.profiles.name,
+    couple_id: m.couple_id,
+  }))
+}
+
 // Unread notifications in the app: the number on the icon.
 async function unreadCount(userId: string) {
   const { count } = await admin

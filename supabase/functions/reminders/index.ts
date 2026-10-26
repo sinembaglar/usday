@@ -4,6 +4,7 @@ import {
   asPlan,
   eventUrl,
   formatWhen,
+  peopleIn,
   sendToUsers,
   shortTime,
   type EventRow,
@@ -97,21 +98,30 @@ function eventJobs(event: EventRow, person: Person, people: Person[], now: Now):
   return jobs
 }
 
-function milestoneJobs(coupleId: string, since: string, members: Person[], now: Now): Job[] {
-  if (now.minutes < MORNING) return []
+// Each person hears it with the other's name, since they may have several connections.
+function milestoneTitle(m: { kind: string; count: number }, relation: string, today: boolean, other: string) {
+  const when = today ? 'Bugün' : 'Yarın'
+  const n = m.count.toLocaleString('tr-TR')
+  const end = today ? '!' : ''
+  if (relation === 'friend') {
+    return m.kind === 'anniversary'
+      ? `🥂 ${when} ${other} ile arkadaşlığınızın ${n}. yılı${end}`
+      : `💛 ${when} ${other} ile arkadaşlığınızın ${n}. günü${end}`
+  }
+  return m.kind === 'anniversary'
+    ? `💍 ${when} ${other} ile ${n}. yıldönümünüz${end}`
+    : `💜 ${when} ${other} ile birlikte ${n}. gününüz${end}`
+}
+
+function milestoneJobs(coupleId: string, since: string, relation: string, members: Person[], now: Now): Job[] {
+  if (now.minutes < MORNING || members.length < 2) return []
   const jobs: Job[] = []
-  for (const m of milestones(since, now.today, now.tomorrow)) {
+  for (const m of milestones(since, now.today, now.tomorrow, relation)) {
     const today = m.date === now.today
-    const title =
-      m.kind === 'anniversary'
-        ? today
-          ? `💍 Bugün ${m.count}. yıldönümünüz!`
-          : `💍 Yarın ${m.count}. yıldönümünüz`
-        : today
-          ? `💜 Bugün birlikte ${m.count.toLocaleString('tr-TR')}. gününüz!`
-          : `💜 Yarın birlikte ${m.count.toLocaleString('tr-TR')}. gününüz`
     const body = today ? 'Nice güzel günlere 🥂' : 'Küçük bir sürpriz için tam zamanı 🎁'
     for (const person of members) {
+      const other = members.find((p) => p.id !== person.id)!.name
+      const title = milestoneTitle(m, relation, today, other)
       jobs.push({
         userId: person.id,
         eventId: null,
@@ -135,19 +145,19 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('status', 'confirmed') // an unanswered or declined proposal is not a plan yet
       .or(`event_date.in.(${now.today},${now.tomorrow}),reveal_on.eq.${now.today},repeat.neq.none`),
-    admin.from('couples').select('id, together_since').not('together_since', 'is', null),
+    admin.from('couples').select('id, together_since, relation').not('together_since', 'is', null),
   ])
 
   const coupleIds = [...new Set([...(events ?? []).map((e) => e.couple_id), ...(couples ?? []).map((c) => c.id)])]
   if (!coupleIds.length) return Response.json({ due: 0, sent: 0 })
-  const { data: people } = await admin.from('profiles').select('id, name, couple_id').in('couple_id', coupleIds)
-  const membersOf = (coupleId: string) => (people as Person[]).filter((p) => p.couple_id === coupleId)
+  const people = await peopleIn(coupleIds)
+  const membersOf = (coupleId: string) => people.filter((p) => p.couple_id === coupleId)
 
   const jobs = [
     ...((events ?? []) as EventRow[]).flatMap((event) =>
       membersOf(event.couple_id).flatMap((person) => eventJobs(event, person, membersOf(event.couple_id), now)),
     ),
-    ...(couples ?? []).flatMap((c) => milestoneJobs(c.id, c.together_since, membersOf(c.id), now)),
+    ...(couples ?? []).flatMap((c) => milestoneJobs(c.id, c.together_since, c.relation, membersOf(c.id), now)),
   ]
 
   // A surprise made from a wish makes that wish come true on its reveal morning.
