@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { addShareComment, deleteShareComment, loadShareComments, uploadCommentImage } from '../lib/api'
+import { addShareComment, deleteShareComment, loadShareComments, setCommentReaction, uploadCommentImage } from '../lib/api'
 import CommentForm, { CommentImage } from './CommentForm'
+import CommentReactions from './CommentReactions'
 import { timeAgo } from '../lib/format'
 import { UNKNOWN_PERSON, initials } from '../lib/constants'
 
@@ -40,6 +41,7 @@ export function ShareThread({ eventId, owner, viewer, mode, me, members, title, 
     const channel = supabase
       .channel(`share-chat-${eventId}-${mode}-${viewer}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'share_comments', filter: `event_id=eq.${eventId}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'share_comment_reactions', filter: `event_id=eq.${eventId}` }, load)
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
@@ -77,6 +79,23 @@ export function ShareThread({ eventId, owner, viewer, mode, me, members, title, 
     load()
   }
 
+  // The database tells the comment's author.
+  async function feel(comment, emoji) {
+    setComments((list) =>
+      list.map((c) =>
+        c.id === comment.id
+          ? { ...c, reactions: [...c.reactions.filter((r) => r.user_id !== me), ...(emoji ? [{ user_id: me, emoji }] : [])] }
+          : c,
+      ),
+    )
+    try {
+      await setCommentReaction('share', comment.id, me, emoji)
+    } catch {
+      onToast?.('Tepki kaydedilemedi, tekrar dener misin?')
+      load()
+    }
+  }
+
   // Someone else who sees the same calendar may not be connected to me: their name comes with the comment.
   const person = (c) =>
     members[c.author] ??
@@ -100,6 +119,7 @@ export function ShareThread({ eventId, owner, viewer, mode, me, members, title, 
                   {!own && mode !== 'private' && <strong className="bubble-name">{author.name}</strong>}
                   <CommentImage url={c.imageUrl} />
                   {c.body && <p>{c.body}</p>}
+                  <CommentReactions comment={c} me={me} members={members} onReact={feel} />
                   <small>
                     {timeAgo(c.created_at)}
                     {own && (

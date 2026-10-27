@@ -472,13 +472,40 @@ async function withImageUrls(comments) {
 }
 
 export async function loadConversation(eventId) {
-  const [comments, reactions] = await Promise.all([
+  const [comments, reactions, feelings] = await Promise.all([
     supabase.from('event_comments').select('id, author, body, image_path, created_at').eq('event_id', eventId).order('created_at'),
     supabase.from('event_reactions').select('user_id, emoji').eq('event_id', eventId),
+    loadCommentReactions('event', eventId),
   ])
   if (comments.error) throw comments.error
   if (reactions.error) throw reactions.error
-  return { comments: await withImageUrls(comments.data), reactions: reactions.data }
+  return { comments: withFeelings(await withImageUrls(comments.data), feelings), reactions: reactions.data }
+}
+
+// Emojis on single comments ("😂" on a funny one): "event" for plan conversations, "share" for
+// conversations about a plan on a shared calendar.
+const FEELING_TABLES = { event: 'comment_reactions', share: 'share_comment_reactions' }
+
+async function loadCommentReactions(kind, eventId) {
+  const { data, error } = await supabase
+    .from(FEELING_TABLES[kind])
+    .select('comment_id, user_id, user_name, emoji, created_at')
+    .eq('event_id', eventId)
+    .order('created_at')
+  if (error) throw error
+  return data
+}
+
+const withFeelings = (comments, feelings) =>
+  comments.map((c) => ({ ...c, reactions: feelings.filter((f) => f.comment_id === c.id) }))
+
+// One emoji per person per comment; null takes it back.
+export async function setCommentReaction(kind, commentId, userId, emoji) {
+  const table = supabase.from(FEELING_TABLES[kind])
+  const { error } = emoji
+    ? await table.upsert({ comment_id: commentId, user_id: userId, emoji })
+    : await table.delete().eq('comment_id', commentId).eq('user_id', userId)
+  if (error) throw error
 }
 
 const MAX_GIF = 8 * 1024 * 1024
@@ -645,13 +672,16 @@ export async function setCalendarShare(userId, viewer, level, announce = false) 
 
 // Side conversations about plans on a shared calendar (between its owner and one viewer).
 export async function loadShareComments(eventId) {
-  const { data, error } = await supabase
-    .from('share_comments')
-    .select('id, owner, viewer, author, author_name, body, image_path, open, created_at')
-    .eq('event_id', eventId)
-    .order('created_at')
+  const [{ data, error }, feelings] = await Promise.all([
+    supabase
+      .from('share_comments')
+      .select('id, owner, viewer, author, author_name, body, image_path, open, created_at')
+      .eq('event_id', eventId)
+      .order('created_at'),
+    loadCommentReactions('share', eventId),
+  ])
   if (error) throw error
-  return withImageUrls(data)
+  return withFeelings(await withImageUrls(data), feelings)
 }
 
 export async function addShareComment({ eventId, owner, viewer, author, body, imagePath = null }) {

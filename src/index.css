@@ -1412,6 +1412,73 @@ p.empty {
   color: var(--muted);
 }
 
+/* Emojis on a single comment */
+.feelings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 2px;
+}
+
+.feeling {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--cream);
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.feeling:disabled {
+  opacity: 1;
+}
+
+.feeling small {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.feeling.is-mine {
+  border-color: var(--rose);
+  background: color-mix(in srgb, var(--rose) 20%, var(--card));
+}
+
+.feeling-add {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.feeling-picker {
+  display: flex;
+  flex-basis: 100%;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 8%);
+  width: max-content;
+  max-width: 100%;
+}
+
+.feeling-picker button {
+  border: 0;
+  background: none;
+  font-size: 24px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: 999px;
+}
+
+.feeling-picker button.is-mine {
+  background: color-mix(in srgb, var(--rose) 25%, var(--card));
+}
+
 /* A picture or GIF in a comment. */
 .comment-image {
   display: block;

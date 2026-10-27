@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { addComment, deleteComment, hasPush, loadConversation, setReaction, uploadCommentImage } from '../lib/api'
+import { addComment, deleteComment, hasPush, loadConversation, setCommentReaction, setReaction, uploadCommentImage } from '../lib/api'
 import CommentForm, { CommentImage } from './CommentForm'
+import CommentReactions from './CommentReactions'
 import { notifyReaction } from '../lib/push'
 import { timeAgo } from '../lib/format'
 import { UNKNOWN_PERSON } from '../lib/constants'
@@ -44,6 +45,7 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
       .channel(`conversation-${eventId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_comments', filter: `event_id=eq.${eventId}` }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_reactions', filter: `event_id=eq.${eventId}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comment_reactions', filter: `event_id=eq.${eventId}` }, load)
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
@@ -82,6 +84,23 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
     load()
   }
 
+  // The database tells the comment's author.
+  async function feel(comment, emoji) {
+    setComments((list) =>
+      list.map((c) =>
+        c.id === comment.id
+          ? { ...c, reactions: [...c.reactions.filter((r) => r.user_id !== me), ...(emoji ? [{ user_id: me, emoji }] : [])] }
+          : c,
+      ),
+    )
+    try {
+      await setCommentReaction('event', comment.id, me, emoji)
+    } catch {
+      onToast?.('Tepki kaydedilemedi, tekrar dener misin?')
+      load()
+    }
+  }
+
   return (
     <section className="conversation" ref={sectionRef}>
       <div className="reactions" role="group" aria-label="Tepki ver">
@@ -115,6 +134,7 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
                 <div className="bubble">
                   <CommentImage url={c.imageUrl} />
                   {c.body && <p>{c.body}</p>}
+                  <CommentReactions comment={c} me={me} members={members} onReact={feel} />
                   <small>
                     {timeAgo(c.created_at)}
                     {own && (

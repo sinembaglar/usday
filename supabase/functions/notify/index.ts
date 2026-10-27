@@ -22,6 +22,16 @@ const json = (body: unknown, status = 200) =>
 
 const REACTIONS = ['😍', '🥳', '👍', '😂', '🙈']
 
+// An emoji on a comment, as the comment's author reads it: "😂 Yaren yorumuna güldü".
+const COMMENT_REACTIONS: Record<string, string> = {
+  '😂': 'yorumuna güldü',
+  '😍': 'yorumuna bayıldı',
+  '😮': 'yorumuna şaşırdı',
+  '😢': 'yorumuna üzüldü',
+  '😡': 'yorumuna kızdı',
+  '👍': 'yorumunu beğendi',
+}
+
 // What a comment says in a notification; a picture or GIF on its own shows as such.
 const commentText = (c: { body: string; image_path?: string | null }) => {
   const picture = c.image_path ? (c.image_path.endsWith('.gif') ? '🎞️ GIF' : '📷 Görsel') : ''
@@ -57,6 +67,8 @@ Deno.serve(async (req) => {
   if (fromDatabase && body.comment_id) {
     const { data } = await admin.from('event_comments').select('author').eq('id', body.comment_id).maybeSingle()
     userId = data?.author
+  } else if (fromDatabase && body.comment_reaction) {
+    userId = body.comment_reaction.user_id
   } else if (fromDatabase && body.share_comment_id) {
     const { data } = await admin.from('share_comments').select('author').eq('id', body.share_comment_id).maybeSingle()
     userId = data?.author
@@ -79,6 +91,40 @@ Deno.serve(async (req) => {
     const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
     const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: `/?tab=dilekler&wish=${wish.id}`, tag: `wish-${wish.id}` }
     return json({ sent: await sendToUsers(others, payload) })
+  }
+
+  // An emoji on someone's comment: its author hears it, once for each emoji (changing back and forth
+  // does not ring again).
+  if (body.comment_reaction) {
+    const share = body.comment_reaction.kind === 'share'
+    const commentId = body.comment_reaction.comment_id
+    const { data: reaction } = await admin
+      .from(share ? 'share_comment_reactions' : 'comment_reactions')
+      .select('emoji')
+      .eq('comment_id', commentId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    const words = reaction && COMMENT_REACTIONS[reaction.emoji]
+    if (!words) return json({ sent: 0 })
+    const { data: c } = await admin.from(share ? 'share_comments' : 'event_comments').select('*').eq('id', commentId).maybeSingle()
+    if (!c || c.author === userId) return json({ sent: 0 })
+    const { error: told } = await admin
+      .from('sent_notifications')
+      .insert({ event_id: c.event_id, user_id: c.author, kind: `reaction:${commentId}:${userId}:${reaction.emoji}` })
+    if (told) return json({ sent: 0 })
+    const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
+    const url = !share
+      ? `/?event=${c.event_id}&chat=1`
+      : c.author === c.owner
+        ? `/?event=${c.event_id}&about=${c.open ? 'open' : c.viewer}`
+        : `/?shared=${c.owner}&event=${c.event_id}`
+    const payload = {
+      title: `${reaction.emoji} ${me?.name} ${words}`,
+      body: `“${commentText(c).slice(0, 160)}”`,
+      url,
+      tag: `comment-reaction-${commentId}`,
+    }
+    return json({ sent: await sendToUsers([c.author], payload) })
   }
 
   // A word about a plan on someone's shared calendar. In the shared conversation the owner and everyone
