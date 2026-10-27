@@ -26,7 +26,7 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
   }
 
   return (
-    <header className="cover" style={photo ? { backgroundImage: `url(${photo})` } : undefined}>
+    <header className={`cover ${photo ? 'has-photo' : ''}`} style={photo ? { backgroundImage: `url(${photo})` } : undefined}>
       {photo && <div className="cover-shade" />}
       <div className="cover-top">
         <span className="brand-block">
