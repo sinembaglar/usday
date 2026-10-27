@@ -1,8 +1,5 @@
 import { useState } from 'react'
-import { initials } from '../lib/constants'
-
-// How a comment made you feel: laughing at a funny one, or something else.
-const FEELINGS =['😂', '😍', '😮', '😢', '😡', '👍']
+import { COMMENT_FEELINGS as FEELINGS, initials } from '../lib/constants'
 
 // The emojis under one comment, and (on someone else's comment) a little button to add mine.
 export default function CommentReactions({ comment, me, members, onReact }) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { COMMENT_FEELINGS } from '../lib/constants'
 
 // The box under a conversation: text, and a picture or GIF from the phone (shown before sending).
 // onSend(text, file) resolves when it is saved; the form then empties itself.
@@ -76,18 +77,58 @@ export default function CommentForm({ placeholder, onSend, onError }) {
   )
 }
 
-// A picture in a comment bubble; tapping shows it large.
-export function CommentImage({ url }) {
+// A picture in a comment bubble; tapping shows it large (with emojis to leave on someone else's),
+// a double tap laughs at it.
+export function CommentImage({ url, onDoubleTap, mine, onFeel }) {
   const [open, setOpen] = useState(false)
+  const waiting = useRef(null)
   if (!url) return null
+
+  function tap() {
+    if (waiting.current) {
+      clearTimeout(waiting.current)
+      waiting.current = null
+      onDoubleTap?.()
+      return
+    }
+    if (!onDoubleTap) return setOpen(true)
+    waiting.current = setTimeout(() => {
+      waiting.current = null
+      setOpen(true)
+    }, 300)
+  }
+
   return (
     <>
-      <button type="button" className="comment-image" onClick={() => setOpen(true)}>
+      <button type="button" className="comment-image" onClick={tap}>
         <img src={url} alt="" loading="lazy" />
       </button>
       {open && (
-        <div className="lightbox" onClick={() => setOpen(false)}>
+        <div
+          className="lightbox"
+          onClick={(e) => {
+            e.stopPropagation()
+            setOpen(false)
+          }}
+        >
           <img src={url} alt="" />
+          {onFeel && (
+            <div className="lightbox-feelings" role="group" aria-label="Tepki bırak" onClick={(e) => e.stopPropagation()}>
+              {COMMENT_FEELINGS.map((emoji) => (
+                <button
+                  type="button"
+                  key={emoji}
+                  className={mine === emoji ? 'is-mine' : ''}
+                  onClick={() => {
+                    setOpen(false)
+                    onFeel(emoji)
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>

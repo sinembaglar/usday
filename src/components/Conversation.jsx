@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { addComment, deleteComment, hasPush, loadConversation, setCommentReaction, setReaction, uploadCommentImage } from '../lib/api'
-import CommentForm, { CommentImage } from './CommentForm'
-import CommentReactions from './CommentReactions'
+import CommentForm from './CommentForm'
+import CommentBubble from './CommentBubble'
 import { notifyReaction } from '../lib/push'
-import { timeAgo } from '../lib/format'
+import { seenLine, useSeen } from '../lib/seen'
 import { UNKNOWN_PERSON } from '../lib/constants'
 
 const EMOJIS = ['😍', '🥳', '👍', '😂', '🙈']
@@ -59,6 +59,7 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
   }, [focus, comments.length])
 
   const mine = reactions.find((r) => r.user_id === me)?.emoji
+  const seenBy = seenLine(comments, useSeen({ eventId, me, comments }), me, members)
 
   async function react(emoji) {
     const next = mine === emoji ? null : emoji
@@ -131,22 +132,11 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
                 <span className="avatar small" style={{ background: author.color }}>
                   {author.short}
                 </span>
-                <div className="bubble">
-                  <CommentImage url={c.imageUrl} />
-                  {c.body && <p>{c.body}</p>}
-                  <CommentReactions comment={c} me={me} members={members} onReact={feel} />
-                  <small>
-                    {timeAgo(c.created_at)}
-                    {own && (
-                      <button type="button" className="link-btn" onClick={() => remove(c)}>
-                        sil
-                      </button>
-                    )}
-                  </small>
-                </div>
+                <CommentBubble comment={c} author={author} me={me} members={members} onReact={feel} onRemove={remove} />
               </li>
             )
           })}
+          {seenBy && <li className="seen-line">{seenBy.text}</li>}
         </ul>
       )}
 

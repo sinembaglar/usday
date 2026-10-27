@@ -150,6 +150,9 @@ export const DEFAULT_TEASER = 'O günü boş tut, sana bir sürprizim var 💌'
 
 export const UNKNOWN_PERSON = { name: 'Eşin', short: '?', color: '#cbbfd3' }
 
+// How a comment made you feel; a double tap on a comment is the first one.
+export const COMMENT_FEELINGS = ['😂', '😍', '😮', '😢', '😡', '👍']
+
 export const initials = (name) =>
   name
     .split(/\s+/)

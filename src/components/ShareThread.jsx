@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { addShareComment, deleteShareComment, loadShareComments, setCommentReaction, uploadCommentImage } from '../lib/api'
-import CommentForm, { CommentImage } from './CommentForm'
-import CommentReactions from './CommentReactions'
-import { timeAgo } from '../lib/format'
+import CommentForm from './CommentForm'
+import CommentBubble from './CommentBubble'
+import { seenLine, useSeen } from '../lib/seen'
 import { UNKNOWN_PERSON, initials } from '../lib/constants'
 
 // Quick words for someone else's plan: a joke, a wish to come along, or a little "bensiz mi?".
@@ -21,11 +21,13 @@ const shows = {
 }
 
 // A conversation about a plan on a shared calendar. The plan's other people never see it.
-export function ShareThread({ eventId, owner, viewer, mode, me, members, title, hint, placeholder, focus = false, onToast }) {
+// seenAs: whose conversation "Görüldü" belongs to (the owner's for the shared one, like its comments).
+export function ShareThread({ eventId, owner, viewer, seenAs = viewer, mode, me, members, title, hint, placeholder, focus = false, onToast }) {
   const [comments, setComments] = useState([])
   const [sending, setSending] = useState(false)
   const ref = useRef(null)
   const scrolled = useRef(false)
+  const seenBy = seenLine(comments, useSeen({ eventId, me, owner, viewer: seenAs, comments }), me, members)
 
   const load = useCallback(async () => {
     try {
@@ -115,23 +117,19 @@ export function ShareThread({ eventId, owner, viewer, mode, me, members, title, 
                 <span className="avatar small" style={{ background: author.color }} title={author.name}>
                   {author.short}
                 </span>
-                <div className="bubble">
-                  {!own && mode !== 'private' && <strong className="bubble-name">{author.name}</strong>}
-                  <CommentImage url={c.imageUrl} />
-                  {c.body && <p>{c.body}</p>}
-                  <CommentReactions comment={c} me={me} members={members} onReact={feel} />
-                  <small>
-                    {timeAgo(c.created_at)}
-                    {own && (
-                      <button type="button" className="link-btn" onClick={() => remove(c)}>
-                        sil
-                      </button>
-                    )}
-                  </small>
-                </div>
+                <CommentBubble
+                  comment={c}
+                  author={author}
+                  showName={mode !== 'private'}
+                  me={me}
+                  members={members}
+                  onReact={feel}
+                  onRemove={remove}
+                />
               </li>
             )
           })}
+          {seenBy && <li className="seen-line">{seenBy.text}</li>}
         </ul>
       )}
       {mode === 'viewer' && (
@@ -184,6 +182,7 @@ export function ThreadsOnMyPlan({ eventId, me, members, focusViewer, onToast }) 
           eventId={eventId}
           owner={me}
           viewer={me}
+          seenAs={me}
           mode="open"
           me={me}
           members={members}

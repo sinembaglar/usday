@@ -499,6 +499,30 @@ async function loadCommentReactions(kind, eventId) {
 const withFeelings = (comments, feelings) =>
   comments.map((c) => ({ ...c, reactions: feelings.filter((f) => f.comment_id === c.id) }))
 
+// "Görüldü": when each person last looked at a conversation. A plan's own conversation, or one about
+// a plan on a shared calendar (owner + viewer; the shared one has viewer = owner).
+const threadOf = (owner, viewer) => (owner ? `${owner}:${viewer}` : 'plan')
+
+export async function loadConversationSeen(eventId, owner = null, viewer = null) {
+  const { data, error } = await supabase
+    .from('conversation_seen')
+    .select('user_id, user_name, seen_at')
+    .eq('event_id', eventId)
+    .eq('thread', threadOf(owner, viewer))
+  if (error) throw error
+  return data
+}
+
+export async function markConversationSeen(eventId, userId, owner = null, viewer = null) {
+  const { error } = await supabase
+    .from('conversation_seen')
+    .upsert(
+      { user_id: userId, event_id: eventId, thread: threadOf(owner, viewer), owner, viewer },
+      { onConflict: 'user_id,event_id,thread' },
+    )
+  if (error) throw error
+}
+
 // One emoji per person per comment; null takes it back.
 export async function setCommentReaction(kind, commentId, userId, emoji) {
   const table = supabase.from(FEELING_TABLES[kind])

@@ -145,6 +145,7 @@ export default function EventDetail({
           eventId={event.eventId}
           owner={event.owner}
           viewer={me}
+          seenAs={event.busy ? me : event.owner}
           mode="viewer"
           me={me}
           members={members}

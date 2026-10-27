@@ -1406,6 +1406,45 @@ p.empty {
   font-size: 11px;
 }
 
+/* A double tap laughs at a comment: the emoji pops over it */
+.bubble {
+  position: relative;
+  touch-action: manipulation;
+}
+
+.bubble-pop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 56px;
+  pointer-events: none;
+  animation: bubble-pop 0.8s ease forwards;
+}
+
+@keyframes bubble-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  25% { transform: scale(1.15); opacity: 1; }
+  45% { transform: scale(1); }
+  80% { opacity: 1; }
+  100% { transform: scale(1.05) translateY(-12px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-pop {
+    animation-duration: 0.01s;
+  }
+}
+
+/* "✓ Görüldü · Yaren" under my last comment */
+.comments .seen-line {
+  justify-content: flex-end;
+  margin-top: -4px;
+  padding-right: 40px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .bubble-name {
   display: block;
   font-size: 12px;
@@ -2482,6 +2521,32 @@ p.empty {
   max-width: 100%;
   max-height: 100%;
   border-radius: 12px;
+}
+
+.lightbox-feelings {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 28px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
+}
+
+.lightbox-feelings button {
+  border: 0;
+  background: none;
+  font-size: 28px;
+  line-height: 1;
+  padding: 8px;
+  border-radius: 999px;
+}
+
+.lightbox-feelings button.is-mine {
+  background: color-mix(in srgb, var(--rose) 30%, white);
 }
 
 /* Toast */
