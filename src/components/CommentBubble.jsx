@@ -5,7 +5,7 @@ import { timeAgo } from '../lib/format'
 
 const DOUBLE_TAP = 300
 
-// One comment in a conversation. A double tap on someone else's comment (or its picture) laughs at it 😂.
+// One comment in a conversation. A double tap on a comment (or its picture) laughs at it 😂.
 export default function CommentBubble({ comment: c, author, showName, me, members, onReact, onRemove }) {
   const own = c.author === me
   const mine = c.reactions?.find((r) => r.user_id === me)?.emoji
@@ -19,7 +19,7 @@ export default function CommentBubble({ comment: c, author, showName, me, member
   }
 
   function tap(e) {
-    if (own || e.target.closest('button, a, input, .lightbox')) return
+    if (e.target.closest('button, a, input, .lightbox')) return
     const now = Date.now()
     if (now - lastTap.current < DOUBLE_TAP) {
       lastTap.current = 0
@@ -39,9 +39,9 @@ export default function CommentBubble({ comment: c, author, showName, me, member
       {showName && !own && <strong className="bubble-name">{author.name}</strong>}
       <CommentImage
         url={c.imageUrl}
-        onDoubleTap={own ? null : () => feel('😂')}
+        onDoubleTap={() => feel('😂')}
         mine={mine}
-        onFeel={own ? null : feel}
+        onFeel={feel}
       />
       {c.body && <p>{c.body}</p>}
       <CommentReactions comment={c} me={me} members={members} onReact={onReact} />

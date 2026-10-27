@@ -34,13 +34,13 @@ export function useSeen({ eventId, me, owner = null, viewer = null, comments }) 
   return seen
 }
 
-// "Görüldü · Yaren, Deniz" under my comment when it is the last one: who looked after I wrote it.
-// (Once someone answers, the answer says enough.)
+// Under my comment when it is the last one: "Gönderildi", then "Görüldü · Yaren, Deniz" for whoever
+// looked after I wrote it. (Once someone answers, the answer says enough.)
 export function seenLine(comments, seen, me, members) {
   const mine = comments.at(-1)
   if (mine?.author !== me) return null
   const by = seen
     .filter((s) => s.user_id !== me && new Date(s.seen_at) >= new Date(mine.created_at))
     .map((s) => members[s.user_id]?.name ?? s.user_name ?? 'Biri')
-  return by.length ? { text: `✓ Görüldü · ${by.join(', ')}` } : null
+  return { text: by.length ? `✓✓ Görüldü · ${by.join(', ')}` : '✓ Gönderildi' }
 }
