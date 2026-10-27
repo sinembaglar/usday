@@ -2463,3 +2463,12 @@ p.empty {
 .cover.has-photo .highlights {
   gap: 6px;
 }
+
+.claim-pill.is-other {
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--blush);
+  border-color: var(--line);
+  color: var(--rose-deep);
+}

@@ -135,6 +135,7 @@ export default function Home({ userId }) {
       .channel('events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wishes' }, () => reload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wish_claims' }, () => reload())
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userId}` },
@@ -368,7 +369,11 @@ export default function Home({ userId }) {
     const partner = personOf(connection)
     const id = await saveEvent(form, coupleId, sheet.event, connection?.partnerId)
     // A surprise made from someone's wish quietly claims that wish.
-    if (sheet.fromWish && form.surprise) await claimWish(sheet.fromWish, id).catch(() => {})
+    if (sheet.fromWish && form.surprise) {
+      // Tell the others only if I had not already said I am getting it.
+      const already = wishes.find((w) => w.id === sheet.fromWish)?.claim?.mine
+      await claimWish(sheet.fromWish, id, !already).catch(() => {})
+    }
     setSheet(null)
     if (sheet.fromWish) setTab('takvim')
     if (!selection.includes(coupleId)) choose([...selection, coupleId])

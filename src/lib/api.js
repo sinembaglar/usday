@@ -94,7 +94,7 @@ export async function loadEverything(userId) {
     supabase.from('event_comments').select('event_id'),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
     supabase.from('wishes').select('*').order('created_at', { ascending: false }),
-    supabase.from('wish_claims').select('wish_id, plan_id'),
+    supabase.rpc('visible_claims'),
     supabase.from('couple_members').select('couple_id, user_id'),
     supabase.rpc('surprise_teaser_connections'),
     supabase.from('event_participants').select('event_id, user_id, status, note'),
@@ -107,7 +107,13 @@ export async function loadEverything(userId) {
   const guestsOf = (eventId) =>
     guestRows.filter((g) => g.event_id === eventId).map((g) => ({ id: g.user_id, status: g.status, note: g.note ?? '' }))
   const unreadNotifications = results[6].count ?? 0
-  const myClaims = Object.fromEntries(claims.map((c) => [c.wish_id, { planId: c.plan_id }]))
+  // Who is getting which of the others' wishes (never loaded for my own wishes).
+  const claimOf = Object.fromEntries(
+    claims.map((c) => [
+      c.wish_id,
+      { by: c.claimed_by, byName: c.claimer_name, mine: c.claimed_by === userId, hasPlan: c.has_plan },
+    ]),
+  )
   const teaserCouple = Object.fromEntries(teaserCouples.map((t) => [t.id, t.couple_id]))
 
   const commentCounts = {}
@@ -172,7 +178,7 @@ export async function loadEverything(userId) {
       status: w.status,
       doneAt: w.done_at,
       createdAt: w.created_at,
-      claim: myClaims[w.id] ?? null, // only ever set on the partner's wishes I claimed
+      claim: claimOf[w.id] ?? null, // only ever set on others' wishes
     })),
   }
 }
@@ -207,10 +213,13 @@ export async function deleteWish(wish) {
   if (wish.photo) await removePhotos([wish.photo.path])
 }
 
-// "Bunu ben alıyorum": secret from the wish owner. planId links the surprise made from it.
-export async function claimWish(wishId, planId = null) {
+// "Bunu ben alıyorum": secret from the wish owner, shown to everyone else who can see the wish.
+// planId links the surprise made from it.
+export async function claimWish(wishId, planId = null, announce = true) {
   const { error } = await supabase.from('wish_claims').upsert({ wish_id: wishId, plan_id: planId })
-  if (error) throw error
+  // Someone else claimed it a moment ago: their row is not mine to update.
+  if (error) throw ['42501', '23505'].includes(error.code) ? new Error('taken') : error
+  if (announce) supabase.functions.invoke('notify', { body: { claim_wish_id: wishId } }).catch(() => {})
 }
 
 export async function unclaimWish(wishId) {

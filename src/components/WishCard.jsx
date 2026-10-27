@@ -14,7 +14,15 @@ export default function WishCard({ wish, onClick }) {
         </strong>
         <small>{meta.join(' · ')}</small>
       </span>
-      {wish.claim && <span className="claim-pill">{wish.claim.planId ? '🎁 sürpriz hazır' : '🤫 sen alıyorsun'}</span>}
+      {wish.claim && (
+        <span className={`claim-pill ${wish.claim.mine ? '' : 'is-other'}`}>
+          {wish.claim.mine
+            ? wish.claim.hasPlan
+              ? '🎁 sürpriz hazır'
+              : '🤫 sen alıyorsun'
+            : `🎁 ${wish.claim.byName} alıyor`}
+        </span>
+      )}
       {wish.status === 'done' && <span className="claim-pill done">✨</span>}
     </button>
   )

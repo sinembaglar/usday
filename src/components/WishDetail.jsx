@@ -5,8 +5,8 @@ import { genitive } from '../lib/format'
 
 const safeLink = (link) => (/^https?:\/\//i.test(link) ? link : `https://${link}`)
 
-// The owner edits, plans or ticks off their wish. The partner can secretly claim it
-// and turn it into a surprise plan.
+// The owner edits, plans or ticks off their wish. Others can secretly claim it (everyone but
+// the owner sees who did) and turn it into a surprise plan.
 export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurprise, onChanged, onClose, onToast }) {
   const [busy, setBusy] = useState(false)
   const category = WISH_CATEGORIES[wish.category]
@@ -20,7 +20,12 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
       await action()
       onToast(message)
       onChanged()
-    } catch {
+    } catch (e) {
+      if (e.message === 'taken') {
+        onToast('🎁 Bunu az önce başka biri ayırdı')
+        onChanged()
+        return
+      }
       onToast('Olmadı, tekrar dener misin?')
       setBusy(false)
     }
@@ -56,9 +61,19 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
         </div>
       )}
 
-      {!mine && open && (
+      {!mine && open && wish.claim && !wish.claim.mine && (
+        <div className="status-box is-asking">
+          <span>
+            🎁 <b>{wish.claim.byName}</b> bunu alıyor{wish.claim.hasPlan && ' ve bir sürpriz hazırlıyor'}. {owner.name}{' '}
+            bilmiyor 🤫
+          </span>
+          <small>Birlikte almak istersen {wish.claim.byName} ile konuşabilirsin.</small>
+        </div>
+      )}
+
+      {!mine && open && (!wish.claim || wish.claim.mine) && (
         <div className="wish-actions">
-          {wish.claim?.planId ? (
+          {wish.claim?.hasPlan ? (
             <div className="status-box is-asking">🎁 Bu dilekten bir sürpriz plan hazırladın. {owner.name} hiçbir şey bilmiyor 🤫</div>
           ) : (
             <button className="btn btn-primary" onClick={onSurprise}>
@@ -75,7 +90,7 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
               </button>
             </>
           ) : (
-            <button className="btn btn-ghost bordered" disabled={busy} onClick={() => run(() => claimWish(wish.id), `🤫 Not alındı, ${owner.name} görmeyecek`)}>
+            <button className="btn btn-ghost bordered" disabled={busy} onClick={() => run(() => claimWish(wish.id), `🤫 Not alındı. ${owner.name} görmeyecek, diğerleri senin aldığını görecek`)}>
               🤫 Bunu ben alıyorum
             </button>
           )}

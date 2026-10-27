@@ -4,7 +4,7 @@ import { genitive } from '../lib/format'
 import WishCard from './WishCard'
 
 // My wish list and those of the people I picked in the people bar.
-// Claims ("sen alıyorsun") are only ever loaded for the person who made them.
+// Claims ("sen alıyorsun", "Yaren alıyor") are never loaded on my own wishes.
 export default function WishesView({ wishes, me, people, onOpen, onAdd, header }) {
   const [whose, setWhose] = useState('mine')
   const [category, setCategory] = useState('all')

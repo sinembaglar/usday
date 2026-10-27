@@ -22,6 +22,15 @@ const json = (body: unknown, status = 200) =>
 
 const REACTIONS = ['😍', '🥳', '👍', '😂', '🙈']
 
+// Turkish genitive, same as the app's: "Sinem’in", "Ayşe’nin", "Serhat Han’ın".
+function genitive(name: string) {
+  const lower = name.toLocaleLowerCase('tr')
+  const last = [...lower].filter((c) => 'aeıioöuü'.includes(c)).at(-1) ?? 'e'
+  const vowel = ({ a: 'ı', ı: 'ı', e: 'i', i: 'i', o: 'u', u: 'u', ö: 'ü', ü: 'ü' } as Record<string, string>)[last]
+  const endsWithVowel = 'aeıioöuü'.includes(lower.at(-1) ?? '')
+  return `${name}’${endsWithVowel ? 'n' : ''}${vowel}n`
+}
+
 async function eventWithPeople(eventId: string) {
   const { data: event } = await admin.from('events').select('*').eq('id', eventId).maybeSingle<EventRow>()
   if (!event) return null
@@ -34,12 +43,19 @@ const nameFor = (e: EventRow, recipient: string) => (hiddenFrom(e, recipient) ? 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
-  const token = req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-  const { data: auth } = await admin.auth.getUser(token)
-  const userId = auth.user?.id
-  if (!userId) return json({ error: 'unauthorized' }, 401)
-
   const body = await req.json().catch(() => ({}))
+
+  // The database announces new comments itself (with the shared secret), on behalf of their author.
+  let userId: string | undefined
+  if (req.headers.get('x-cron-secret') === Deno.env.get('CRON_SECRET') && body.comment_id) {
+    const { data } = await admin.from('event_comments').select('author').eq('id', body.comment_id).maybeSingle()
+    userId = data?.author
+  } else {
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+    const { data: auth } = await admin.auth.getUser(token)
+    userId = auth.user?.id
+  }
+  if (!userId) return json({ error: 'unauthorized' }, 401)
 
   // A new wish: tell everyone the owner is connected with (a good gift idea). Claims are never mentioned.
   if (body.wish_id) {
@@ -52,6 +68,27 @@ Deno.serve(async (req) => {
     if (!others.length) return json({ sent: 0 })
     const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
     const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: '/?tab=dilekler', tag: `wish-${wish.id}` }
+    return json({ sent: await sendToUsers(others, payload) })
+  }
+
+  // Someone is getting a wish: everyone else who can see it hears who, so it is not bought twice.
+  // The wish owner is never told.
+  if (body.claim_wish_id) {
+    const { data: claim } = await admin.from('wish_claims').select('claimed_by').eq('wish_id', body.claim_wish_id).maybeSingle()
+    if (!claim || claim.claimed_by !== userId) return json({ error: 'not_found' }, 404)
+    const { data: wish } = await admin.from('wishes').select('id, owner, title').eq('id', body.claim_wish_id).single()
+    const { data: theirs } = await admin.from('couple_members').select('couple_id').eq('user_id', wish!.owner)
+    const people = await peopleIn((theirs ?? []).map((m) => m.couple_id))
+    const name = (id: string) => people.find((p) => p.id === id)?.name
+    const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
+    const others = [...new Set(people.map((p) => p.id))].filter((id) => id !== wish!.owner && id !== userId)
+    const ownerName = name(wish!.owner) ?? ''
+    const payload = {
+      title: `🎁 ${me?.name} bunu alıyor`,
+      body: `${genitive(ownerName)} dileği: ${wish!.title} — ${ownerName} bilmiyor 🤫`,
+      url: '/?tab=dilekler',
+      tag: `claim-${wish!.id}`,
+    }
     return json({ sent: await sendToUsers(others, payload) })
   }
 
@@ -80,6 +117,14 @@ Deno.serve(async (req) => {
   if (body.comment_id) {
     const { data } = await admin.from('event_comments').select('event_id, author, body').eq('id', body.comment_id).maybeSingle()
     if (!data || data.author !== userId) return json({ error: 'not_found' }, 404)
+    // Only once per comment, whoever asks first (the database or an older app version).
+    const { data: first } = await admin
+      .from('event_comments')
+      .update({ notified_at: new Date().toISOString() })
+      .eq('id', body.comment_id)
+      .is('notified_at', null)
+      .select('id')
+    if (!first?.length) return json({ sent: 0 })
     eventId = data.event_id
     comment = data
   } else if (body.reaction_event_id) {

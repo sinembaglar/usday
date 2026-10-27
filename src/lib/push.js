@@ -46,10 +46,6 @@ export function notifyAnswer(eventId) {
   return supabase.functions.invoke('notify', { body: { response_event_id: eventId } }).catch(() => {})
 }
 
-export function notifyComment(commentId) {
-  return supabase.functions.invoke('notify', { body: { comment_id: commentId } }).catch(() => {})
-}
-
 export function notifyReaction(eventId, emoji) {
   return supabase.functions.invoke('notify', { body: { reaction_event_id: eventId, emoji } }).catch(() => {})
 }

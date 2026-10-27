@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { addComment, deleteComment, loadConversation, setReaction } from '../lib/api'
-import { notifyComment, notifyReaction } from '../lib/push'
+import { notifyReaction } from '../lib/push'
 import { timeAgo } from '../lib/format'
 import { UNKNOWN_PERSON } from '../lib/constants'
 
@@ -55,9 +55,9 @@ export default function Conversation({ eventId, me, members, hasPartner }) {
     if (!body || sending) return
     setSending(true)
     try {
-      const id = await addComment(eventId, body)
+      // The database sends the notification for a new comment.
+      await addComment(eventId, body)
       setDraft('')
-      if (hasPartner) notifyComment(id)
       await load()
     } finally {
       setSending(false)
