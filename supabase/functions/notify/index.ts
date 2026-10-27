@@ -77,12 +77,11 @@ Deno.serve(async (req) => {
     return json({ sent: await sendToUsers([userId], payload) })
   }
 
-  // Someone is getting a wish: everyone else who can see it hears who, so it is not bought twice.
-  // The wish owner is never told.
+  // Someone is getting a wish: everyone else who can see it hears it, so it is not bought twice;
+  // with the claimer's name, or only "biri" when they keep it hidden. The wish owner is never told.
   if (body.claim_wish_id) {
     const { data: claim } = await admin.from('wish_claims').select('claimed_by, shared').eq('wish_id', body.claim_wish_id).maybeSingle()
     if (!claim || claim.claimed_by !== userId) return json({ error: 'not_found' }, 404)
-    if (!claim.shared) return json({ sent: 0 }) // the claimer keeps their name hidden
     const { data: wish } = await admin.from('wishes').select('id, owner, title').eq('id', body.claim_wish_id).single()
     const { data: theirs } = await admin.from('couple_members').select('couple_id').eq('user_id', wish!.owner)
     const people = await peopleIn((theirs ?? []).map((m) => m.couple_id))
@@ -91,7 +90,7 @@ Deno.serve(async (req) => {
     const others = [...new Set(people.map((p) => p.id))].filter((id) => id !== wish!.owner && id !== userId)
     const ownerName = name(wish!.owner) ?? ''
     const payload = {
-      title: `🎁 ${me?.name} bunu alıyor`,
+      title: claim.shared ? `🎁 ${me?.name} bunu alıyor` : '🔒 Biri bunu alıyor',
       body: `${genitive(ownerName)} dileği: ${wish!.title} — ${ownerName} bilmiyor 🤫`,
       url: `/?tab=dilekler&wish=${wish!.id}`,
       tag: `claim-${wish!.id}`,

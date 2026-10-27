@@ -127,7 +127,7 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
               <button
                 className="btn btn-ghost bordered"
                 disabled={busy}
-                onClick={() => run(() => claimWish(wish.id, null, false, false), '🔒 Not alındı, adın gizli')}
+                onClick={() => run(() => claimWish(wish.id, null, true, false), '🔒 Not alındı, diğerleri sadece “biri alıyor” görecek')}
               >
                 🔒 Adım gizli kalsın <small>“Biri alıyor”</small>
               </button>
