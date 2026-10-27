@@ -1038,6 +1038,47 @@ p.empty {
   opacity: 0.7;
 }
 
+.conflict-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-line);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.conflict-box small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.share-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.share-row .segmented button {
+  font-size: 12px;
+}
+
+/* A plan from someone else's shared calendar: quieter than my own plans. */
+.event-card.is-shared {
+  --tag: var(--muted) !important;
+  background: transparent;
+  border: 1.5px dashed var(--line);
+  box-shadow: none;
+}
+
+.event-card.is-shared strong {
+  font-weight: 500;
+  color: var(--muted);
+}
+
 .proposal {
   display: flex;
   flex-direction: column;

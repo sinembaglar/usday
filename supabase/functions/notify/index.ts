@@ -71,6 +71,28 @@ Deno.serve(async (req) => {
     return json({ sent: await sendToUsers(others, payload) })
   }
 
+  // I started sharing my calendar with someone: tell them.
+  if (body.share_viewer) {
+    const { data: share } = await admin
+      .from('calendar_shares')
+      .select('level')
+      .eq('owner', userId)
+      .eq('viewer', body.share_viewer)
+      .maybeSingle()
+    if (!share) return json({ error: 'not_found' }, 404)
+    const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
+    const payload = {
+      title: `📅 ${me?.name} takvimini seninle paylaştı`,
+      body:
+        share.level === 'details'
+          ? 'Planlarının adlarını ve saatlerini görebilirsin; boş olduğu bir zamana plan önerebilirsin.'
+          : 'Dolu olduğu saatleri görebilirsin; boş olduğu bir zamana plan önerebilirsin.',
+      url: `/?person=${userId}`,
+      tag: `share-${userId}`,
+    }
+    return json({ sent: await sendToUsers([body.share_viewer], payload) })
+  }
+
   // "Test bildirimi gönder" in settings: only to my own devices.
   if (body.test) {
     const payload = { title: '🔔 Test bildirimi', body: 'Bildirimler bu cihazda çalışıyor 💜', url: '/', tag: 'test' }

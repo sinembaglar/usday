@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
-import { mapsUrl, repeatLabel, timeSpan } from '../lib/format'
+import { genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
 import ProposalActions from './ProposalActions'
@@ -114,6 +114,29 @@ export default function EventDetail({ event, focusChat, me, members, withWhom, o
 
   if (sharing) return <ShareCard card={sharing} onClose={() => setSharing(null)} onToast={onToast} />
   const share = () => setSharing(cardFor(event, me, members, partner))
+
+  // A plan from a calendar someone shared with me: only when they are busy (and its name, if shared).
+  if (event.shared) {
+    const owner = members[event.owner] ?? UNKNOWN_PERSON
+    return (
+      <div className="detail">
+        <span className="chip is-active" style={{ '--tag': 'var(--muted)' }}>
+          📅 {genitive(owner.name)} takvimi
+        </span>
+        <h3>{event.busy ? `🔒 ${owner.name} dolu` : event.title}</h3>
+        <p className="when">{when}</p>
+        <p className="hint">
+          {owner.name} takvimini seninle {event.busy ? 'sadece dolu/boş olarak' : 'plan adlarıyla'} paylaşıyor. Plan
+          detayları, yer ve kimlerle olduğu görünmez.
+        </p>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={onClose}>
+            Tamam
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (event.milestone) {
     return (

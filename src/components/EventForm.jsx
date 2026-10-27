@@ -30,6 +30,7 @@ export default function EventForm({
   onDeleteTemplate,
   connections = [], // [{ id, relation, partnerName, partnerId, emoji }]
   defaultCoupleId,
+  findConflicts, // (when, coupleIds, editingId) => ["O saatte “Sinema” planın var (20:00)", …]
   onSave, // gets the form with coupleIds: one id = two-person plan, several = group plan
   onDelete, // (scope: 'one' | 'all') => void
   onCancel,
@@ -55,6 +56,14 @@ export default function EventForm({
 
   const group = form.coupleIds.length > 1
   const picked = connections.filter((c) => form.coupleIds.includes(c.id))
+  // Other plans at this time, for me or the people I am inviting (only a warning).
+  const conflicts = findConflicts
+    ? findConflicts(
+        { date: form.date, time: form.time, endTime: form.endTime },
+        form.coupleIds,
+        initial?.seriesId ?? initial?.id,
+      )
+    : []
   const connection = group ? null : picked[0]
   // A group of only partners is still worded as a date; anything mixed is a meetup.
   const relation = picked.every((c) => c.relation === 'partner') ? 'partner' : 'friend'
@@ -225,6 +234,15 @@ export default function EventForm({
         <small id="end-hint" className="hint form-hint">
           Saat girmezsen plan gün boyu sürer.
         </small>
+      )}
+      {conflicts.length > 0 && (
+        <div className="conflict-box" role="status">
+          {conflicts.slice(0, 4).map((c) => (
+            <span key={c}>⚠️ {c}</span>
+          ))}
+          {conflicts.length > 4 && <span>… ve {conflicts.length - 4} plan daha</span>}
+          <small>Yine de kaydedebilirsin.</small>
+        </div>
       )}
 
       <label className="field">

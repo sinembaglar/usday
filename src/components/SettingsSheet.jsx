@@ -4,6 +4,7 @@ import { calendarToken, deleteAccount, loadBlocks, unblock } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
 import { enablePush, pushSupported, sendTestPush } from '../lib/push'
 import ConnectionSettings from './ConnectionSettings'
+import CalendarSharing from './CalendarSharing'
 
 const THEMES = [
   { id: 'system', label: '📱 Telefona göre' },
@@ -11,7 +12,19 @@ const THEMES = [
   { id: 'dark', label: '🌙 Koyu' },
 ]
 
-export default function SettingsSheet({ me, admin, connections, members, connectionActions, onFeedback, onAdmin, onClose, onToast }) {
+export default function SettingsSheet({
+  me,
+  admin,
+  connections,
+  members,
+  connectionActions,
+  shares,
+  onSharesChanged,
+  onFeedback,
+  onAdmin,
+  onClose,
+  onToast,
+}) {
   const [theme, setThemeState] = useState(getTheme)
   const [token, setToken] = useState(null)
   const [changing, setChanging] = useState(false)
@@ -110,6 +123,17 @@ export default function SettingsSheet({ me, admin, connections, members, connect
       <h3>Ayarlar</h3>
 
       <ConnectionSettings connections={connections} members={members} {...connectionActions} />
+
+      {me && (
+        <CalendarSharing
+          me={me.id}
+          people={[...new Set(connections.map((c) => c.partnerId).filter(Boolean))]}
+          members={members}
+          shares={shares}
+          onChanged={onSharesChanged}
+          onToast={onToast}
+        />
+      )}
 
       {blocks.length > 0 && (
         <section className="settings-group">

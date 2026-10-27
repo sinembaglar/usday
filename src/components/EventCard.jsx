@@ -40,14 +40,14 @@ export default function EventCard({ event, members, onClick, showDate, isNew, wi
 
   return (
     <button
-      className={`event-card ${
+      className={`event-card ${event.shared ? 'is-shared' : ''} ${
         iDeclined ? 'is-declined' : pendingForMe ? 'is-proposed' : event.status && event.status !== 'confirmed' ? `is-${event.status}` : ''
       }`}
       onClick={onClick}
       style={{ '--tag': hidden ? SURPRISE_COLOR : tag.color }}
     >
       <span className="event-emoji">
-        {hidden ? '🎁' : event.milestone ? '🥂' : tagEmoji(event.tag, event.relation)}
+        {hidden ? '🎁' : event.milestone ? '🥂' : event.busy ? '🔒' : tagEmoji(event.tag, event.relation)}
       </span>
       <span className="event-body">
         <strong>

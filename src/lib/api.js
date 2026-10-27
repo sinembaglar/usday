@@ -98,11 +98,27 @@ export async function loadEverything(userId) {
     supabase.from('couple_members').select('couple_id, user_id'),
     supabase.rpc('surprise_teaser_connections'),
     supabase.from('event_participants').select('event_id, user_id, status, note'),
+    supabase.rpc('shared_calendar'),
+    supabase.from('calendar_shares').select('owner, viewer, level'),
   ])
   const failed = results.find((r) => r.error)
   if (failed) throw failed.error
-  const [couples, profiles, rows, teasers, templates, comments, , wishRows, claims, memberRows, teaserCouples, guestRows] =
-    results.map((r) => r.data)
+  const [
+    couples,
+    profiles,
+    rows,
+    teasers,
+    templates,
+    comments,
+    ,
+    wishRows,
+    claims,
+    memberRows,
+    teaserCouples,
+    guestRows,
+    sharedRows,
+    shareRows,
+  ] = results.map((r) => r.data)
   // Group plans: who is invited and what they answered.
   const guestsOf = (eventId) =>
     guestRows.filter((g) => g.event_id === eventId).map((g) => ({ id: g.user_id, status: g.status, note: g.note ?? '' }))
@@ -166,6 +182,32 @@ export async function loadEverything(userId) {
       time: t.event_time?.slice(0, 5) ?? '',
     })),
     unreadNotifications,
+    // Plans on calendars others shared with me that I do not already see myself:
+    // busy time, with the plan's name only when they share details (never for a surprise).
+    sharedPlans: sharedRows
+      .filter((s) => !rows.some((r) => r.id === s.id) && !teasers.some((t) => t.id === s.id))
+      .map((s) => ({
+        id: `shared-${s.owner}-${s.id}`,
+        shared: true,
+        owner: s.owner,
+        createdBy: s.owner,
+        coupleId: null,
+        guests: null,
+        title: s.title ?? 'Dolu',
+        busy: !s.title,
+        tag: s.tag ?? 'plan',
+        date: s.event_date,
+        time: s.event_time?.slice(0, 5) ?? '',
+        endTime: s.end_time?.slice(0, 5) ?? '',
+        repeat: s.repeat,
+        repeatUntil: s.repeat_until ?? '',
+        skipDates: s.skip_dates ?? [],
+        status: s.status,
+        photos: [],
+      })),
+    // Who I share my calendar with, and who shares theirs with me.
+    sharesByMe: Object.fromEntries(shareRows.filter((s) => s.owner === userId).map((s) => [s.viewer, s.level])),
+    sharesWithMe: Object.fromEntries(shareRows.filter((s) => s.viewer === userId).map((s) => [s.owner, s.level])),
     wishes: wishRows.map((w) => ({
       id: w.id,
       owner: w.owner,
@@ -535,6 +577,15 @@ export async function setBanned(userId, banned, reason = null) {
     body: { action: banned ? 'ban' : 'unban', user_id: userId, reason },
   })
   if (error) throw error
+}
+
+// Share my calendar with someone I am connected with: 'busy', 'details', or null to stop.
+export async function setCalendarShare(userId, viewer, level, announce = false) {
+  const { error } = level
+    ? await supabase.from('calendar_shares').upsert({ owner: userId, viewer, level })
+    : await supabase.from('calendar_shares').delete().eq('owner', userId).eq('viewer', viewer)
+  if (error) throw error
+  if (level && announce) supabase.functions.invoke('notify', { body: { share_viewer: viewer } }).catch(() => {})
 }
 
 // Ending a connection: its shared plans and photos are deleted for both; blocking also stops new invites.

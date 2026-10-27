@@ -43,7 +43,8 @@ import FeedbackSheet from './FeedbackSheet'
 import ReportSheet from './ReportSheet'
 import RemoveConnectionSheet from './RemoveConnectionSheet'
 import AdminPanel from './AdminPanel'
-import { dative } from '../lib/format'
+import { dative, genitive } from '../lib/format'
+import { findConflicts } from '../lib/conflicts'
 import NotificationCard from './NotificationCard'
 import { notifyPartner, notifyWish } from '../lib/push'
 
@@ -83,6 +84,8 @@ export default function Home({ userId }) {
   const [events, setEvents] = useState([])
   const [templates, setTemplates] = useState([])
   const [wishes, setWishes] = useState([])
+  const [sharedPlans, setSharedPlans] = useState([]) // from calendars others share with me
+  const [shares, setShares] = useState({ byMe: {}, withMe: {} })
   const [chosen, setChosen] = useState(() => remembered(PEOPLE_KEY, []))
   const [tab, setTab] = useState(() => tabFromUrl(window.location.href) ?? 'takvim')
   const [seenAt, setSeenAt] = useState(null) // last visit before this one: newer partner plans get a "yeni" pill
@@ -114,6 +117,8 @@ export default function Home({ userId }) {
         setEvents(data.events)
         setTemplates(data.templates)
         setWishes(data.wishes)
+        setSharedPlans(data.sharedPlans)
+        setShares({ byMe: data.sharesByMe, withMe: data.sharesWithMe })
         setUnread(data.unreadNotifications)
         if (markAsSeen) {
           setSeenAt(data.members[userId]?.lastSeenAt ?? null)
@@ -138,6 +143,7 @@ export default function Home({ userId }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wishes' }, () => reload())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wish_claims' }, () => reload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_shares' }, () => reload())
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userId}` },
@@ -164,6 +170,7 @@ export default function Home({ userId }) {
   const [pendingOpen, setPendingOpen] = useState(() => startParams.get('event'))
   const [focusChat, setFocusChat] = useState(() => startParams.has('chat'))
   const [pendingWish, setPendingWish] = useState(() => startParams.get('wish'))
+  const [pendingPerson, setPendingPerson] = useState(() => startParams.get('person'))
   const [pendingMilestone, setPendingMilestone] = useState(() =>
     startParams.get('milestone')
       ? { id: startParams.get('milestone'), coupleId: startParams.get('with'), day: startParams.get('day') }
@@ -178,6 +185,7 @@ export default function Home({ userId }) {
         return
       }
       if (p.get('tab') === 'dilekler') setTab('dilekler')
+      if (p.get('person')) setPendingPerson(p.get('person'))
       if (p.get('wish')) setPendingWish(p.get('wish'))
       if (p.get('event')) {
         setFocusChat(p.has('chat'))
@@ -260,8 +268,10 @@ export default function Home({ userId }) {
         photos: [],
       }))
     })
-    return [...expandEvents(withPartner.filter(onScreen), from, to), ...special]
-  }, [withPartner, selection, byId, members, monthKey, todayKey])
+    // Calendars the selected people share with me: their other plans, as busy time or by name.
+    const sharedOnScreen = sharedPlans.filter((p) => pickedPeople.has(p.owner))
+    return [...expandEvents([...withPartner.filter(onScreen), ...sharedOnScreen], from, to), ...special]
+  }, [withPartner, sharedPlans, selection, byId, members, monthKey, todayKey])
 
   // Opening a plan of someone who is not selected adds them to the selection first.
   useEffect(() => {
@@ -312,6 +322,19 @@ export default function Home({ userId }) {
     setPendingWish(null)
   }, [pendingWish, wishes, connections])
 
+  // "X takvimini seninle paylaştı" opens the calendar with that person selected.
+  useEffect(() => {
+    if (!pendingPerson || !connections) return
+    const c = connections.find((x) => x.partnerId === pendingPerson)
+    if (c) {
+      setTab('takvim')
+      choose([c.id])
+    }
+    setPendingPerson(null)
+    // choose is stable enough for this one-off jump
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPerson, connections])
+
   // An anniversary notification opens that day, with that person selected.
   useEffect(() => {
     if (!pendingMilestone || !connections) return
@@ -354,8 +377,9 @@ export default function Home({ userId }) {
   const sorted = useMemo(() => [...shown].sort(byDateTime), [shown])
   const dayEvents = sorted.filter((e) => e.date === selectedKey)
   // One line per plan in "Yaklaşanlar": a weekly plan shows only its next time.
+  // Others' shared calendars show on the calendar and the selected day, not in my own lists.
   const upcoming = sorted
-    .filter((e) => e.date >= todayKey && e.date !== selectedKey)
+    .filter((e) => !e.shared && e.date >= todayKey && e.date !== selectedKey)
     .filter((e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i)
     .slice(0, 5)
 
@@ -363,6 +387,7 @@ export default function Home({ userId }) {
   const nowHM = format(new Date(), 'HH:mm')
   const iDeclined = (e) => e.guests?.some((g) => g.id === userId && g.status === 'declined')
   const stillAhead = (e) =>
+    !e.shared &&
     (e.status ?? 'confirmed') === 'confirmed' &&
     !iDeclined(e) &&
     (e.date > todayKey || (e.date === todayKey && (!e.time || (e.endTime || e.time) > nowHM)))
@@ -393,6 +418,7 @@ export default function Home({ userId }) {
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
   // With plans of several people on screen, each says who it is with.
   const withWhom = (e) => {
+    if (e.shared) return `📅 ${genitive((members[e.owner] ?? UNKNOWN_PERSON).name)} takvimi`
     if (e.guests) {
       const others = [e.createdBy, ...e.guests.map((g) => g.id)].filter((id) => id !== userId)
       return `👥 ${others.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')}`
@@ -408,6 +434,19 @@ export default function Home({ userId }) {
     partnerId: c.partnerId,
   }))
   const defaultCoupleId = single?.id ?? selection.find((id) => byId[id]?.partnerId) ?? selection[0]
+
+  // Plans that clash with a plan being made: mine, and what I can see of the people I am inviting.
+  const conflictsFor = (when, coupleIds, editingId) =>
+    findConflicts({
+      when,
+      inviteeIds: coupleIds.map((id) => byId[id]?.partnerId).filter(Boolean),
+      editingId,
+      events: withPartner,
+      sharedPlans,
+      partnerOf: (coupleId) => byId[coupleId]?.partnerId,
+      members,
+      me: userId,
+    })
 
   function selectDay(day) {
     setSelected(day)
@@ -857,6 +896,8 @@ export default function Home({ userId }) {
             <SettingsSheet
               me={members[userId]}
               admin={admin}
+              shares={shares}
+              onSharesChanged={() => reload()}
               onFeedback={() => setSheet({ type: 'feedback' })}
               onAdmin={() => setSheet({ type: 'admin', section: 'overview' })}
               connections={all}
@@ -872,6 +913,7 @@ export default function Home({ userId }) {
               defaultDate={selectedKey}
               templates={templates}
               connections={formConnections}
+              findConflicts={conflictsFor}
               defaultCoupleId={defaultCoupleId}
               onAddTemplate={async (t) => {
                 await addTemplate(t)
