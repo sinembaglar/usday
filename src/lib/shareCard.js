@@ -3,16 +3,16 @@
 
 const W = 1080
 const H = 1920
-const SERIF = 'Fraunces, Georgia, serif'
+const SERIF = 'Newsreader, Georgia, serif'
 const SANS = 'Inter, system-ui, sans-serif'
-const INK = '#3a2e40'
-const DEEP = '#8a6fa8'
-const MUTED = '#9a8ca3'
+const INK = '#24161f'
+const DEEP = '#5b2f4a'
+const MUTED = '#6c5f66'
 
 // The app's fonts, but never wait more than two seconds for them (slow connection).
 async function fontsReady() {
   const loading = Promise.all(
-    ['600 96px Fraunces', '500 48px Fraunces', '400 40px Inter', '600 40px Inter'].map((f) =>
+    ['600 96px Newsreader', '500 48px Newsreader', '400 40px Inter', '600 40px Inter'].map((f) =>
       document.fonts?.load(f).catch(() => {}),
     ),
   )
@@ -72,9 +72,9 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function background(ctx) {
   const g = ctx.createLinearGradient(0, 0, W, H)
-  g.addColorStop(0, '#d9c8ec')
-  g.addColorStop(0.5, '#ecd6e8')
-  g.addColorStop(1, '#f7e4ec')
+  g.addColorStop(0, '#5a2a4e')
+  g.addColorStop(0.55, '#4a2140')
+  g.addColorStop(1, '#2c1426')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, W, H)
   // Soft light circles.
@@ -169,11 +169,11 @@ export async function drawCard(card) {
     const top = Math.max(160, (H - height) / 2 - 60)
 
     ctx.save()
-    ctx.shadowColor = 'rgba(138,111,168,0.25)'
+    ctx.shadowColor = 'rgba(20,8,16,0.35)'
     ctx.shadowBlur = 60
     ctx.shadowOffsetY = 20
     roundRect(ctx, 80, top, W - 160, height, 64)
-    ctx.fillStyle = 'rgba(255,255,255,0.88)'
+    ctx.fillStyle = 'rgba(246,243,239,0.95)'
     ctx.fill()
     ctx.restore()
     content(top)

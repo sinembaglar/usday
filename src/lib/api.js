@@ -19,11 +19,21 @@ async function signedUrls(paths) {
   return (path) => urlCache.get(path)?.url ?? null
 }
 
+// People's colours, in the app's muted tones. The two colours given at sign-up (pink for whoever
+// opened the calendar, blue for whoever joined) keep their character; anything else is picked by id.
+const PERSON_COLORS = ['#8a5a74', '#5d6f8c', '#7a6a4f', '#5f7a6a', '#9a5f52']
+const personColor = (p) =>
+  p.color?.toUpperCase() === '#C58FB8'
+    ? PERSON_COLORS[0]
+    : p.color?.toUpperCase() === '#8AA0C9'
+      ? PERSON_COLORS[1]
+      : PERSON_COLORS[[...p.id].reduce((n, ch) => n + ch.charCodeAt(0), 0) % PERSON_COLORS.length]
+
 const toPerson = (p) => ({
   id: p.id,
   name: p.name,
   short: initials(p.name),
-  color: p.color,
+  color: personColor(p),
   lastSeenAt: p.last_seen_at,
 })
 

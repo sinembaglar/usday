@@ -1,19 +1,19 @@
 :root {
-  --bg: #f8f4fa;
+  --bg: #f6f3ef;
   --card: #ffffff;
-  --ink: #3a2e40;
-  --muted: #9a8ca3;
-  --accent: #8a6fa8;
-  --line: #ebe2f0;
+  --ink: #24161f;
+  --muted: #6c5f66;
+  --accent: #5b2f4a;
+  --line: #e6dfdc;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1b1520;
-    --card: #271f2e;
-    --ink: #f1e9f6;
-    --muted: #a294ad;
+    --bg: #1a1418;
+    --card: #241c22;
+    --ink: #f3ebef;
+    --muted: #b3a4ad;
     --accent: #cdb6e8;
     --line: #382d42;
     color-scheme: dark;
@@ -53,12 +53,12 @@ header img {
 header a {
   color: inherit;
   text-decoration: none;
-  font: 600 22px 'Fraunces', Georgia, serif;
+  font: 600 22px 'Newsreader', Georgia, serif;
 }
 
 h1,
 h2 {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: 'Newsreader', Georgia, serif;
   font-weight: 600;
   line-height: 1.25;
 }

@@ -1,9 +1,9 @@
 export const TAGS = {
-  date: { label: 'Buluşma', emoji: '💕', color: '#D99AB8' },
-  plan: { label: 'Plan', emoji: '📝', color: '#D4A373' },
-  is: { label: 'İş', emoji: '💼', color: '#8FA98F' },
-  tatil: { label: 'Tatil', emoji: '✈️', color: '#8AA9C9' },
-  ozel: { label: 'Özel gün', emoji: '🎉', color: '#9B7FC4' },
+  date: { label: 'Buluşma', emoji: '💕', color: '#B5677F' },
+  plan: { label: 'Plan', emoji: '📝', color: '#B88A4E' },
+  is: { label: 'İş', emoji: '💼', color: '#6E8B74' },
+  tatil: { label: 'Tatil', emoji: '✈️', color: '#6683A3' },
+  ozel: { label: 'Özel gün', emoji: '🎉', color: '#7E5A8C' },
 }
 
 // Ready-made plans per category: picking a category shows only its own ideas.
@@ -78,7 +78,7 @@ export const RELATIONS = {
     invite: 'Sevgilini davet et',
     dateLabel: 'Buluşma',
     since: 'Birlikte olduğumuz gün',
-    counter: (n) => `💜 ${n}. günümüz`,
+    counter: (n) => `${n}. günümüz`,
   },
   friend: {
     label: 'Arkadaşım',
@@ -86,7 +86,7 @@ export const RELATIONS = {
     invite: 'Arkadaşını davet et',
     dateLabel: 'Buluşma',
     since: 'Arkadaşlığımızın başladığı gün',
-    counter: (n) => `💛 Arkadaşlığımızın ${n}. günü`,
+    counter: (n) => `Arkadaşlığımızın ${n}. günü`,
   },
   sibling: { label: 'Kardeşim', emoji: '👭', invite: 'Kardeşini davet et', dateLabel: 'Buluşma', since: null },
   family: { label: 'Ailem', emoji: '👨‍👩‍👧', invite: 'Aileden birini davet et', dateLabel: 'Buluşma', since: null },
@@ -144,11 +144,11 @@ export const WISH_CATEGORIES = {
   experience: { label: 'Deneyim', emoji: '🍽️', planTag: 'date', placeholder: 'Örn. 🎶 Tarkan konseri' },
 }
 
-export const SURPRISE_COLOR = '#E0B25C'
+export const SURPRISE_COLOR = '#C49A45'
 
 export const DEFAULT_TEASER = 'O günü boş tut, sana bir sürprizim var 💌'
 
-export const UNKNOWN_PERSON = { name: 'Eşin', short: '?', color: '#cbbfd3' }
+export const UNKNOWN_PERSON = { name: 'Eşin', short: '?', color: '#9c8f96' }
 
 // How a comment made you feel; a double tap on a comment is the first one.
 export const COMMENT_FEELINGS = ['😂', '😍', '😮', '😢', '😡', '👍']

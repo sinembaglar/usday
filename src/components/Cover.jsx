@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Bell, Camera, Settings } from 'lucide-react'
+import { Bell, Camera, Heart, Settings } from 'lucide-react'
 import { resizeImage } from '../lib/image'
 import ImageCropper from './ImageCropper'
 import Highlights from './Highlights'
@@ -34,7 +34,7 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
           <span className="brand">UsDay</span>
           {counter && (
             <button className="day-count" onClick={onSettings}>
-              {counter}
+              <Heart size={12} fill="currentColor" aria-hidden="true" /> {counter}
             </button>
           )}
         </span>
