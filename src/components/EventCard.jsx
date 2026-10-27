@@ -11,7 +11,17 @@ function groupLine(event, me) {
   const coming = event.guests.filter((g) => g.status === 'accepted').length + 1 // the maker counts
   if (mine?.status === 'pending') return '📨 davet · yanıtını bekliyor'
   if (mine?.status === 'declined') return '❌ katılmıyorsun'
-  return `✅ ${coming}/${event.guests.length + 1} geliyor`
+  if (mine?.status === 'maybe') return `🤔 belki dedin · ${coming} kişi geliyor`
+  if (mine?.status === 'suggested') return '🕐 başka zaman önerdin'
+  const maybes = event.guests.filter((g) => g.status === 'maybe').length
+  const ideas = event.guests.filter((g) => g.status === 'suggested').length
+  return [
+    `✅ ${coming}/${event.guests.length + 1} geliyor`,
+    maybes && `🤔 ${maybes} belki`,
+    ideas && `🕐 ${ideas} öneri`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 // withWhom: "👯 Ayşe" when plans of several people are shown together.

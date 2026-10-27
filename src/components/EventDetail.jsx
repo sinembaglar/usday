@@ -197,7 +197,7 @@ export default function EventDetail({ event, focusChat, me, members, withWhom, o
       {event.guests && (
         <div className="status-box">
           <strong>👥 Davetliler</strong>
-          <GuestList event={event} members={members} />
+          <GuestList event={event} members={members} me={me} onMoved={onAnswered} onToast={onToast} />
           <InvitationActions event={event} me={me} onAnswered={onAnswered} onToast={onToast} />
         </div>
       )}

@@ -1022,6 +1022,37 @@ p.empty {
   font-size: 15px;
 }
 
+.guest-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--rose-deep);
+}
+
+/* Answers to a group plan: two by two, a note link under them. */
+.answer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.answer-grid .btn {
+  padding: 11px 8px;
+  font-size: 14px;
+}
+
+.answer-note {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+.answer-title {
+  font-size: 14px;
+}
+
 /* Proposals */
 .event-card.is-proposed {
   border: 1.5px dashed var(--tag);

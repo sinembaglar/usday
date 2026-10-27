@@ -163,10 +163,14 @@ Deno.serve(async (req) => {
   const people = await peopleIn(coupleIds)
   const membersOf = (coupleId: string) => people.filter((p) => p.couple_id === coupleId)
 
-  // Group plans remind their maker and everyone who said they are coming.
+  // Group plans remind their maker and everyone who said they are (or might be) coming.
   const groupIds = (events ?? []).filter((e) => !e.couple_id).map((e) => e.id)
   const { data: going } = groupIds.length
-    ? await admin.from('event_participants').select('event_id, user_id').in('event_id', groupIds).eq('status', 'accepted')
+    ? await admin
+        .from('event_participants')
+        .select('event_id, user_id')
+        .in('event_id', groupIds)
+        .in('status', ['accepted', 'maybe'])
     : { data: [] }
   const groupPeopleIds = [
     ...new Set([

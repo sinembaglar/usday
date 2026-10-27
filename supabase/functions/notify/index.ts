@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
   }
 
   // Which plan, and is the caller allowed to talk about it?
-  let eventId = body.event_id ?? body.response_event_id
+  let eventId = body.event_id ?? body.response_event_id ?? body.moved_event_id
   let comment: { body: string } | null = null
   if (body.comment_id) {
     const { data } = await admin.from('event_comments').select('event_id, author, body').eq('id', body.comment_id).maybeSingle()
@@ -194,14 +194,40 @@ Deno.serve(async (req) => {
         groupPlan.id,
       )
     } else if (body.response_event_id) {
-      if (me.status !== 'accepted' && me.status !== 'declined') return json({ error: 'not_answered' }, 409)
+      if (me.status === 'pending') return json({ error: 'not_answered' }, 409)
       // A target's answer is news for the insiders; an insider's answer never reaches a target.
-      const coming = me.status === 'accepted'
+      const { data: answer } = await admin
+        .from('event_participants')
+        .select('note, suggested_date, suggested_time')
+        .eq('event_id', groupPlan.id)
+        .eq('user_id', userId)
+        .single()
+      const note = answer?.note ? ` · “${answer.note}”` : ''
+      const tag = `${groupPlan.id}-answer-${userId}`
+      const suggestedWhen = answer?.suggested_date
+        ? formatWhen({ ...groupPlan, event_date: answer.suggested_date, event_time: answer.suggested_time })
+        : ''
+      const payload = {
+        accepted: { title: `✅ ${me.name} katılıyor`, body: `${groupPlan.title} · ${when}${note}`, url, tag },
+        maybe: { title: `🤔 ${me.name} belki katılır`, body: `${groupPlan.title}${note}`, url, tag },
+        suggested: { title: `🕐 ${me.name} başka zaman öneriyor`, body: `${suggestedWhen} olur mu? · ${groupPlan.title}${note}`, url, tag },
+        declined: { title: `❌ ${me.name} katılamıyor`, body: `${groupPlan.title}${note}`, url, tag },
+      }[me.status as string]
+      if (!payload) return json({ error: 'bad_answer' }, 400)
+      // A suggested time is a question for the maker; other answers are news for everyone in on it.
+      const to = me.status === 'suggested' ? insiders.filter((g) => g.status === 'maker') : insiders
+      sent += await sendToUsers(to.map((g) => g.id), payload, groupPlan.id)
+    } else if (body.moved_event_id) {
+      // The maker moved the plan to a new time: everyone is asked again.
+      if (groupPlan.created_by !== userId) return json({ error: 'not_found' }, 404)
       sent += await sendToUsers(
         insiders.map((g) => g.id),
-        coming
-          ? { title: `✅ ${me.name} katılıyor`, body: `${groupPlan.title} · ${when}`, url, tag: `${groupPlan.id}-answer-${userId}` }
-          : { title: `❌ ${me.name} katılamıyor`, body: groupPlan.title, url, tag: `${groupPlan.id}-answer-${userId}` },
+        { title: `🕐 ${me.name} planı yeni bir zamana taşıdı`, body: `${groupPlan.title} · ${when} — gelebiliyor musun?`, url, tag: `${groupPlan.id}-moved` },
+        groupPlan.id,
+      )
+      sent += await sendToUsers(
+        [...secretFor],
+        { title: `🎁 ${me.name} sürprizin zamanını değiştirdi`, body: `${when} boş musun? “${groupPlan.teaser}”`, url, tag: `${groupPlan.id}-moved` },
         groupPlan.id,
       )
     } else {

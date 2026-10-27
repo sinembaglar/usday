@@ -97,7 +97,7 @@ export async function loadEverything(userId) {
     supabase.rpc('visible_claims'),
     supabase.from('couple_members').select('couple_id, user_id'),
     supabase.rpc('surprise_teaser_connections'),
-    supabase.from('event_participants').select('event_id, user_id, status, note'),
+    supabase.from('event_participants').select('event_id, user_id, status, note, suggested_date, suggested_time'),
     supabase.rpc('shared_calendar'),
     supabase.from('calendar_shares').select('owner, viewer, level'),
   ])
@@ -121,7 +121,15 @@ export async function loadEverything(userId) {
   ] = results.map((r) => r.data)
   // Group plans: who is invited and what they answered.
   const guestsOf = (eventId) =>
-    guestRows.filter((g) => g.event_id === eventId).map((g) => ({ id: g.user_id, status: g.status, note: g.note ?? '' }))
+    guestRows
+      .filter((g) => g.event_id === eventId)
+      .map((g) => ({
+        id: g.user_id,
+        status: g.status,
+        note: g.note ?? '',
+        // "Başka zaman öner": the date and time this guest would rather have.
+        suggested: g.suggested_date ? { date: g.suggested_date, time: g.suggested_time?.slice(0, 5) ?? '' } : null,
+      }))
   const unreadNotifications = results[6].count ?? 0
   // Who is getting which of the others' wishes (never loaded for my own wishes).
   const claimOf = Object.fromEntries(
@@ -399,9 +407,28 @@ async function syncGuests(eventId, guestIds, current) {
 }
 
 // "Katılıyorum" / "Katılamıyorum" on a group plan I am invited to.
-export async function answerInvitation(eventId, status, note = null) {
-  const { error } = await supabase.rpc('answer_invitation', { p_event: eventId, p_status: status, p_note: note })
+// status: 'accepted' | 'maybe' | 'suggested' (with date and time) | 'declined'
+export async function answerInvitation(eventId, status, note = null, suggested = null) {
+  const { error } = await supabase.rpc('answer_invitation', {
+    p_event: eventId,
+    p_status: status,
+    p_note: note,
+    p_date: suggested?.date ?? null,
+    p_time: suggested?.time || null,
+  })
   if (error) throw error
+}
+
+// The maker moves a group plan to a new time (e.g. a guest's suggestion); everyone is asked again.
+export async function moveGroupPlan(eventId, date, time, fromGuest = null) {
+  const { error } = await supabase.rpc('move_group_plan', {
+    p_event: eventId,
+    p_date: date,
+    p_time: time || null,
+    p_from: fromGuest,
+  })
+  if (error) throw error
+  supabase.functions.invoke('notify', { body: { moved_event_id: eventId } }).catch(() => {})
 }
 
 export async function deleteEvent(event) {

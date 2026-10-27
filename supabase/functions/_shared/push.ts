@@ -35,7 +35,11 @@ export type EventRow = {
 
 export type Person = { id: string; name: string; couple_id: string }
 
-export type Guest = { id: string; name: string; status: 'maker' | 'pending' | 'accepted' | 'declined' }
+export type Guest = {
+  id: string
+  name: string
+  status: 'maker' | 'pending' | 'accepted' | 'maybe' | 'suggested' | 'declined'
+}
 
 // Everyone on a group plan: its maker plus the invited people and their answers.
 export async function guestsOf(event: EventRow): Promise<Guest[]> {
