@@ -164,8 +164,13 @@ export default function Home({ userId }) {
   // (?wish=), an anniversary (?milestone=) or the admin panel (?admin=). Works on a cold start, from
   // the phone while the app is open, and from the in-app inbox.
   const startParams = useMemo(() => new URLSearchParams(startLink()), [])
-  const [pendingOpen, setPendingOpen] = useState(() => startParams.get('event'))
+  const [pendingOpen, setPendingOpen] = useState(() => (startParams.get('shared') ? null : startParams.get('event')))
   const [focusChat, setFocusChat] = useState(() => startParams.has('chat'))
+  const [focusAbout, setFocusAbout] = useState(() => startParams.get('about'))
+  // A plan on someone's shared calendar (?shared=owner&event=id), e.g. their answer to my comment.
+  const [pendingShared, setPendingShared] = useState(() =>
+    startParams.get('shared') ? { owner: startParams.get('shared'), eventId: startParams.get('event') } : null,
+  )
   const [pendingWish, setPendingWish] = useState(() => startParams.get('wish'))
   const [pendingPerson, setPendingPerson] = useState(() => startParams.get('person'))
   const [pendingMilestone, setPendingMilestone] = useState(() =>
@@ -184,8 +189,11 @@ export default function Home({ userId }) {
       if (p.get('tab') === 'dilekler') setTab('dilekler')
       if (p.get('person')) setPendingPerson(p.get('person'))
       if (p.get('wish')) setPendingWish(p.get('wish'))
-      if (p.get('event')) {
+      if (p.get('shared')) {
+        setPendingShared({ owner: p.get('shared'), eventId: p.get('event') })
+      } else if (p.get('event')) {
         setFocusChat(p.has('chat'))
+        setFocusAbout(p.get('about'))
         setPendingOpen(p.get('event'))
       }
       if (p.get('milestone')) setPendingMilestone({ id: p.get('milestone'), coupleId: p.get('with'), day: p.get('day') })
@@ -299,11 +307,12 @@ export default function Home({ userId }) {
       return
     }
     setTab('takvim')
-    setSheet({ type: 'detail', event, focusChat })
+    setSheet({ type: 'detail', event, focusChat, focusAbout })
     setSelected(parseISO(event.date))
     setMonth(startOfMonth(parseISO(event.date)))
     setPendingOpen(null)
     setFocusChat(false)
+    setFocusAbout(null)
     // choose is stable enough for this one-off jump
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingOpen, shown, todayKey, events, selection, connections])
@@ -320,6 +329,38 @@ export default function Home({ userId }) {
     }
     setPendingWish(null)
   }, [pendingWish, wishes, connections])
+
+  // A plan on someone's shared calendar: select them, go to its day and open it with our conversation.
+  useEffect(() => {
+    if (!pendingShared || !connections) return
+    const { owner, eventId } = pendingShared
+    const c = connections.find((x) => x.partnerId === owner)
+    const plan = sharedPlans.find((p) => p.owner === owner && p.eventId === eventId)
+    if (!c || !plan) {
+      setToast('Bu plan artık paylaşılmıyor')
+      setPendingShared(null)
+      return
+    }
+    if (!selection.includes(c.id)) {
+      choose([...selection, c.id])
+      return
+    }
+    const matches = shown.filter((e) => e.seriesId === plan.id)
+    const event = matches.find((e) => e.date >= todayKey) ?? matches[0]
+    if (!event) {
+      const target = startOfMonth(parseISO(plan.date))
+      if (+target !== +month) setMonth(target)
+      else setPendingShared(null)
+      return
+    }
+    setTab('takvim')
+    setSelected(parseISO(event.date))
+    setMonth(startOfMonth(parseISO(event.date)))
+    setSheet({ type: 'detail', event, focusChat: true })
+    setPendingShared(null)
+    // choose is stable enough for this one-off jump
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingShared, connections, sharedPlans, selection, shown, month, todayKey])
 
   // "X takvimini seninle paylaştı" opens the calendar with that person selected.
   useEffect(() => {
@@ -983,6 +1024,7 @@ export default function Home({ userId }) {
             <EventDetail
               event={sheet.event}
               focusChat={sheet.focusChat}
+              focusAbout={sheet.focusAbout}
               me={userId}
               members={members}
               withWhom={withWhom(sheet.event)}

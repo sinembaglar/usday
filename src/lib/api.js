@@ -196,6 +196,7 @@ export async function loadEverything(userId) {
       .filter((s) => !rows.some((r) => r.id === s.id) && !teasers.some((t) => t.id === s.id))
       .map((s) => ({
         id: `shared-${s.owner}-${s.id}`,
+        eventId: s.id, // the plan itself, for talking about it with its owner
         shared: true,
         owner: s.owner,
         createdBy: s.owner,
@@ -613,6 +614,29 @@ export async function setCalendarShare(userId, viewer, level, announce = false) 
     : await supabase.from('calendar_shares').delete().eq('owner', userId).eq('viewer', viewer)
   if (error) throw error
   if (level && announce) supabase.functions.invoke('notify', { body: { share_viewer: viewer } }).catch(() => {})
+}
+
+// Side conversations about plans on a shared calendar (between its owner and one viewer).
+export async function loadShareComments(eventId) {
+  const { data, error } = await supabase
+    .from('share_comments')
+    .select('id, owner, viewer, author, body, created_at')
+    .eq('event_id', eventId)
+    .order('created_at')
+  if (error) throw error
+  return data
+}
+
+export async function addShareComment({ eventId, owner, viewer, author, body }) {
+  const { error } = await supabase
+    .from('share_comments')
+    .insert({ event_id: eventId, owner, viewer, author, body: body.trim() })
+  if (error) throw error
+}
+
+export async function deleteShareComment(id) {
+  const { error } = await supabase.from('share_comments').delete().eq('id', id)
+  if (error) throw error
 }
 
 // Ending a connection: its shared plans and photos are deleted for both; blocking also stops new invites.

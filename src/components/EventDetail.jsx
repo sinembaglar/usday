@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
-import { genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
+import { dative, genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
+import { ShareThread, ThreadsOnMyPlan } from './ShareThread'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
 import ProposalActions from './ProposalActions'
@@ -102,7 +103,18 @@ function listenersOf(event, me, partner) {
   return partner && !secret ? [partner.id] : []
 }
 
-export default function EventDetail({ event, focusChat, me, members, withWhom, onEdit, onClose, onAnswered, onToast }) {
+export default function EventDetail({
+  event,
+  focusChat,
+  focusAbout, // opened from "X planın hakkında yazdı": that person's side conversation
+  me,
+  members,
+  withWhom,
+  onEdit,
+  onClose,
+  onAnswered,
+  onToast,
+}) {
   const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
   const when = [format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr }), timeSpan(event)]
@@ -129,6 +141,15 @@ export default function EventDetail({ event, focusChat, me, members, withWhom, o
           {owner.name} takvimini seninle {event.busy ? 'sadece dolu/boş olarak' : 'plan adlarıyla'} paylaşıyor. Plan
           detayları, yer ve kimlerle olduğu görünmez.
         </p>
+        <ShareThread
+          eventId={event.eventId}
+          owner={event.owner}
+          viewer={me}
+          me={me}
+          members={members}
+          focus={focusChat}
+          title={`💬 ${dative(owner.name)} yaz`}
+        />
         <div className="form-actions">
           <button className="btn btn-primary" onClick={onClose}>
             Tamam
@@ -229,6 +250,8 @@ export default function EventDetail({ event, focusChat, me, members, withWhom, o
       <button className="link-btn share-link" onClick={share}>
         📸 Hikâyende paylaş
       </button>
+
+      <ThreadsOnMyPlan eventId={event.seriesId ?? event.id} me={me} members={members} focusViewer={focusAbout} />
 
       <Conversation
         eventId={event.seriesId ?? event.id}

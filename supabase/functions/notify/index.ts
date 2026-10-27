@@ -47,8 +47,12 @@ Deno.serve(async (req) => {
 
   // The database announces new comments itself (with the shared secret), on behalf of their author.
   let userId: string | undefined
-  if (req.headers.get('x-cron-secret') === Deno.env.get('CRON_SECRET') && body.comment_id) {
+  const fromDatabase = req.headers.get('x-cron-secret') === Deno.env.get('CRON_SECRET')
+  if (fromDatabase && body.comment_id) {
     const { data } = await admin.from('event_comments').select('author').eq('id', body.comment_id).maybeSingle()
+    userId = data?.author
+  } else if (fromDatabase && body.share_comment_id) {
+    const { data } = await admin.from('share_comments').select('author').eq('id', body.share_comment_id).maybeSingle()
     userId = data?.author
   } else {
     const token = req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
@@ -69,6 +73,44 @@ Deno.serve(async (req) => {
     const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
     const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: `/?tab=dilekler&wish=${wish.id}`, tag: `wish-${wish.id}` }
     return json({ sent: await sendToUsers(others, payload) })
+  }
+
+  // A word about a plan on someone's shared calendar: only the other side of that side conversation
+  // hears it. A surprise for the calendar's owner is never named to them.
+  if (body.share_comment_id) {
+    const { data: c } = await admin
+      .from('share_comments')
+      .select('id, event_id, owner, viewer, author, body, notified_at')
+      .eq('id', body.share_comment_id)
+      .maybeSingle()
+    if (!c || c.author !== userId) return json({ error: 'not_found' }, 404)
+    const { data: first } = await admin
+      .from('share_comments')
+      .update({ notified_at: new Date().toISOString() })
+      .eq('id', c.id)
+      .is('notified_at', null)
+      .select('id')
+    if (!first?.length) return json({ sent: 0 })
+    const { data: event } = await admin.from('events').select('*').eq('id', c.event_id).single<EventRow>()
+    const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
+    const toOwner = c.author === c.viewer
+    const recipient = toOwner ? c.owner : c.viewer
+    const { data: share } = await admin.from('calendar_shares').select('level').eq('owner', c.owner).eq('viewer', c.viewer).maybeSingle()
+    // The owner knows their plan by name (unless it is a surprise for them); the viewer only if they see names.
+    const plan = toOwner
+      ? hiddenFrom(event!, c.owner)
+        ? 'bir planın'
+        : `“${event!.title}” planın`
+      : share?.level === 'details' && !event!.surprise
+        ? `“${event!.title}”`
+        : 'takvimindeki plan'
+    const payload = {
+      title: toOwner ? `💬 ${me?.name}, ${plan} hakkında yazdı` : `💬 ${me?.name} cevap verdi · ${plan}`,
+      body: c.body.slice(0, 180),
+      url: toOwner ? `/?event=${c.event_id}&about=${c.viewer}` : `/?shared=${c.owner}&event=${c.event_id}`,
+      tag: `share-chat-${c.event_id}-${c.viewer}`,
+    }
+    return json({ sent: await sendToUsers([recipient], payload) })
   }
 
   // I started sharing my calendar with someone: tell them.
