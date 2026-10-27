@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
@@ -6,6 +7,56 @@ import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
 import ProposalActions from './ProposalActions'
 import { GuestList, InvitationActions } from './GuestList'
+import ShareCard from './ShareCard'
+
+const names = (list) =>
+  list.length > 1 ? `${list.slice(0, -1).join(', ')} & ${list.at(-1)}` : (list[0] ?? '')
+
+// What the story card says about this plan, from my side of it.
+function cardFor(event, me, members, partner) {
+  const name = (id) => (members[id] ?? UNKNOWN_PERSON).name
+  const when = format(parseISO(event.date), 'd MMMM yyyy', { locale: tr })
+  const photoUrl = event.photos?.find((p) => p.url)?.url ?? null
+
+  if (event.milestone) {
+    const friends = event.title.includes('Arkadaşlığımızın')
+    return {
+      emoji: event.title.split(' ')[0],
+      label: names([name(me), partner?.name].filter(Boolean)).toLocaleUpperCase('tr'),
+      big: `${(event.count ?? '').toLocaleString('tr-TR')}.`,
+      title:
+        event.milestone === 'anniversary'
+          ? friends
+            ? 'arkadaşlık yılımız'
+            : 'yıldönümümüz'
+          : friends
+            ? 'arkadaşlık günümüz'
+            : 'günümüz',
+      when,
+    }
+  }
+
+  const people = event.guests
+    ? [event.createdBy, ...event.guests.filter((g) => g.status !== 'declined').map((g) => g.id)]
+    : [me, partner?.id].filter(Boolean)
+  const base = { title: event.title, when: [when, timeSpan(event)].filter(Boolean).join(' · '), place: event.location, photoUrl }
+
+  if (event.surprise) {
+    const targets = event.guests ? (event.hiddenFrom ?? []) : [event.partnerId ?? partner?.id].filter((id) => id !== event.createdBy)
+    const forMe = event.guests ? targets.includes(me) : event.createdBy !== me
+    const headline = forMe
+      ? `${name(event.createdBy)} bana sürpriz hazırladı`
+      : `${names(targets.map(name))} için sürpriz ${event.createdBy === me ? 'hazırladım' : 'hazırladık'}`
+    return { ...base, emoji: '🎁', label: 'SÜRPRİZ', headline }
+  }
+
+  return {
+    ...base,
+    emoji: tagEmoji(event.tag, event.relation),
+    label: tagLabel(event.tag, event.relation).toLocaleUpperCase('tr'),
+    headline: names(people.map(name)),
+  }
+}
 
 // Where a proposal stands, and the answer buttons when the question is mine.
 function ProposalStatus({ event, me, members, onAnswered, onToast }) {
@@ -40,6 +91,7 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
 }
 
 export default function EventDetail({ event, me, members, withWhom, onEdit, onClose, onAnswered, onToast }) {
+  const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
   const when = [format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr }), timeSpan(event)]
     .filter(Boolean)
@@ -47,6 +99,9 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
   const author = members[event.createdBy] ?? UNKNOWN_PERSON
   // The other person in this plan's connection.
   const partner = event.partnerId ? members[event.partnerId] : Object.values(members).find((m) => m.id !== me)
+
+  if (sharing) return <ShareCard card={sharing} onClose={() => setSharing(null)} onToast={onToast} />
+  const share = () => setSharing(cardFor(event, me, members, partner))
 
   if (event.milestone) {
     return (
@@ -57,6 +112,9 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
         <p className="reveal">Birlikte olduğunuz günden hesaplandı. Ayarlar’dan değiştirebilirsin.</p>
         <button className="btn btn-primary" onClick={onClose}>
           Nice nicelerine 🥂
+        </button>
+        <button className="link-btn share-link" onClick={share}>
+          📸 Hikâyende paylaş
         </button>
       </div>
     )
@@ -133,6 +191,9 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
       )}
 
       <p className="author">{author.name} ekledi</p>
+      <button className="link-btn share-link" onClick={share}>
+        📸 Hikâyende paylaş
+      </button>
 
       <Conversation eventId={event.seriesId ?? event.id} me={me} members={members} hasPartner={Boolean(partner)} />
 
