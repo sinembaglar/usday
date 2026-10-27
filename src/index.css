@@ -2496,6 +2496,11 @@ p.empty {
   color: var(--rose-deep);
 }
 
+.silent-hint {
+  margin: 0;
+  font-size: 12px;
+}
+
 .cover.has-photo .highlight-dots button {
   background: rgba(255, 255, 255, 0.6);
 }

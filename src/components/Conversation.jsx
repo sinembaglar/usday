@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { addComment, deleteComment, loadConversation, setReaction } from '../lib/api'
+import { addComment, deleteComment, hasPush, loadConversation, setReaction } from '../lib/api'
 import { notifyReaction } from '../lib/push'
 import { timeAgo } from '../lib/format'
 import { UNKNOWN_PERSON } from '../lib/constants'
@@ -8,11 +8,23 @@ import { UNKNOWN_PERSON } from '../lib/constants'
 const EMOJIS = ['😍', '🥳', '👍', '😂', '🙈']
 
 // Comments and reactions under a plan. Attached to the whole series for repeating plans.
-export default function Conversation({ eventId, me, members, hasPartner }) {
+export default function Conversation({ eventId, me, members, hasPartner, listeners = [] }) {
   const [comments, setComments] = useState([])
   const [reactions, setReactions] = useState([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [silent, setSilent] = useState([]) // people who would hear about a comment but have notifications off
+  const listenerKey = listeners.join()
+
+  useEffect(() => {
+    let active = true
+    Promise.all(listenerKey.split(',').filter(Boolean).map(async (id) => [id, (await hasPush(id)) ? null : id]))
+      .then((list) => active && setSilent(list.map(([, id]) => id).filter(Boolean)))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [listenerKey])
 
   const load = useCallback(async () => {
     try {
@@ -129,6 +141,12 @@ export default function Conversation({ eventId, me, members, hasPartner }) {
           ➤
         </button>
       </form>
+      {silent.length > 0 && (
+        <p className="hint silent-hint">
+          🔕 {silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirimleri açmamış; yazdıklarını
+          uygulamayı açınca görecek.
+        </p>
+      )}
     </section>
   )
 }

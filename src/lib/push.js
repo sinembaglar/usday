@@ -46,6 +46,13 @@ export function notifyAnswer(eventId) {
   return supabase.functions.invoke('notify', { body: { response_event_id: eventId } }).catch(() => {})
 }
 
+// Sends a test notification to all of my devices; returns how many it reached.
+export async function sendTestPush() {
+  const { data, error } = await supabase.functions.invoke('notify', { body: { test: true } })
+  if (error) throw error
+  return data.sent
+}
+
 export function notifyReaction(eventId, emoji) {
   return supabase.functions.invoke('notify', { body: { reaction_event_id: eventId, emoji } }).catch(() => {})
 }

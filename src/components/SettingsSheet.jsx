@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calendarToken, deleteAccount, loadBlocks, unblock } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
+import { enablePush, pushSupported, sendTestPush } from '../lib/push'
 import ConnectionSettings from './ConnectionSettings'
 
 const THEMES = [
@@ -17,6 +18,25 @@ export default function SettingsSheet({ me, admin, connections, members, connect
   const [newPassword, setNewPassword] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [blocks, setBlocks] = useState([])
+  const [testing, setTesting] = useState(false)
+
+  // Turns notifications on for this device if needed, then sends a test to all my devices.
+  async function testPush() {
+    setTesting(true)
+    try {
+      if (!pushSupported()) {
+        onToast('🔕 Bu tarayıcı bildirim alamıyor. Safari ya da Chrome’dan açıp ana ekrana ekle.')
+      } else if ((await enablePush()) !== 'granted') {
+        onToast('🔕 Bildirim izni verilmedi. Telefon ayarlarından UsDay’e izin ver.')
+      } else {
+        const sent = await sendTestPush()
+        onToast(sent ? `🔔 Test bildirimi ${sent} cihaza gönderildi` : 'Bildirim hiçbir cihaza ulaşmadı')
+      }
+    } catch {
+      onToast('Test bildirimi gönderilemedi, tekrar dener misin?')
+    }
+    setTesting(false)
+  }
 
   useEffect(() => {
     loadBlocks()
@@ -114,6 +134,16 @@ export default function SettingsSheet({ me, admin, connections, members, connect
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="settings-group">
+        <h4>Bildirimler</h4>
+        <p className="hint">
+          Bildirim gelmiyorsa buradan deneyebilirsin. iPhone’da UsDay’i ana ekrana ekleyip oradan açman gerekir.
+        </p>
+        <button className="btn btn-ghost bordered" onClick={testPush} disabled={testing}>
+          {testing ? 'Gönderiliyor…' : '🔔 Test bildirimi gönder'}
+        </button>
       </section>
 
       <section className="settings-group">

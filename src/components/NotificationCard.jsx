@@ -10,9 +10,9 @@ export default function NotificationCard({ partnerName, onToast }) {
   const [state, setState] = useState(initialState)
   const [busy, setBusy] = useState(false)
 
-  // Keep this device's subscription fresh once permission was given.
+  // Keep this device's subscription fresh once permission was given; say so if it fails.
   useEffect(() => {
-    if (state === 'granted') enablePush().catch(() => {})
+    if (state === 'granted') enablePush().catch(() => setState('failed'))
   }, [state])
 
   async function turnOn() {
@@ -27,7 +27,37 @@ export default function NotificationCard({ partnerName, onToast }) {
     setBusy(false)
   }
 
-  if (state === 'granted' || state === 'unsupported') return null
+  if (state === 'granted') return null
+
+  if (state === 'unsupported') {
+    return (
+      <section className="notice card">
+        <span className="notice-emoji">🔕</span>
+        <span>
+          <strong>Bu tarayıcıda bildirim alamazsın</strong>
+          <small>
+            UsDay’i iPhone’da Safari’den, Android’de Chrome’dan aç ve ana ekrana ekle. WhatsApp ya da Instagram
+            içinden açılan sayfalar bildirim alamaz.
+          </small>
+        </span>
+      </section>
+    )
+  }
+
+  if (state === 'failed') {
+    return (
+      <section className="notice card">
+        <span className="notice-emoji">⚠️</span>
+        <span>
+          <strong>Bildirimler bu cihazda kaydedilemedi</strong>
+          <small>İnternetin varken tekrar dene.</small>
+        </span>
+        <button className="btn btn-primary" onClick={turnOn} disabled={busy}>
+          {busy ? '…' : 'Tekrar'}
+        </button>
+      </section>
+    )
+  }
 
   if (state === 'install') {
     return (
@@ -61,8 +91,8 @@ export default function NotificationCard({ partnerName, onToast }) {
       <span>
         <strong>Bildirimleri aç</strong>
         <small>
-          {partnerName ? `${partnerName} plan eklediğinde` : 'Eşin plan eklediğinde'} ve yaklaşan planlardan önce
-          haber verelim.
+          {partnerName ? `${partnerName} plan eklediğinde ya da yorum yazdığında` : 'Plan ve yorum geldiğinde'}, yaklaşan
+          planlardan önce de haber verelim.
         </small>
       </span>
       <button className="btn btn-primary" onClick={turnOn} disabled={busy}>

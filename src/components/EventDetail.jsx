@@ -90,6 +90,18 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
   return null
 }
 
+// Who gets a notification when I comment: never someone the plan is still a surprise for.
+function listenersOf(event, me, partner) {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const secret = event.surprise && (event.revealOn || event.date) > today
+  if (event.guests) {
+    return [event.createdBy, ...event.guests.map((g) => g.id)].filter(
+      (id) => id !== me && !(secret && event.hiddenFrom?.includes(id)),
+    )
+  }
+  return partner && !secret ? [partner.id] : []
+}
+
 export default function EventDetail({ event, me, members, withWhom, onEdit, onClose, onAnswered, onToast }) {
   const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
@@ -195,7 +207,13 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
         📸 Hikâyende paylaş
       </button>
 
-      <Conversation eventId={event.seriesId ?? event.id} me={me} members={members} hasPartner={Boolean(partner)} />
+      <Conversation
+        eventId={event.seriesId ?? event.id}
+        me={me}
+        members={members}
+        hasPartner={Boolean(partner)}
+        listeners={listenersOf(event, me, partner)}
+      />
 
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onClose}>

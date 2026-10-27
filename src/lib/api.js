@@ -544,3 +544,10 @@ export async function unblock(userId, blocked) {
   const { error } = await supabase.from('blocks').delete().eq('blocker', userId).eq('blocked', blocked)
   if (error) throw error
 }
+
+// Does this person (me or someone I am connected with) get phone notifications?
+export async function hasPush(userId) {
+  const { data, error } = await supabase.rpc('has_push', { person: userId })
+  if (error) throw error
+  return data
+}

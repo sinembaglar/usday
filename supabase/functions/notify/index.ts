@@ -71,6 +71,12 @@ Deno.serve(async (req) => {
     return json({ sent: await sendToUsers(others, payload) })
   }
 
+  // "Test bildirimi gönder" in settings: only to my own devices.
+  if (body.test) {
+    const payload = { title: '🔔 Test bildirimi', body: 'Bildirimler bu cihazda çalışıyor 💜', url: '/', tag: 'test' }
+    return json({ sent: await sendToUsers([userId], payload) })
+  }
+
   // Someone is getting a wish: everyone else who can see it hears who, so it is not bought twice.
   // The wish owner is never told.
   if (body.claim_wish_id) {
