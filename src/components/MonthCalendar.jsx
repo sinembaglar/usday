@@ -11,6 +11,7 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SURPRISE_COLOR, TAGS } from '../lib/constants'
 
 const WEEKDAYS = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz']
@@ -28,11 +29,11 @@ export default function MonthCalendar({ month, onMonthChange, selected, onSelect
     <section className="card calendar">
       <div className="calendar-head">
         <button className="icon-btn" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Önceki ay">
-          ‹
+          <ChevronLeft size={18} aria-hidden="true" />
         </button>
         <h2>{format(month, 'LLLL yyyy', { locale: tr })}</h2>
         <button className="icon-btn" onClick={() => onMonthChange(addMonths(month, 1))} aria-label="Sonraki ay">
-          ›
+          <ChevronRight size={18} aria-hidden="true" />
         </button>
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isToday, isYesterday } from 'date-fns'
+import { Bell } from 'lucide-react'
 import { NOTIFICATION_PAGE, clearNotifications, loadNotifications, markNotificationsRead } from '../lib/api'
 import { timeAgo } from '../lib/format'
 
@@ -78,8 +79,8 @@ export default function NotificationsSheet({ onOpenLink, onRead, onClose, onToas
       {items === null && <p className="hint">Yükleniyor…</p>}
       {items?.length === 0 && (
         <div className="inbox-empty">
-          <span>🔔</span>
-          <p>Henüz bildirim yok. Yeni planlar, teklifler, yorumlar ve hatırlatmalar burada görünecek.</p>
+          <Bell size={36} strokeWidth={1.5} aria-hidden="true" />
+          <p>Henüz bildirim yok. Yeni planlar, yorumlar ve hatırlatmalar burada görünür.</p>
         </div>
       )}
 

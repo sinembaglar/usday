@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ImagePlus, Plus, Search, SendHorizontal, X } from 'lucide-react'
 import { gifSearchOn } from '../lib/api'
 import GifPicker from './GifPicker'
 
@@ -9,8 +10,9 @@ export default function CommentForm({ placeholder, onSend, onError }) {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [sending, setSending] = useState(false)
-  const [gifsOn, setGifsOn] = useState(false)
+  const [gifsOn, setGifsOn] = useState(null) // null while asking; only false hides GIF search
   const [findingGif, setFindingGif] = useState(false)
+  const [attaching, setAttaching] = useState(false) // the "+" menu: a photo or a GIF
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -59,32 +61,46 @@ export default function CommentForm({ placeholder, onSend, onError }) {
         <div className="comment-preview">
           <img src={preview} alt="Gönderilecek görsel" />
           <button type="button" className="comment-preview-remove" onClick={() => setFile(null)} aria-label="Görseli kaldır">
-            ✕
+            <X size={14} aria-hidden="true" />
           </button>
+        </div>
+      )}
+      {attaching && (
+        <div className="attach-menu">
+          <button
+            type="button"
+            onClick={() => {
+              setAttaching(false)
+              inputRef.current?.click()
+            }}
+          >
+            <ImagePlus size={18} aria-hidden="true" /> Fotoğraf
+          </button>
+          {gifsOn !== false && (
+            <button
+              type="button"
+              className="gif-btn"
+              onClick={() => {
+                setAttaching(false)
+                setFindingGif(true)
+              }}
+            >
+              <Search size={18} aria-hidden="true" /> GIF ara
+            </button>
+          )}
         </div>
       )}
       <div className="comment-form">
         <button
           type="button"
-          className="btn btn-ghost bordered attach-btn"
-          onClick={() => inputRef.current?.click()}
-          aria-label="Görsel ya da GIF ekle"
+          className={`btn btn-secondary attach-btn ${attaching || findingGif ? 'is-active' : ''}`}
+          onClick={() => (gifsOn === false ? inputRef.current?.click() : setAttaching((a) => !a))}
+          aria-label="Fotoğraf ya da GIF ekle"
+          aria-expanded={gifsOn === false ? undefined : attaching}
           disabled={sending}
         >
-          🖼️
+          <Plus size={20} aria-hidden="true" />
         </button>
-        {gifsOn && (
-          <button
-            type="button"
-            className={`btn btn-ghost bordered attach-btn gif-btn ${findingGif ? 'is-active' : ''}`}
-            onClick={() => setFindingGif((f) => !f)}
-            aria-label="GIF ara"
-            aria-expanded={findingGif}
-            disabled={sending}
-          >
-            GIF
-          </button>
-        )}
         <input
           className="input"
           placeholder={placeholder}
@@ -92,8 +108,8 @@ export default function CommentForm({ placeholder, onSend, onError }) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <button className="btn btn-primary" disabled={(!draft.trim() && !file) || sending} aria-label="Gönder">
-          {sending ? '…' : '➤'}
+        <button className="btn btn-primary send-btn" disabled={(!draft.trim() && !file) || sending} aria-label="Gönder">
+          {sending ? '…' : <SendHorizontal size={18} aria-hidden="true" />}
         </button>
         <input
           ref={inputRef}

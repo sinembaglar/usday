@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Bell, CalendarPlus, ChevronRight, Copy, KeyRound, LogOut, MessageSquare, RefreshCw, Wrench } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calendarToken, deleteAccount, loadBlocks, unblock } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
@@ -7,9 +8,9 @@ import ConnectionSettings from './ConnectionSettings'
 import CalendarSharing from './CalendarSharing'
 
 const THEMES = [
-  { id: 'system', label: '📱 Telefona göre' },
-  { id: 'light', label: '☀️ Açık' },
-  { id: 'dark', label: '🌙 Koyu' },
+  { id: 'system', label: 'Telefona göre' },
+  { id: 'light', label: 'Açık' },
+  { id: 'dark', label: 'Koyu' },
 ]
 
 export default function SettingsSheet({
@@ -137,20 +138,22 @@ export default function SettingsSheet({
 
       {blocks.length > 0 && (
         <section className="settings-group">
-          <h4>🚫 Engellenenler</h4>
-          {blocks.map((b) => (
-            <div key={b.blocked} className="blocked-row">
-              <span>{b.blocked_name}</span>
-              <button className="link-btn" onClick={() => lift(b)}>
-                Engeli kaldır
-              </button>
-            </div>
-          ))}
+          <h4>Engellenenler</h4>
+          <div className="list-card">
+            {blocks.map((b) => (
+              <div key={b.blocked} className="list-row">
+                <span className="row-text">{b.blocked_name}</span>
+                <button className="link-btn" onClick={() => lift(b)}>
+                  Engeli kaldır
+                </button>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
       <section className="settings-group">
-        <h4>Tema</h4>
+        <h4>Görünüm</h4>
         <div className="segmented">
           {THEMES.map((t) => (
             <button key={t.id} className={theme === t.id ? 'is-active' : ''} onClick={() => chooseTheme(t.id)}>
@@ -161,72 +164,102 @@ export default function SettingsSheet({
       </section>
 
       <section className="settings-group">
-        <h4>Bildirimler</h4>
-        <p className="hint">
-          Bildirim gelmiyorsa buradan deneyebilirsin. iPhone’da UsDay’i ana ekrana ekleyip oradan açman gerekir.
-        </p>
-        <button className="btn btn-ghost bordered" onClick={testPush} disabled={testing}>
-          {testing ? 'Gönderiliyor…' : '🔔 Test bildirimi gönder'}
-        </button>
-      </section>
-
-      <section className="settings-group">
-        <h4>Telefonunun takviminde gör</h4>
-        <p className="hint">
-          UsDay planları Apple ya da Google Takvim’inde de görünür ve kendiliğinden güncellenir. Sürprizler orada da
-          gizli kalır.
-        </p>
-        <a className={`btn btn-primary ${token ? '' : 'is-disabled'}`} href={token ? `webcal://${feed}` : undefined}>
-          🍎 Apple Takvim’e ekle
-        </a>
-        <button className="btn btn-ghost bordered" onClick={copyFeed} disabled={!token}>
-          🔗 Google Takvim için linki kopyala
-        </button>
-        <p className="hint">
-          Google Takvim: bilgisayarda <b>Diğer takvimler → + → URL ile</b> seçip linki yapıştır.
-        </p>
-        <button className="link-btn" onClick={renew} disabled={!token}>
-          Linki yenile (eskisini geçersiz kıl)
-        </button>
-      </section>
-
-      <section className="settings-group">
-        <h4>Destek</h4>
-        <button className="btn btn-ghost bordered" onClick={onFeedback}>
-          💬 Geri bildirim gönder
-        </button>
-        {admin && (
-          <button className="btn btn-ghost bordered" onClick={onAdmin}>
-            🛠 Yönetim paneli
+        <h4>Telefonunun takvimi</h4>
+        <p className="hint">Planlar Apple ya da Google Takvim’inde de görünür; sürprizler orada da gizli kalır.</p>
+        <div className="list-card">
+          <a className={`list-row ${token ? '' : 'is-disabled'}`} href={token ? `webcal://${feed}` : undefined}>
+            <span className="row-icon">
+              <CalendarPlus size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">Apple Takvim’e ekle</span>
+            <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
+          </a>
+          <button className="list-row" onClick={copyFeed} disabled={!token}>
+            <span className="row-icon">
+              <Copy size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">
+              Google Takvim için linki kopyala
+              <small>Bilgisayarda: Diğer takvimler → + → URL ile</small>
+            </span>
           </button>
-        )}
+          <button className="list-row" onClick={renew} disabled={!token}>
+            <span className="row-icon">
+              <RefreshCw size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">
+              Linki yenile
+              <small>Eskisi çalışmayı bırakır</small>
+            </span>
+          </button>
+        </div>
       </section>
 
       <section className="settings-group">
-        <h4>Hesap</h4>
-        {changing ? (
-          <form className="inline-form" onSubmit={changePassword}>
-            <input
-              className="input"
-              type="password"
-              placeholder="Yeni şifre (en az 8 karakter)"
-              autoComplete="new-password"
-              minLength={8}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              autoFocus
-            />
-            <button className="btn btn-primary">Kaydet</button>
-          </form>
-        ) : (
-          <button className="btn btn-ghost bordered" onClick={() => setChanging(true)}>
-            🔐 Şifreyi değiştir
+        <h4>Bildirimler ve destek</h4>
+        <div className="list-card">
+          <button className="list-row" onClick={testPush} disabled={testing}>
+            <span className="row-icon">
+              <Bell size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">
+              {testing ? 'Gönderiliyor…' : 'Test bildirimi gönder'}
+              <small>Bildirim gelmiyorsa buradan dene</small>
+            </span>
           </button>
-        )}
-        <button className="btn btn-ghost bordered" onClick={() => supabase.auth.signOut()}>
-          Çıkış yap{me ? ` · ${me.name}` : ''}
-        </button>
+          <button className="list-row" onClick={onFeedback}>
+            <span className="row-icon">
+              <MessageSquare size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">Geri bildirim gönder</span>
+            <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
+          </button>
+          {admin && (
+            <button className="list-row" onClick={onAdmin}>
+              <span className="row-icon">
+                <Wrench size={18} aria-hidden="true" />
+              </span>
+              <span className="row-text">Yönetim paneli</span>
+              <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="settings-group">
+        <h4>Hesap{me ? ` · ${me.name}` : ''}</h4>
+        <div className="list-card">
+          {changing ? (
+            <form className="inline-form list-form" onSubmit={changePassword}>
+              <input
+                className="input"
+                type="password"
+                placeholder="Yeni şifre (en az 8 karakter)"
+                autoComplete="new-password"
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                autoFocus
+              />
+              <button className="btn btn-primary">Kaydet</button>
+            </form>
+          ) : (
+            <button className="list-row" onClick={() => setChanging(true)}>
+              <span className="row-icon">
+                <KeyRound size={18} aria-hidden="true" />
+              </span>
+              <span className="row-text">Şifreyi değiştir</span>
+              <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
+            </button>
+          )}
+          <button className="list-row" onClick={() => supabase.auth.signOut()}>
+            <span className="row-icon">
+              <LogOut size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">Çıkış yap</span>
+          </button>
+        </div>
         <button className="link-btn danger-link" onClick={removeAccount} disabled={deleting}>
           {deleting ? 'Hesap siliniyor…' : 'Hesabımı kalıcı olarak sil'}
         </button>

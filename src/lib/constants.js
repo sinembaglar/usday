@@ -1,5 +1,5 @@
 export const TAGS = {
-  date: { label: 'Date', emoji: '💕', color: '#D99AB8' },
+  date: { label: 'Buluşma', emoji: '💕', color: '#D99AB8' },
   plan: { label: 'Plan', emoji: '📝', color: '#D4A373' },
   is: { label: 'İş', emoji: '💼', color: '#8FA98F' },
   tatil: { label: 'Tatil', emoji: '✈️', color: '#8AA9C9' },
@@ -9,7 +9,7 @@ export const TAGS = {
 // Ready-made plans per category: picking a category shows only its own ideas.
 export const TEMPLATES = {
   date: {
-    heading: 'Date fikirleri',
+    heading: 'Buluşma fikirleri',
     items: [
       { title: '🍽️ Akşam yemeği', time: '20:00' },
       { title: '🎬 Sinema', time: '21:00' },
@@ -76,7 +76,7 @@ export const RELATIONS = {
     label: 'Sevgilim / Eşim',
     emoji: '💕',
     invite: 'Sevgilini davet et',
-    dateLabel: 'Date',
+    dateLabel: 'Buluşma',
     since: 'Birlikte olduğumuz gün',
     counter: (n) => `💜 ${n}. günümüz`,
   },
@@ -126,7 +126,7 @@ export function templatesFor(tag, relation = 'partner') {
 }
 
 export const tagLabel = (tag, relation = 'partner') =>
-  tag === 'date' ? RELATIONS[relation]?.dateLabel ?? 'Date' : TAGS[tag]?.label
+  tag === 'date' ? RELATIONS[relation]?.dateLabel ?? 'Buluşma' : TAGS[tag]?.label
 
 // A "date" between friends or family is a meetup: no hearts.
 export const tagEmoji = (tag, relation = 'partner') =>

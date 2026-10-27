@@ -1,12 +1,20 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { Check, CircleHelp, Clock, X } from 'lucide-react'
 import { UNKNOWN_PERSON } from '../lib/constants'
 import { answerInvitation, moveGroupPlan } from '../lib/api'
 import { notifyAnswer } from '../lib/push'
 
-const MARK = { maker: '⭐', pending: '⏳', accepted: '✅', maybe: '🤔', suggested: '🕐', declined: '❌' }
-const STATUS_WORD = { maybe: 'belki', suggested: 'başka zaman öneriyor', declined: 'katılamıyor' }
+// Each answer as a word in its own colour (not an emoji): who is coming is readable at a glance.
+const STATUS = {
+  maker: { word: 'Planlayan', tone: 'maker' },
+  pending: { word: 'Bekleniyor', tone: 'wait' },
+  accepted: { word: 'Geliyor', tone: 'ok' },
+  maybe: { word: 'Belki', tone: 'maybe' },
+  suggested: { word: 'Başka zaman', tone: 'maybe' },
+  declined: { word: 'Gelemiyor', tone: 'no' },
+}
 
 const whenOf = ({ date, time }) =>
   [format(parseISO(date), 'd MMMM EEEE', { locale: tr }), time].filter(Boolean).join(' · ')
@@ -40,15 +48,13 @@ export function GuestList({ event, members, me, onMoved, onToast }) {
             <span className="avatar small" style={{ background: person.color }}>
               {person.short}
             </span>
-            <span>
+            <span className="guest-name">
               {person.name}
-              {g.status === 'maker' && <small> · planlayan</small>}
-              {STATUS_WORD[g.status] && <small> · {STATUS_WORD[g.status]}</small>}
-              {event.hiddenFrom?.includes(g.id) && <small> · 🎯 sürpriz onun için</small>}
-              {g.note && <small> · “{g.note}”</small>}
+              {event.hiddenFrom?.includes(g.id) && <small> · sürpriz onun için</small>}
+              {g.note && <small className="guest-note">“{g.note}”</small>}
               {g.suggested && (
                 <span className="guest-suggestion">
-                  🕐 {whenOf(g.suggested)} olur mu?
+                  {whenOf(g.suggested)} olur mu?
                   {isMaker && (
                     <button className="link-btn" disabled={moving === g.id} onClick={() => move(g)}>
                       Bu zamana taşı
@@ -57,9 +63,7 @@ export function GuestList({ event, members, me, onMoved, onToast }) {
                 </span>
               )}
             </span>
-            <span className="guest-mark" title={g.status}>
-              {MARK[g.status]}
-            </span>
+            <span className={`status-pill is-${STATUS[g.status]?.tone ?? 'wait'}`}>{STATUS[g.status]?.word}</span>
           </li>
         )
       })}
@@ -68,17 +72,17 @@ export function GuestList({ event, members, me, onMoved, onToast }) {
 }
 
 const CHOICES = [
-  { status: 'accepted', label: '✅ Katılıyorum' },
-  { status: 'maybe', label: '🤔 Belki' },
-  { status: 'suggested', label: '🕐 Başka zaman' },
-  { status: 'declined', label: '❌ Katılamıyorum' },
+  { status: 'accepted', label: 'Katılıyorum', Icon: Check },
+  { status: 'maybe', label: 'Belki', Icon: CircleHelp },
+  { status: 'suggested', label: 'Başka zaman', Icon: Clock },
+  { status: 'declined', label: 'Katılamıyorum', Icon: X },
 ]
 
 const PLACEHOLDER = {
-  accepted: 'Kısa bir not (isteğe bağlı) — örn. biraz geç gelirim',
-  maybe: 'Kısa bir not (isteğe bağlı) — örn. işten çıkabilirsem',
-  suggested: 'Kısa bir not (isteğe bağlı) — örn. hafta sonu daha rahatım',
-  declined: 'Kısa bir not (isteğe bağlı) — örn. o gün şehir dışındayım',
+  accepted: 'Not ekle (örn. biraz geç gelirim)',
+  maybe: 'Not ekle (örn. işten çıkabilirsem)',
+  suggested: 'Not ekle (örn. hafta sonu daha rahatım)',
+  declined: 'Not ekle (örn. o gün şehir dışındayım)',
 }
 
 const TOAST = {
@@ -163,11 +167,11 @@ export function InvitationActions({ event, me, onAnswered, onToast }) {
       {CHOICES.map((c) => (
         <button
           key={c.status}
-          className={`btn ${mine.status === c.status ? 'btn-primary' : 'btn-ghost bordered'}`}
+          className={`btn ${mine.status === c.status ? 'btn-primary' : 'btn-secondary'}`}
           disabled={busy || (mine.status === c.status && c.status === 'accepted')}
           onClick={() => (c.status === 'accepted' ? answer('accepted') : setChoice(c.status))}
         >
-          {c.label}
+          <c.Icon size={16} aria-hidden="true" /> {c.label}
         </button>
       ))}
       {mine.status === 'accepted' && (

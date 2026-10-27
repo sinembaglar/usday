@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { gifAsFile, searchGifs } from '../lib/api'
 
 const IDEAS = ['kahkaha', 'kıskandım', 'yaşasın', 'aşk', 'şaşırdım', 'ağlıyorum', 'dans', 'alkış']
@@ -64,7 +65,7 @@ export default function GifPicker({ onPick, onClose, onError }) {
           autoFocus
         />
         <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="GIF aramayı kapat">
-          ✕
+          <X size={18} aria-hidden="true" />
         </button>
       </div>
       {!query && (

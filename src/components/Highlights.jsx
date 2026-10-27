@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { Pin } from 'lucide-react'
 import { timeSpan } from '../lib/format'
 
 const STORAGE_KEY = 'usday:highlight'
@@ -72,7 +73,7 @@ export default function Highlights({ items, onOpen }) {
     return (
       <div className="highlights">
         <div className="countdown">
-          <small>Sıradaki date</small>
+          <small>Sıradaki buluşma</small>
           <span>Henüz plan yok, bir tane ekleyelim mi? 💕</span>
         </div>
       </div>
@@ -115,7 +116,7 @@ export default function Highlights({ items, onOpen }) {
               onClick={() => goTo(i)}
             />
           ))}
-          {pinned && <span className="pin-mark" title="Seçimin sabit">📌</span>}
+          {pinned && <Pin className="pin-mark" size={12} aria-label="Seçimin sabit" />}
         </div>
       )}
     </div>

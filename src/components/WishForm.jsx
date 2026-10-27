@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
+import { Camera, Heart, X } from 'lucide-react'
 import { WISH_CATEGORIES } from '../lib/constants'
+import { WISH_ICONS } from '../lib/icons'
 import { resizeImage } from '../lib/image'
 
 const EMPTY = { category: 'gift', title: '', link: '', price: '', note: '', photo: null, loved: false }
@@ -41,23 +43,6 @@ export default function WishForm({ initial, onSave, onDelete, onCancel }) {
     <form className="event-form" onSubmit={handleSubmit}>
       <h3>{initial?.id ? 'Dileği düzenle' : 'Yeni dilek'}</h3>
 
-      <div className="categories three" role="radiogroup" aria-label="Kategori">
-        {Object.entries(WISH_CATEGORIES).map(([key, c]) => (
-          <button
-            type="button"
-            key={key}
-            role="radio"
-            aria-checked={form.category === key}
-            className={`category ${form.category === key ? 'is-active' : ''}`}
-            style={{ '--tag': 'var(--rose)' }}
-            onClick={() => setForm((f) => ({ ...f, category: key }))}
-          >
-            <span>{c.emoji}</span>
-            {c.label}
-          </button>
-        ))}
-      </div>
-
       <input
         className="input title-input"
         placeholder={WISH_CATEGORIES[form.category].placeholder}
@@ -66,33 +51,49 @@ export default function WishForm({ initial, onSave, onDelete, onCancel }) {
         onChange={set('title')}
       />
 
-      <div className="row">
-        <label className="field">
-          <span>Bağlantı</span>
-          <input className="input" type="url" inputMode="url" placeholder="🔗 Ürün ya da mekân linki" maxLength={500} value={form.link} onChange={set('link')} />
-        </label>
-      </div>
-      <div className="row">
-        <label className="field">
-          <span>Fiyat (isteğe bağlı)</span>
-          <input className="input" placeholder="örn. ~2.000 ₺" maxLength={40} value={form.price} onChange={set('price')} />
-        </label>
+      <div className="chips" role="radiogroup" aria-label="Kategori">
+        {Object.entries(WISH_CATEGORIES).map(([key, c]) => {
+          const Icon = WISH_ICONS[key]
+          return (
+            <button
+              type="button"
+              key={key}
+              role="radio"
+              aria-checked={form.category === key}
+              className={`chip icon-chip ${form.category === key ? 'is-active' : ''}`}
+              style={{ '--tag': 'var(--rose)' }}
+              onClick={() => setForm((f) => ({ ...f, category: key }))}
+            >
+              <Icon size={15} aria-hidden="true" />
+              {c.label}
+            </button>
+          )
+        })}
       </div>
 
-      <textarea className="input" rows={2} placeholder="Not: beden, renk, hangi gün… 📝" maxLength={1000} value={form.note} onChange={set('note')} />
+      <label className="field">
+        <span>Bağlantı</span>
+        <input className="input" type="url" inputMode="url" placeholder="Ürün ya da mekân linki" maxLength={500} value={form.link} onChange={set('link')} />
+      </label>
+      <label className="field">
+        <span>Fiyat (isteğe bağlı)</span>
+        <input className="input" placeholder="örn. ~2.000 ₺" maxLength={40} value={form.price} onChange={set('price')} />
+      </label>
+
+      <textarea className="input" rows={2} placeholder="Not: beden, renk, hangi gün…" maxLength={1000} value={form.note} onChange={set('note')} />
 
       <div className="photo-picker">
         {photoSrc && (
           <div className="photo-thumb">
             <img src={photoSrc} alt="" />
             <button type="button" aria-label="Kaldır" onClick={() => setForm((f) => ({ ...f, photo: null }))}>
-              ×
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
         )}
         {!photoSrc && (
           <button type="button" className="photo-add" onClick={() => fileRef.current?.click()}>
-            <span>📷</span>
+            <Camera size={22} aria-hidden="true" />
             Fotoğraf
           </button>
         )}
@@ -103,7 +104,9 @@ export default function WishForm({ initial, onSave, onDelete, onCancel }) {
         <input type="checkbox" checked={form.loved} onChange={set('loved')} />
         <span className="switch" />
         <span>
-          <strong>💖 Çok istiyorum</strong>
+          <strong>
+            <Heart size={15} aria-hidden="true" /> Çok istiyorum
+          </strong>
           <small>Listenin en üstünde görünür</small>
         </span>
       </label>

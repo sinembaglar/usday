@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { BellOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { addComment, deleteComment, hasPush, loadConversation, setCommentReaction, setReaction, uploadCommentImage } from '../lib/api'
 import CommentForm from './CommentForm'
@@ -104,7 +105,11 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
 
   return (
     <section className="conversation" ref={sectionRef}>
-      <div className="reactions" role="group" aria-label="Tepki ver">
+      <div className="conv-head">
+        <h4>Sohbet</h4>
+        {comments.length > 0 && <small>Yoruma basılı tut: emoji bırak</small>}
+      </div>
+      <div className="reactions" role="group" aria-label="Plana tepki ver">
         {EMOJIS.map((emoji) => {
           const who = reactions.filter((r) => r.emoji === emoji)
           return (
@@ -140,11 +145,11 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
         </ul>
       )}
 
-      <CommentForm placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz… 💬'} onSend={send} onError={onToast} />
+      <CommentForm placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz…'} onSend={send} onError={onToast} />
       {silent.length > 0 && (
         <p className="hint silent-hint">
-          🔕 {silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirimleri açmamış; yazdıklarını
-          uygulamayı açınca görecek.
+          <BellOff size={13} aria-hidden="true" />
+          {silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirim almıyor, açınca görecek.
         </p>
       )}
     </section>

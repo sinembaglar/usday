@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { Send } from 'lucide-react'
 import { joinCouple } from '../lib/api'
 import { RELATIONS } from '../lib/constants'
+import { RELATION_ICONS } from '../lib/icons'
+import { shareInvite } from '../lib/invite'
 
 const JOIN_ERRORS = {
   invalid_invite: 'Bu kod geçersiz ya da kullanılmış.',
@@ -14,17 +17,7 @@ export default function InviteCard({ code, relation = 'partner', onJoined, onToa
   const [error, setError] = useState('')
   const words = RELATIONS[relation] ?? RELATIONS.partner
 
-  const link = `${window.location.origin}/?davet=${code}`
-
-  async function share() {
-    const text = `UsDay’de ortak takvimimizi açtım 💜 Bu linkle kayıt olunca takvimlerimiz birleşiyor (davet kodu: ${code})`
-    if (navigator.share) {
-      navigator.share({ title: 'UsDay', text, url: link }).catch(() => {})
-    } else {
-      await navigator.clipboard?.writeText(`${text}\n${link}`)
-      onToast('🔗 Davet linki kopyalandı')
-    }
-  }
+  const share = () => shareInvite(code, onToast)
 
   async function join(e) {
     e.preventDefault()
@@ -38,20 +31,24 @@ export default function InviteCard({ code, relation = 'partner', onJoined, onToa
     }
   }
 
+  const Icon = RELATION_ICONS[relation] ?? RELATION_ICONS.partner
+
   return (
     <section className="invite card">
       <div className="invite-head">
-        <span className="invite-emoji">{words.emoji}</span>
+        <span className="notice-icon">
+          <Icon size={20} aria-hidden="true" />
+        </span>
         <span>
           <strong>{words.invite}</strong>
-          <small>Linki gönder ya da kodu söyle. Kayıt olunca ortak takviminiz açılır.</small>
+          <small>Linki gönder ya da kodu söyle.</small>
         </span>
       </div>
 
       <div className="invite-code">{code}</div>
 
       <button className="btn btn-primary" onClick={share}>
-        Davet linkini gönder
+        <Send size={18} aria-hidden="true" /> Davet linkini gönder
       </button>
 
       {showJoin &&

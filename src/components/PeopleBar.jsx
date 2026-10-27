@@ -1,7 +1,10 @@
-import { RELATIONS, UNKNOWN_PERSON } from '../lib/constants'
+import { Plus, Users } from 'lucide-react'
+import { UNKNOWN_PERSON } from '../lib/constants'
 
-// The people strip: pick one or several connections; calendar, cover and wishes follow the choice.
+// The people strip: pick one or several connections; calendar and cover follow the choice.
+// An invitation nobody has joined yet is not a person: it waits behind "Kişi ekle".
 export default function PeopleBar({ connections, members, selected, onChange, onAdd }) {
+  const joined = connections.filter((c) => c.partnerId)
   const all = selected.length === connections.length
 
   function toggle(id) {
@@ -12,37 +15,39 @@ export default function PeopleBar({ connections, members, selected, onChange, on
 
   return (
     <div className="people-bar" role="group" aria-label="Kişiler">
-      {connections.length > 1 && (
+      {joined.length > 1 && (
         <button
           className={`person-chip ${all ? 'is-active' : ''}`}
           aria-pressed={all}
           onClick={() => onChange(connections.map((c) => c.id))}
         >
-          <span className="person-avatar all">✨</span>
+          <span className="person-avatar all">
+            <Users size={15} aria-hidden="true" />
+          </span>
           Tümü
         </button>
       )}
-      {connections.map((c) => {
-        const person = c.partnerId ? (members[c.partnerId] ?? UNKNOWN_PERSON) : null
+      {joined.map((c) => {
+        const person = members[c.partnerId] ?? UNKNOWN_PERSON
         const on = !all && selected.includes(c.id)
-        const relation = RELATIONS[c.relation] ?? RELATIONS.partner
         return (
           <button
             key={c.id}
-            className={`person-chip ${on || (all && connections.length === 1) ? 'is-active' : ''} ${person ? '' : 'is-pending'}`}
+            className={`person-chip ${on || (all && joined.length === 1) ? 'is-active' : ''}`}
             aria-pressed={on}
             onClick={() => toggle(c.id)}
           >
-            <span className="person-avatar" style={{ background: person?.color ?? 'var(--blush)' }}>
-              {person ? person.short : '⏳'}
-              <i>{relation.emoji}</i>
+            <span className="person-avatar" style={{ background: person.color }}>
+              {person.short}
             </span>
-            {person ? person.name : 'Davet bekliyor'}
+            {person.name}
           </button>
         )
       })}
-      <button className="person-chip add" onClick={onAdd} aria-label="Kişi ekle">
-        <span className="person-avatar add">＋</span>
+      <button className="person-chip add" onClick={onAdd}>
+        <span className="person-avatar add">
+          <Plus size={16} aria-hidden="true" />
+        </span>
         Kişi ekle
       </button>
     </div>

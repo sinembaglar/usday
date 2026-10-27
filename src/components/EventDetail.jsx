@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { Clock, Lock, MapPin, Pencil, Repeat, Share2, Users, X } from 'lucide-react'
 import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
-import { dative, genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
+import { RELATION_ICONS } from '../lib/icons'
+import { genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
 import { ShareThread, ThreadsOnMyPlan } from './ShareThread'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
@@ -12,6 +14,13 @@ import ShareCard from './ShareCard'
 
 const names = (list) =>
   list.length > 1 ? `${list.slice(0, -1).join(', ')} & ${list.at(-1)}` : (list[0] ?? '')
+
+// "3/5 geliyor · 1 belki" above the guest list.
+function guestSummary(event) {
+  const coming = event.guests.filter((g) => g.status === 'accepted').length + 1 // the maker counts
+  const maybes = event.guests.filter((g) => g.status === 'maybe').length
+  return [`${coming}/${event.guests.length + 1} geliyor`, maybes && `${maybes} belki`].filter(Boolean).join(' · ')
+}
 
 // What the story card says about this plan, from my side of it.
 function cardFor(event, me, members, partner) {
@@ -65,7 +74,7 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     if (event.awaiting === me) {
       return (
         <div className="status-box is-asking">
-          <strong>📨 Bu plan senin yanıtını bekliyor</strong>
+          <strong>Bu plan senin yanıtını bekliyor</strong>
           {event.responseNote && <em>“{event.responseNote}”</em>}
           <ProposalActions event={event} onAnswered={onAnswered} onToast={onToast} />
         </div>
@@ -73,7 +82,7 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     }
     return (
       <div className="status-box">
-        ⏳ {(members[event.awaiting] ?? UNKNOWN_PERSON).name} henüz yanıt vermedi.
+        {(members[event.awaiting] ?? UNKNOWN_PERSON).name} henüz yanıt vermedi.
         {event.responseNote && <em> “{event.responseNote}”</em>}
       </div>
     )
@@ -83,8 +92,10 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     const by = (event.createdBy === me ? members[event.partnerId] : members[me]) ?? UNKNOWN_PERSON
     return (
       <div className="status-box is-declined">
-        ❌ {by.name} o zaman uygun değil.{event.responseNote && <em> “{event.responseNote}”</em>}
-        {event.createdBy === me && <small>“Düzenle”den başka bir zaman seçip tekrar sorabilirsin.</small>}
+        <span>
+          {by.name} o zaman uygun değil.{event.responseNote && <em> “{event.responseNote}”</em>}
+        </span>
+        {event.createdBy === me && <small>Düzenleyip başka bir zaman sorabilirsin.</small>}
       </div>
     )
   }
@@ -103,13 +114,39 @@ function listenersOf(event, me, partner) {
   return partner && !secret ? [partner.id] : []
 }
 
+// The top of a plan: its category, and what can be done with it (share, edit, close).
+function DetailHead({ label, color, Icon, onShare, onEdit, onClose }) {
+  return (
+    <div className="detail-head">
+      <span className="tag-label" style={{ '--tag': color }}>
+        {Icon ? <Icon size={14} aria-hidden="true" /> : <i aria-hidden="true" />}
+        {label}
+      </span>
+      <span className="detail-actions">
+        {onShare && (
+          <button className="icon-btn" onClick={onShare} aria-label="Hikâyende paylaş">
+            <Share2 size={17} aria-hidden="true" />
+          </button>
+        )}
+        {onEdit && (
+          <button className="icon-btn" onClick={onEdit} aria-label="Düzenle">
+            <Pencil size={17} aria-hidden="true" />
+          </button>
+        )}
+        <button className="icon-btn" onClick={onClose} aria-label="Kapat">
+          <X size={18} aria-hidden="true" />
+        </button>
+      </span>
+    </div>
+  )
+}
+
 export default function EventDetail({
   event,
   focusChat,
   focusAbout, // opened from "X planın hakkında yazdı": that person's side conversation
   me,
   members,
-  withWhom,
   onEdit,
   onClose,
   onAnswered,
@@ -132,15 +169,15 @@ export default function EventDetail({
     const owner = members[event.owner] ?? UNKNOWN_PERSON
     return (
       <div className="detail">
-        <span className="chip is-active" style={{ '--tag': 'var(--muted)' }}>
-          📅 {genitive(owner.name)} takvimi
-        </span>
-        <h3>{event.busy ? `🔒 ${owner.name} dolu` : event.title}</h3>
-        <p className="when">{when}</p>
-        <p className="hint">
-          {owner.name} takvimini seninle {event.busy ? 'sadece dolu/boş olarak' : 'plan adlarıyla'} paylaşıyor. Plan
-          detayları, yer ve kimlerle olduğu görünmez.
-        </p>
+        <DetailHead label={`${genitive(owner.name)} takvimi`} color="var(--muted)" Icon={Lock} onClose={onClose} />
+        <h3>{event.busy ? `${owner.name} dolu` : event.title}</h3>
+        <ul className="info-rows">
+          <li>
+            <Clock size={17} aria-hidden="true" />
+            <span>{when}</span>
+          </li>
+        </ul>
+        <p className="hint">{event.busy ? 'Sadece dolu olduğu görünür.' : 'Sadece plan adı ve saati görünür.'}</p>
         <ShareThread
           eventId={event.eventId}
           owner={event.owner}
@@ -153,21 +190,16 @@ export default function EventDetail({
           onToast={onToast}
           {...(event.busy
             ? {
-                title: `💬 ${dative(owner.name)} yaz`,
-                hint: `Burada yazdıklarını sadece ${owner.name} görür; plandaki diğer kişiler görmez.`,
-                placeholder: `${dative(owner.name)} yaz… 💬`,
+                title: `${genitive(owner.name)} ile`,
+                hint: `Sadece ${owner.name} okur.`,
+                placeholder: `${owner.name} için yaz…`,
               }
             : {
-                title: '💬 Bu plan hakkında',
-                hint: `${owner.name} ve takvimini plan adlarıyla gören herkes burada yazılanları görür; plandaki diğer kişiler görmez.`,
-                placeholder: 'Bir şey yaz… 💬',
+                title: 'Bu plan hakkında',
+                hint: `${owner.name} ve takvimini görenler okur.`,
+                placeholder: 'Bir şey yaz…',
               })}
         />
-        <div className="form-actions">
-          <button className="btn btn-primary" onClick={onClose}>
-            Tamam
-          </button>
-        </div>
       </div>
     )
   }
@@ -180,10 +212,10 @@ export default function EventDetail({
         <p className="when">{when}</p>
         <p className="reveal">Birlikte olduğunuz günden hesaplandı. Ayarlar’dan değiştirebilirsin.</p>
         <button className="btn btn-primary" onClick={onClose}>
-          Nice nicelerine 🥂
+          Nice nicelerine
         </button>
-        <button className="link-btn share-link" onClick={share}>
-          📸 Hikâyende paylaş
+        <button className="btn btn-secondary" onClick={share}>
+          <Share2 size={16} aria-hidden="true" /> Hikâyende paylaş
         </button>
       </div>
     )
@@ -209,7 +241,7 @@ export default function EventDetail({
           </div>
         )}
         <button className="btn btn-primary" onClick={onClose}>
-          Sabırsızlanıyorum 💕
+          Sabırsızlanıyorum
         </button>
       </div>
     )
@@ -218,51 +250,73 @@ export default function EventDetail({
   const tag = TAGS[event.tag] ?? TAGS.plan
   // Group plans are edited by whoever made them; two-person plans by both (except surprises).
   const canEdit = event.guests ? event.createdBy === me : !event.surprise || event.createdBy === me
+  const WithIcon = RELATION_ICONS[event.relation] ?? Users
 
   return (
     <div className="detail">
-      <span className="chip is-active" style={{ '--tag': tag.color }}>
-        {tagEmoji(event.tag, event.relation)} {tagLabel(event.tag, event.relation)}
-      </span>
+      <DetailHead
+        label={tagLabel(event.tag, event.relation)}
+        color={tag.color}
+        onShare={share}
+        onEdit={canEdit ? onEdit : null}
+        onClose={onClose}
+      />
       <h3>{event.title}</h3>
-      <p className="when">{when}</p>
-      {withWhom && !event.guests && <p className="meta-line">{withWhom} ile</p>}
+      <ul className="info-rows">
+        <li>
+          <Clock size={17} aria-hidden="true" />
+          <span>{when}</span>
+        </li>
+        {!event.guests && partner && (
+          <li>
+            <WithIcon size={17} aria-hidden="true" />
+            <span>{partner.name} ile</span>
+          </li>
+        )}
+        {event.location && (
+          <li>
+            <MapPin size={17} aria-hidden="true" />
+            <a className="place" href={mapsUrl(event.location)} target="_blank" rel="noreferrer">
+              {event.location} <span>Haritada aç</span>
+            </a>
+          </li>
+        )}
+        {repeatLabel(event) && (
+          <li>
+            <Repeat size={17} aria-hidden="true" />
+            <span>{repeatLabel(event)}</span>
+          </li>
+        )}
+      </ul>
+      {!event.guests && <p className="author">{author.name} ekledi</p>}
       {status}
       {event.guests && (
-        <div className="status-box">
-          <strong>👥 Davetliler</strong>
+        <div className="status-box guests-box">
+          <div className="box-head">
+            <strong>Davetliler</strong>
+            <span>{guestSummary(event)}</span>
+          </div>
           <GuestList event={event} members={members} me={me} onMoved={onAnswered} onToast={onToast} />
           <InvitationActions event={event} me={me} onAnswered={onAnswered} onToast={onToast} />
         </div>
-      )}
-      {repeatLabel(event) &&<p className="meta-line">{repeatLabel(event)}</p>}
-      {event.location && (
-        <a className="meta-line place" href={mapsUrl(event.location)} target="_blank" rel="noreferrer">
-          📍 {event.location} <span>Haritada aç ›</span>
-        </a>
       )}
       {event.note && <p className="note">{event.note}</p>}
       {event.photos.length > 0 && <PhotoGallery photos={event.photos} />}
 
       {event.surprise && event.guests && event.hiddenFrom?.length > 0 && (
         <div className="surprise-info">
-          🤫 {event.hiddenFrom.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} için sürpriz. Onlar şimdilik
-          sadece şunu görüyor: “{event.teaser}”. Buradaki yorumları göremezler. Detaylar{' '}
+          {event.hiddenFrom.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} için sürpriz. Şimdilik sadece
+          “{event.teaser}” ipucunu görüyorlar; bu sohbeti göremezler. Detaylar{' '}
           {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.
         </div>
       )}
 
       {event.surprise && !event.guests && event.createdBy === me && (
         <div className="surprise-info">
-          🎁 Bu bir sürpriz. {(partner ?? UNKNOWN_PERSON).name} şimdilik sadece şunu görüyor: “{event.teaser}”.
-          Detaylar {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.
+          Bu bir sürpriz. {(partner ?? UNKNOWN_PERSON).name} şimdilik sadece “{event.teaser}” ipucunu görüyor. Detaylar{' '}
+          {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.
         </div>
       )}
-
-      <p className="author">{author.name} ekledi</p>
-      <button className="link-btn share-link" onClick={share}>
-        📸 Hikâyende paylaş
-      </button>
 
       <ThreadsOnMyPlan
         eventId={event.seriesId ?? event.id}
@@ -281,17 +335,6 @@ export default function EventDetail({
         focus={focusChat}
         onToast={onToast}
       />
-
-      <div className="form-actions">
-        <button className="btn btn-ghost" onClick={onClose}>
-          Kapat
-        </button>
-        {canEdit && (
-          <button className="btn btn-primary" onClick={onEdit}>
-            Düzenle
-          </button>
-        )}
-      </div>
     </div>
   )
 }

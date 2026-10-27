@@ -87,7 +87,7 @@ export default function AuthScreen() {
       <div className="auth-hero">
         <img src="/icon-192.png" alt="" className="auth-logo" />
         <h1>UsDay</h1>
-        <p>{greeting ? `💌 ${inviter} seni ortak takvimine davet etti` : 'Bizim günlerimiz, planlarımız ve sürprizlerimiz 💜'}</p>
+        <p>{greeting ? `💌 ${inviter} seni ortak takvimine davet etti` : 'Bizim günlerimiz, planlarımız ve sürprizlerimiz\u00a0💜'}</p>
       </div>
 
       <form className="auth-card card" onSubmit={handleSubmit}>

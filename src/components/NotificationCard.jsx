@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react'
+import { Bell, BellOff, Smartphone, TriangleAlert } from 'lucide-react'
 import { enablePush, isIos, isStandalone, pushSupported } from '../lib/push'
 
 function initialState() {
   if (!pushSupported()) return isIos() && !isStandalone() ? 'install' : 'unsupported'
   return Notification.permission // 'default' | 'granted' | 'denied'
+}
+
+function Notice({ Icon, title, text, children }) {
+  return (
+    <section className="notice card">
+      <span className="notice-icon">
+        <Icon size={20} aria-hidden="true" />
+      </span>
+      <span>
+        <strong>{title}</strong>
+        <small>{text}</small>
+      </span>
+      {children}
+    </section>
+  )
 }
 
 export default function NotificationCard({ partnerName, onToast }) {
@@ -31,73 +47,43 @@ export default function NotificationCard({ partnerName, onToast }) {
 
   if (state === 'unsupported') {
     return (
-      <section className="notice card">
-        <span className="notice-emoji">🔕</span>
-        <span>
-          <strong>Bu tarayıcıda bildirim alamazsın</strong>
-          <small>
-            UsDay’i iPhone’da Safari’den, Android’de Chrome’dan aç ve ana ekrana ekle. WhatsApp ya da Instagram
-            içinden açılan sayfalar bildirim alamaz.
-          </small>
-        </span>
-      </section>
+      <Notice
+        Icon={BellOff}
+        title="Bu tarayıcıda bildirim yok"
+        text="UsDay’i Safari ya da Chrome’dan açıp ana ekrana ekle."
+      />
     )
   }
 
   if (state === 'failed') {
     return (
-      <section className="notice card">
-        <span className="notice-emoji">⚠️</span>
-        <span>
-          <strong>Bildirimler bu cihazda kaydedilemedi</strong>
-          <small>İnternetin varken tekrar dene.</small>
-        </span>
-        <button className="btn btn-primary" onClick={turnOn} disabled={busy}>
+      <Notice Icon={TriangleAlert} title="Bildirimler kaydedilemedi" text="İnternetin varken tekrar dene.">
+        <button className="btn btn-primary btn-small" onClick={turnOn} disabled={busy}>
           {busy ? '…' : 'Tekrar'}
         </button>
-      </section>
+      </Notice>
     )
   }
 
   if (state === 'install') {
     return (
-      <section className="notice card">
-        <span className="notice-emoji">📲</span>
-        <span>
-          <strong>Bildirim almak için UsDay’i ana ekrana ekle</strong>
-          <small>
-            Safari’de <b>Paylaş</b> ⬆️ → <b>Ana Ekrana Ekle</b>, sonra UsDay’i ana ekrandaki ikondan aç.
-          </small>
-        </span>
-      </section>
+      <Notice Icon={Smartphone} title="Bildirim için ana ekrana ekle" text="Safari’de Paylaş → Ana Ekrana Ekle, sonra ikondan aç." />
     )
   }
 
   if (state === 'denied') {
-    return (
-      <section className="notice card">
-        <span className="notice-emoji">🔕</span>
-        <span>
-          <strong>Bildirimler kapalı</strong>
-          <small>iPhone Ayarlar → Bildirimler → UsDay’den açabilirsin.</small>
-        </span>
-      </section>
-    )
+    return <Notice Icon={BellOff} title="Bildirimler kapalı" text="iPhone Ayarlar → Bildirimler → UsDay’den açabilirsin." />
   }
 
   return (
-    <section className="notice card">
-      <span className="notice-emoji">🔔</span>
-      <span>
-        <strong>Bildirimleri aç</strong>
-        <small>
-          {partnerName ? `${partnerName} plan eklediğinde ya da yorum yazdığında` : 'Plan ve yorum geldiğinde'}, yaklaşan
-          planlardan önce de haber verelim.
-        </small>
-      </span>
-      <button className="btn btn-primary" onClick={turnOn} disabled={busy}>
+    <Notice
+      Icon={Bell}
+      title="Bildirimleri aç"
+      text={partnerName ? `${partnerName} plan ekleyince ya da yazınca haberin olsun.` : 'Yeni plan ve yorumlardan haberin olsun.'}
+    >
+      <button className="btn btn-primary btn-small" onClick={turnOn} disabled={busy}>
         {busy ? '…' : 'Aç'}
       </button>
-    </section>
+    </Notice>
   )
 }

@@ -1,5 +1,6 @@
 import { format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { CalendarClock, Gift } from 'lucide-react'
 import { UNKNOWN_PERSON } from '../lib/constants'
 import { timeSpan } from '../lib/format'
 import ProposalActions from './ProposalActions'
@@ -15,17 +16,20 @@ export default function ProposalCard({ event, me, members, onOpen, onAnswered, o
   const heading = counter
     ? `${other.name} başka bir zaman önerdi`
     : event.locked
-      ? `${other.name} bir sürpriz için seni ayırtmak istiyor`
-      : `${other.name} bir plan teklif ediyor`
+      ? `${other.name} seni bir sürpriz için ayırtıyor`
+      : `${other.name} soruyor: uygun musun?`
+  const Icon = event.locked ? Gift : CalendarClock
 
   return (
     <section className="proposal card">
       <button className="proposal-head" onClick={() => onOpen(event)}>
-        <span className="notice-emoji">{event.locked ? '🎁' : '📨'}</span>
+        <span className="notice-icon">
+          <Icon size={20} aria-hidden="true" />
+        </span>
         <span>
           <small>{heading}</small>
           <strong>{event.locked ? `“${event.teaser}”` : event.title}</strong>
-          <span className="proposal-when">{when} — uygun musun?</span>
+          <span className="proposal-when">{when}</span>
           {event.responseNote && <em className="proposal-note">“{event.responseNote}”</em>}
         </span>
       </button>

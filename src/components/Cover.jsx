@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Bell, Camera, Settings } from 'lucide-react'
 import { resizeImage } from '../lib/image'
 import ImageCropper from './ImageCropper'
 import Highlights from './Highlights'
@@ -39,8 +40,13 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
         </span>
         <span className="cover-actions">
           {onPhoto && (
-            <button className="cover-photo-btn" onClick={() => inputRef.current?.click()} disabled={uploading}>
-              {uploading ? 'Yükleniyor…' : photo ? '📷 Değiştir' : '📷 Fotoğrafınızı ekleyin'}
+            <button
+              className="cover-photo-btn cover-icon"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              aria-label={photo ? 'Kapak fotoğrafını değiştir' : 'Kapak fotoğrafı ekle'}
+            >
+              <Camera size={18} aria-hidden="true" />
             </button>
           )}
           <button
@@ -48,11 +54,11 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
             onClick={onInbox}
             aria-label={unread ? `Bildirimler, ${unread} okunmamış` : 'Bildirimler'}
           >
-            🔔
+            <Bell size={18} aria-hidden="true" />
             {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
           </button>
           <button className="cover-photo-btn cover-icon" onClick={onSettings} aria-label="Ayarlar">
-            ⚙️
+            <Settings size={18} aria-hidden="true" />
           </button>
         </span>
         <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />

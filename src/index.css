@@ -1,20 +1,40 @@
+/* Design language
+   Colour: lilac stays the identity; text and buttons use deeper tones so they read at 4.5:1 or more.
+   Type: 12 · 13 · 15 · 17 · 22 · 28. Space: 4 · 8 · 12 · 16 · 24.
+   Buttons: primary (filled), secondary (outlined), text. Icons: one line set (Lucide), 20px. */
 :root {
   --cream: #f8f4fa;
   --card: #ffffff;
   --blush: #efe6f5;
-  --rose: #b39bd0;
-  --rose-deep: #8a6fa8;
+  --rose: #b39bd0; /* decoration only: borders, dots, soft fills */
+  --rose-deep: #6a4d93; /* text links and accents */
+  --primary: #7b5ea7; /* filled buttons, white text on it */
+  --on-primary: #ffffff;
   --gold: #e0b25c;
   --ink: #3a2e40;
-  --muted: #9a8ca3;
+  --muted: #6e6278;
   --line: #ebe2f0;
+  --ok: #2f7a55;
+  --ok-soft: #e3f3ea;
+  --maybe: #96600f;
+  --maybe-soft: #fbf0dc;
+  --no: #b0304a;
+  --no-soft: #fbe9ec;
+  --wait: #5d5566;
+  --wait-soft: #efecf2;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
   --dash: #dccfe6;
   --outside: #cbbfd3;
   --danger: #c0505f;
   --gold-bg: #fdf5e6;
   --gold-line: #f1dcae;
   --glass: rgba(255, 255, 255, 0.75);
-  --glass-strong: rgba(255, 255, 255, 0.82);
+  --glass-strong: rgba(255, 255, 255, 0.94);
   --solid: #3a2e40; /* toast and small dark chips */
   --on-solid: #ffffff;
   --knob: #ffffff;
@@ -49,7 +69,7 @@
     --gold-bg: #33291c;
     --gold-line: #6b5530;
     --glass: rgba(39, 31, 46, 0.72);
-    --glass-strong: rgba(39, 31, 46, 0.85);
+    --glass-strong: rgba(39, 31, 46, 0.96);
     --solid: #f1e9f6;
     --on-solid: #241c2a;
     --knob: #f1e9f6;
@@ -57,6 +77,14 @@
     --locked: #352a40;
     --grid-line: #2f2638;
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    --ok: #7fd0a4;
+    --ok-soft: #1c3127;
+    --maybe: #e6b363;
+    --maybe-soft: #3a2e1b;
+    --no: #f08a9c;
+    --no-soft: #3a1f27;
+    --wait: #b9b0c2;
+    --wait-soft: #2f2836;
     color-scheme: dark;
   }
 }
@@ -76,7 +104,7 @@
   --gold-bg: #33291c;
   --gold-line: #6b5530;
   --glass: rgba(39, 31, 46, 0.72);
-  --glass-strong: rgba(39, 31, 46, 0.85);
+  --glass-strong: rgba(39, 31, 46, 0.96);
   --solid: #f1e9f6;
   --on-solid: #241c2a;
   --knob: #f1e9f6;
@@ -84,6 +112,14 @@
   --locked: #352a40;
   --grid-line: #2f2638;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --ok: #7fd0a4;
+  --ok-soft: #1c3127;
+  --maybe: #e6b363;
+  --maybe-soft: #3a2e1b;
+  --no: #f08a9c;
+  --no-soft: #3a1f27;
+  --wait: #b9b0c2;
+  --wait-soft: #2f2836;
   color-scheme: dark;
 }
 
@@ -129,6 +165,7 @@ h3 {
 .cover {
   position: relative;
   aspect-ratio: 5 / 4;
+  max-height: 46dvh;
   padding: calc(env(safe-area-inset-top) + 18px) 18px 22px;
   display: flex;
   flex-direction: column;
@@ -384,11 +421,15 @@ h3 {
   letter-spacing: 0.15em;
 }
 
+/* Text button: the third button type. No underline; colour and weight say it can be tapped. */
 .link-btn {
   align-self: center;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
   color: var(--rose-deep);
-  text-decoration: underline;
 }
 
 .templates {
@@ -426,6 +467,10 @@ h3 {
 
 .category span {
   font-size: 20px;
+}
+
+.category svg {
+  color: var(--rose-deep);
 }
 
 .category.is-active {
@@ -577,9 +622,16 @@ h3 {
 }
 
 .comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.card-badges {
+  color: var(--muted);
 }
 
 .meta-line {
@@ -646,19 +698,19 @@ h3 {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 14px 5px 5px;
+  gap: 7px;
+  padding: 4px 12px 4px 4px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
   background: var(--card);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: 600;
   color: var(--muted);
 }
 
 .person-chip.is-active {
-  border-color: var(--rose);
-  background: color-mix(in srgb, var(--rose) 16%, var(--card));
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--rose) 18%, var(--card));
   color: var(--ink);
 }
 
@@ -673,8 +725,8 @@ h3 {
 
 .person-avatar {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -693,13 +745,12 @@ h3 {
 
 .person-avatar.all {
   background: var(--blush);
-  font-size: 15px;
+  color: var(--rose-deep);
 }
 
 .person-avatar.add {
   background: var(--blush);
   color: var(--rose-deep);
-  font-size: 18px;
 }
 
 .categories.relations {
@@ -728,16 +779,12 @@ h3 {
 
 /* Tab bar and pages */
 .app.has-tabbar {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 160px);
-}
-
-.has-tabbar .fab {
-  bottom: calc(env(safe-area-inset-bottom) + 86px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 100px);
 }
 
 .has-tabbar ~ .toast,
 .has-tabbar .toast {
-  bottom: calc(env(safe-area-inset-bottom) + 160px);
+  bottom: calc(env(safe-area-inset-bottom) + 90px);
 }
 
 .tabbar {
@@ -749,8 +796,9 @@ h3 {
   width: 100%;
   max-width: 480px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 8px 24px calc(env(safe-area-inset-bottom) + 8px);
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 6px 24px calc(env(safe-area-inset-bottom) + 6px);
   background: var(--glass-strong);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -768,19 +816,19 @@ h3 {
   color: var(--muted);
 }
 
-.tabbar button span {
-  font-size: 22px;
-  filter: grayscale(1);
-  opacity: 0.6;
-}
-
 .tabbar button.is-active {
   color: var(--rose-deep);
 }
 
-.tabbar button.is-active span {
-  filter: none;
-  opacity: 1;
+.tabbar .tabbar-add {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 6px 18px rgba(123, 94, 167, 0.35);
 }
 
 .page-head {
@@ -1131,9 +1179,7 @@ p.empty {
 
 /* Proposals */
 .event-card.is-proposed {
-  border: 1.5px dashed var(--tag);
-  border-left-width: 4px;
-  border-left-style: solid;
+  border: 1.5px dashed color-mix(in srgb, var(--tag) 70%, var(--ink));
 }
 
 .event-card.is-declined strong {
@@ -1604,17 +1650,31 @@ p.empty {
 }
 
 .cover-icon {
-  width: 34px;
-  padding: 7px 0;
-  text-align: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+/* No photo: a short band instead of half a screen of gradient. */
+.cover:not(.has-photo) {
+  aspect-ratio: auto;
+  min-height: 0;
+  gap: 18px;
+}
+
+.cover-photo-btn:disabled {
+  opacity: 0.6;
 }
 
 .new-pill {
   margin-left: 8px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--rose);
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
   font-size: 11px;
   font-weight: 600;
   vertical-align: 2px;
@@ -1694,8 +1754,8 @@ p.empty {
 }
 
 .week-day.is-selected span {
-  background: var(--rose);
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
   box-shadow: none;
 }
 
@@ -1834,7 +1894,9 @@ p.empty {
   text-decoration: none;
 }
 
-.bordered {
+/* Secondary: outlined. */
+.bordered,
+.btn-secondary {
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--ink);
@@ -1850,7 +1912,8 @@ p.empty {
   min-width: 0;
 }
 
-.danger-link {
+.danger-link,
+.link-btn.danger-link {
   color: var(--danger);
 }
 
@@ -1958,6 +2021,9 @@ p.empty {
 .icon-btn {
   width: 34px;
   height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
   font-size: 22px;
   line-height: 1;
@@ -2007,8 +2073,8 @@ p.empty {
 }
 
 .day.is-selected .num {
-  background: var(--rose);
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
   font-weight: 600;
   box-shadow: none;
 }
@@ -2027,8 +2093,18 @@ p.empty {
 
 /* Agenda */
 .section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   font-size: 18px;
   margin-bottom: 10px;
+}
+
+.section-title small {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .event-list {
@@ -2042,16 +2118,29 @@ p.empty {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 12px 14px 12px 12px;
   text-align: left;
   background: var(--card);
   border-radius: 18px;
   box-shadow: var(--shadow);
-  border-left: 4px solid var(--tag);
+  border: 1px solid transparent;
 }
 
-.event-emoji {
-  font-size: 22px;
+/* The category as a tinted tile: its colour without a stripe on every card. */
+.event-icon {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tag) 24%, var(--card));
+  color: color-mix(in srgb, var(--tag) 55%, var(--ink));
+}
+
+.event-body .event-when {
+  color: var(--ink);
+  opacity: 0.85;
 }
 
 .event-body {
@@ -2098,21 +2187,6 @@ p.empty {
   border: 1.5px dashed var(--dash);
   color: var(--muted);
   font-size: 14px;
-}
-
-/* FAB */
-.fab {
-  position: fixed;
-  bottom: calc(env(safe-area-inset-bottom) + 24px);
-  right: max(20px, calc(50% - 220px));
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--rose);
-  color: #fff;
-  font-size: 32px;
-  line-height: 1;
-  box-shadow: 0 10px 24px rgba(138, 111, 168, 0.4);
 }
 
 /* Sheet */
@@ -2321,14 +2395,23 @@ p.empty {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 12px 20px;
   border-radius: 14px;
   font-weight: 600;
 }
 
+.btn svg {
+  flex: none;
+}
+
+/* Primary: one per screen at most, the thing to do. */
 .btn-primary {
-  background: var(--rose);
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .btn-ghost {
@@ -3022,4 +3105,584 @@ p.empty {
 
 .cover.has-photo .highlight-dots button.is-active {
   background: #fff;
+}
+
+/* Design language v2 ------------------------------------------------------------- */
+
+.btn-small {
+  padding: 8px 14px;
+  font-size: var(--fs-sm);
+  border-radius: 12px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Small notices (notifications, invitations): an icon in a soft circle, a line, an action. */
+.notice-icon {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blush);
+  color: var(--rose-deep);
+}
+
+.notice {
+  padding: 12px 14px;
+}
+
+.notice strong {
+  font-size: var(--fs-md);
+}
+
+.waiting {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.waiting .section-title {
+  margin-bottom: 0;
+}
+
+.proposal {
+  border: 1px solid color-mix(in srgb, var(--rose) 60%, var(--line));
+}
+
+.proposal-head small {
+  color: var(--rose-deep);
+}
+
+/* Lists in settings and sheets: rows inside one card, separated by hairlines. */
+.list-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.list-card > * + * {
+  border-top: 1px solid var(--line);
+}
+
+.list-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--fs-md);
+}
+
+.list-row:disabled {
+  opacity: 0.6;
+}
+
+.row-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--blush);
+  color: var(--rose-deep);
+}
+
+.row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.row-text small {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.code-text {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.12em;
+}
+
+.row-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+.list-item.is-open .row-chevron {
+  transform: rotate(180deg);
+}
+
+.list-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 14px 14px;
+}
+
+.list-detail .connection-links {
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.list-form {
+  padding: 10px;
+}
+
+.settings-group h4 {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.settings .link-btn.danger-link {
+  align-self: flex-start;
+}
+
+/* Plan detail: category and actions on one line, the facts as icon rows. */
+.detail-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tag-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tag) 20%, var(--card));
+  color: color-mix(in srgb, var(--tag) 45%, var(--ink));
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.tag-label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tag);
+}
+
+.detail h3 {
+  font-size: var(--fs-2xl);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.info-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--fs-md);
+}
+
+.info-rows li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.info-rows svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--rose-deep);
+}
+
+.info-rows li > span::first-letter {
+  text-transform: uppercase;
+}
+
+.info-rows .place span {
+  font-weight: 600;
+}
+
+.title-heart {
+  color: #d9668f;
+  vertical-align: -2px;
+}
+
+/* Group plans: who is coming, in words with their own colour. */
+.guests-box {
+  gap: 10px;
+}
+
+.box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.box-head span {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.guest-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.guest-note {
+  font-style: italic;
+}
+
+.status-pill {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.status-pill.is-ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.status-pill.is-maybe {
+  color: var(--maybe);
+  background: var(--maybe-soft);
+}
+
+.status-pill.is-no {
+  color: var(--no);
+  background: var(--no-soft);
+}
+
+.status-pill.is-wait {
+  color: var(--wait);
+  background: var(--wait-soft);
+}
+
+.status-pill.is-maker {
+  color: var(--rose-deep);
+  background: color-mix(in srgb, var(--rose) 22%, var(--card));
+}
+
+/* Conversation */
+.conv-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.conv-head h4 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.conv-head small {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.reactions {
+  gap: 6px;
+}
+
+.reaction {
+  padding: 4px 9px;
+  font-size: 16px;
+}
+
+.attach-btn {
+  width: 44px;
+  padding: 0;
+  font-size: 0;
+}
+
+.attach-btn.is-active {
+  border-color: var(--primary);
+  color: var(--rose-deep);
+}
+
+.send-btn {
+  width: 48px;
+  padding: 0;
+}
+
+.attach-menu {
+  align-self: flex-start;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.attach-menu button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.attach-menu button:active {
+  background: var(--blush);
+}
+
+.attach-menu svg {
+  color: var(--rose-deep);
+}
+
+.silent-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A conversation about a plan on a shared calendar looks like a plan's own conversation. */
+.share-thread {
+  padding: 12px 0 0;
+  border-radius: 0;
+  background: none;
+  border-top: 1px solid var(--line);
+}
+
+.share-thread h4 {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.quick-words .chip {
+  background: var(--card);
+}
+
+/* Plan form */
+.person-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.person-picks .person-chip.is-active .person-avatar {
+  background: var(--primary) !important;
+}
+
+.icon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-chip svg {
+  color: color-mix(in srgb, var(--tag, var(--rose)) 50%, var(--ink));
+}
+
+.chip.is-active {
+  font-weight: 600;
+}
+
+.surprise-toggle strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conflict-box span {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.conflict-box svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--maybe);
+}
+
+.photo-add svg {
+  color: var(--rose-deep);
+}
+
+/* Wishes: whose list and the category on one row; wishes as tiles, two across. */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-row .people-bar {
+  flex: 1;
+  min-width: 0;
+  margin-right: 0;
+  padding-right: 4px;
+}
+
+.person-avatar.all {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.select-chip {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.select-chip select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: inherit;
+  padding: 9px 28px 9px 12px;
+}
+
+.select-chip svg {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.wish-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wish-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 8px 12px;
+  border-radius: 18px;
+}
+
+.wish-thumb {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  color: var(--rose-deep);
+}
+
+.wish-loved {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--card);
+  color: #d9668f;
+}
+
+.wish-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.wish-text strong {
+  font-weight: 600;
+  font-size: var(--fs-md);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.wish-text small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.wish-card .claim-pill {
+  align-self: flex-start;
+  margin: 0 4px;
+  max-width: calc(100% - 8px);
+}
+
+.claim-pill {
+  color: var(--maybe);
+}
+
+.is-flipped {
+  transform: rotate(180deg);
+}
+
+.inbox-empty svg {
+  color: var(--rose-deep);
+}
+
+.guest-list,
+.status-box > .answer-grid,
+.status-box > .proposal-actions {
+  width: 100%;
+}
+
+.page-head h1 {
+  font-size: var(--fs-2xl);
+}
+
+.welcome strong {
+  font-size: var(--fs-lg);
+}
+
+.gallery-lock svg {
+  color: var(--rose-deep);
+}
+
+.empty {
+  color: var(--rose-deep);
+  font-weight: 600;
 }

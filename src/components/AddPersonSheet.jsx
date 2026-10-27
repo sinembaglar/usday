@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { Send } from 'lucide-react'
 import { createConnection, joinCouple } from '../lib/api'
 import { RELATIONS } from '../lib/constants'
+import { RELATION_ICONS } from '../lib/icons'
+import { shareInvite } from '../lib/invite'
 
 const JOIN_ERRORS = {
   invalid_invite: 'Bu kod geçersiz ya da kullanılmış.',
@@ -8,7 +11,8 @@ const JOIN_ERRORS = {
 }
 
 // Add someone: open a new invitation (choosing who they are to you) or join theirs with a code.
-export default function AddPersonSheet({ onCreated, onJoined, onClose }) {
+// Invitations nobody has joined yet are here too, ready to send again.
+export default function AddPersonSheet({ invites = [], onCreated, onJoined, onClose, onToast }) {
   const [mode, setMode] = useState('invite') // invite | join
   const [relation, setRelation] = useState('friend')
   const [code, setCode] = useState('')
@@ -43,6 +47,31 @@ export default function AddPersonSheet({ onCreated, onJoined, onClose }) {
     <div className="settings">
       <h3>Kişi ekle</h3>
 
+      {invites.length > 0 && (
+        <section className="settings-group">
+          <h4>Bekleyen davetlerin</h4>
+          <div className="list-card">
+            {invites.map((c) => {
+              const Icon = RELATION_ICONS[c.relation] ?? RELATION_ICONS.partner
+              return (
+                <div key={c.id} className="list-row">
+                  <span className="row-icon">
+                    <Icon size={18} aria-hidden="true" />
+                  </span>
+                  <span className="row-text">
+                    {(RELATIONS[c.relation] ?? RELATIONS.partner).label}
+                    <small className="code-text">{c.inviteCode}</small>
+                  </span>
+                  <button className="btn btn-secondary btn-small" onClick={() => shareInvite(c.inviteCode, onToast)}>
+                    <Send size={16} aria-hidden="true" /> Gönder
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="segmented">
         <button className={mode === 'invite' ? 'is-active' : ''} onClick={() => setMode('invite')}>
           Ben davet edeyim
@@ -54,27 +83,27 @@ export default function AddPersonSheet({ onCreated, onJoined, onClose }) {
 
       {mode === 'invite' ? (
         <section className="settings-group">
-          <h4>Bu takvimi kiminle paylaşacaksın?</h4>
+          <h4>Kimi davet ediyorsun?</h4>
           <div className="categories relations" role="radiogroup" aria-label="İlişki">
-            {Object.entries(RELATIONS).map(([key, r]) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={relation === key}
-                className={`category ${relation === key ? 'is-active' : ''}`}
-                style={{ '--tag': 'var(--rose)' }}
-                onClick={() => setRelation(key)}
-              >
-                <span>{r.emoji}</span>
-                {r.label}
-              </button>
-            ))}
+            {Object.entries(RELATIONS).map(([key, r]) => {
+              const Icon = RELATION_ICONS[key]
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={relation === key}
+                  className={`category ${relation === key ? 'is-active' : ''}`}
+                  style={{ '--tag': 'var(--rose)' }}
+                  onClick={() => setRelation(key)}
+                >
+                  <Icon size={20} aria-hidden="true" />
+                  {r.label}
+                </button>
+              )
+            })}
           </div>
-          <p className="hint">
-            Her kişiyle ayrı bir ortak takvimin olur. Birinin planlarını diğeri asla görmez; üstteki kişi çubuğundan
-            istediğin kişileri birlikte de görebilirsin.
-          </p>
+          <p className="hint">Her kişiyle ayrı bir ortak takvimin olur; biri diğerinin planlarını görmez.</p>
           <button className="btn btn-primary" disabled={busy} onClick={create}>
             {busy ? 'Bir saniye…' : 'Davet kodu oluştur'}
           </button>

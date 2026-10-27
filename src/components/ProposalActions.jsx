@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Check } from 'lucide-react'
 import { respondToPlan } from '../lib/api'
 import { notifyAnswer } from '../lib/push'
 
@@ -28,13 +29,13 @@ export default function ProposalActions({ event, onAnswered, onToast }) {
       {mode === null && (
         <div className="proposal-buttons">
           <button className="btn btn-primary" disabled={busy} onClick={() => answer('accept')}>
-            ✅ Uygunum
+            <Check size={16} aria-hidden="true" /> Uygunum
           </button>
-          <button className="btn btn-ghost bordered" disabled={busy} onClick={() => setMode('decline')}>
-            ❌ Değilim
+          <button className="btn btn-secondary" disabled={busy} onClick={() => setMode('decline')}>
+            Değilim
           </button>
-          <button className="btn btn-ghost bordered" disabled={busy} onClick={() => setMode('counter')}>
-            🕐 Başka zaman
+          <button className="btn btn-secondary" disabled={busy} onClick={() => setMode('counter')}>
+            Başka zaman
           </button>
         </div>
       )}

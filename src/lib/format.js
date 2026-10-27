@@ -25,7 +25,7 @@ export const timeSpan = (e) =>(e.time ? (e.endTime ? `${e.time}–${e.endTime}` 
 export function repeatLabel(e) {
   if (!e.repeat || e.repeat === 'none') return ''
   const until = e.repeatUntil ? ` · ${format(parseISO(e.repeatUntil), 'd MMMM yyyy', { locale: tr })}’e kadar` : ''
-  return `🔁 ${REPEATS[e.repeat]}${until}`
+  return `${REPEATS[e.repeat]}${until}`
 }
 
 // Apple Maps on iPhone, Google Maps everywhere else.

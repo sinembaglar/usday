@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { WISH_CATEGORIES } from '../lib/constants'
-import { genitive } from '../lib/format'
 import WishCard from './WishCard'
 
-// My wish list and those of the people I picked in the people bar.
-// Claims ("sen alıyorsun", "Yaren alıyor") are never loaded on my own wishes.
+// My wish list and those of the people I am connected with: one row to pick whose list, with the
+// category as a small menu at its end. Claims ("sen alıyorsun") are never loaded on my own wishes.
 export default function WishesView({ wishes, me, people, onOpen, onAdd, header }) {
   const [whose, setWhose] = useState('mine')
   const [category, setCategory] = useState('all')
@@ -20,76 +20,59 @@ export default function WishesView({ wishes, me, people, onOpen, onAdd, header }
     <>
       {header}
       <main className="content">
-        {people.length > 0 && (
-          <div className="chips whose" role="tablist" aria-label="Kimin listesi">
-            <button
-              className={`chip ${!person ? 'is-active' : ''}`}
-              style={{ '--tag': 'var(--rose)' }}
-              onClick={() => setWhose('mine')}
-            >
-              Benim dileklerim
+        <div className="filter-row">
+          <div className="people-bar" role="tablist" aria-label="Kimin listesi">
+            <button className={`person-chip ${!person ? 'is-active' : ''}`} onClick={() => setWhose('mine')}>
+              <span className="person-avatar all">Ben</span>
+              Benim
             </button>
             {people.map((p) => (
-              <button
-                key={p.id}
-                className={`chip ${whose === p.id ? 'is-active' : ''}`}
-                style={{ '--tag': 'var(--rose)' }}
-                onClick={() => setWhose(p.id)}
-              >
-                {genitive(p.name)} dilekleri
+              <button key={p.id} className={`person-chip ${whose === p.id ? 'is-active' : ''}`} onClick={() => setWhose(p.id)}>
+                <span className="person-avatar" style={{ background: p.color }}>
+                  {p.short}
+                </span>
+                {p.name}
               </button>
             ))}
           </div>
-        )}
-
-        {person && (
-          <p className="hint center">
-            🤫 Bir dileği “ben alıyorum” diye işaretlersen {person.name} bunu göremez. İstersen sürpriz plana çevir.
-          </p>
-        )}
-
-        <div className="chips" role="radiogroup" aria-label="Kategori">
-          <button
-            className={`chip ${category === 'all' ? 'is-active' : ''}`}
-            style={{ '--tag': 'var(--rose)' }}
-            onClick={() => setCategory('all')}
-          >
-            Tümü
-          </button>
-          {Object.entries(WISH_CATEGORIES).map(([key, c]) => (
-            <button
-              key={key}
-              className={`chip ${category === key ? 'is-active' : ''}`}
-              style={{ '--tag': 'var(--rose)' }}
-              onClick={() => setCategory(key)}
-            >
-              {c.emoji} {c.label}
-            </button>
-          ))}
+          <label className="select-chip">
+            <span className="visually-hidden">Kategori</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="all">Tümü</option>
+              {Object.entries(WISH_CATEGORIES).map(([key, c]) => (
+                <option key={key} value={key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} aria-hidden="true" />
+          </label>
         </div>
 
+        {person && <p className="hint">“Ben alıyorum” dediğin dileği {person.name} göremez.</p>}
+
         {open.length ? (
-          <div className="event-list">
+          <div className="wish-grid">
             {open.map((w) => (
               <WishCard key={w.id} wish={w} onClick={() => onOpen(w)} />
             ))}
           </div>
         ) : !person ? (
           <button className="empty" onClick={onAdd}>
-            Listen boş. Hediye, gezi ya da deneyim… Aklındaki ilk dileği ekle ✨
-            {people.length > 0 && <small>Sevdiklerine hediye fikri vermiş olursun 😉</small>}
+            Listen boş. Hediye, gezi ya da deneyim: aklındaki ilk dileği ekle.
+            {people.length > 0 && <small>Sevdiklerine hediye fikri vermiş olursun.</small>}
           </button>
         ) : (
-          <p className="empty">{person.name} henüz bir dilek eklemedi. Belki bir hatırlatma? 💌</p>
+          <p className="empty">{person.name} henüz bir dilek eklemedi.</p>
         )}
 
         {done.length > 0 && (
           <section className="agenda">
             <button className="link-btn" onClick={() => setShowDone((v) => !v)}>
-              ✨ Gerçekleşenler ({done.length}) {showDone ? '▴' : '▾'}
+              Gerçekleşenler ({done.length}) <ChevronDown size={14} className={showDone ? 'is-flipped' : ''} aria-hidden="true" />
             </button>
             {showDone && (
-              <div className="event-list">
+              <div className="wish-grid">
                 {done.map((w) => (
                   <WishCard key={w.id} wish={w} onClick={() => onOpen(w)} />
                 ))}

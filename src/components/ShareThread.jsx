@@ -188,8 +188,8 @@ export function ThreadsOnMyPlan({ eventId, me, members, focusViewer, onToast }) 
           members={members}
           focus={focusViewer === 'open' || (focusViewer && !threads.private.includes(focusViewer))}
           onToast={onToast}
-          title="💬 Takvimini görenler bu plan hakkında"
-          hint="Takvimini plan adlarıyla gören herkes bu sohbeti görür ve yazabilir; plandaki diğer kişiler görmez."
+          title="Takvimini görenler yazdı"
+          hint="Takvimini plan adlarıyla görenler okur; plandakiler görmez."
         />
       )}
       {threads.private.map((v) => (
@@ -203,8 +203,8 @@ export function ThreadsOnMyPlan({ eventId, me, members, focusViewer, onToast }) 
           members={members}
           focus={v === focusViewer}
           onToast={onToast}
-          title={`💬 ${(members[v] ?? UNKNOWN_PERSON).name} ile bu plan hakkında`}
-          hint="Sadece dolu/boş saatlerini görüyor; bu sohbeti sadece ikiniz görürsünüz."
+          title={`${(members[v] ?? UNKNOWN_PERSON).name} ile`}
+          hint="Sadece ikiniz görürsünüz."
         />
       ))}
     </>

@@ -41,15 +41,15 @@ export default function ShareCard({ card, onClose, onToast }) {
 
   return (
     <div className="settings share-card">
-      <h3>📸 Hikâyende paylaş</h3>
+      <h3>Hikâyende paylaş</h3>
       <div className="share-preview">{image ? <img src={image.url} alt="Paylaşılacak kart" /> : <span>Hazırlanıyor…</span>}</div>
       {card.photoUrl && (
         <div className="segmented">
           <button className={withPhoto ? 'is-active' : ''} onClick={() => setWithPhoto(true)}>
-            🖼️ Fotoğraflı
+            Fotoğraflı
           </button>
           <button className={withPhoto ? '' : 'is-active'} onClick={() => setWithPhoto(false)}>
-            💜 Sade
+            Sade
           </button>
         </div>
       )}

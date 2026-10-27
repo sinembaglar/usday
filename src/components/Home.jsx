@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { Bell, Settings } from 'lucide-react'
 import Cover from './Cover'
 import MonthCalendar from './MonthCalendar'
 import WeekView from './WeekView'
@@ -432,15 +433,17 @@ export default function Home({ userId }) {
   const selectedKey = format(selected, 'yyyy-MM-dd')
   const sorted = useMemo(() => [...shown].sort(byDateTime), [shown])
   const dayEvents = sorted.filter((e) => e.date === selectedKey)
+  // Today and what comes next are at the top; the calendar below shows any other day picked on it.
+  const todayEvents = sorted.filter((e) => e.date === todayKey)
   // One line per plan in "Yaklaşanlar": a weekly plan shows only its next time.
   // Others' shared calendars show on the calendar, the selected day and in a list of their own.
   const nextOnce = (e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i
   const upcoming = sorted
-    .filter((e) => !e.shared && e.date >= todayKey && e.date !== selectedKey)
+    .filter((e) => !e.shared && e.date > todayKey)
     .filter(nextOnce)
     .slice(0, 5)
   const sharedUpcoming = sorted
-    .filter((e) => e.shared && e.date >= todayKey && e.date !== selectedKey)
+    .filter((e) => e.shared && e.date > todayKey)
     .filter(nextOnce)
     .slice(0, 5)
   const sharedOwners = [...new Set(sharedUpcoming.map((e) => e.owner))]
@@ -455,11 +458,10 @@ export default function Home({ userId }) {
     (e.date > todayKey || (e.date === todayKey && (!e.time || (e.endTime || e.time) > nowHM)))
   const ahead = sorted.filter(stillAhead)
   const firstOf = (test) => ahead.find(test)
-  const onlyPartners = selection.every((id) => byId[id]?.relation === 'partner')
   const highlights = [
     {
       kind: 'date',
-      label: onlyPartners ? 'Sıradaki date' : 'Sıradaki buluşma',
+      label: 'Sıradaki buluşma',
       event: firstOf((e) => e.tag === 'date' && !e.surprise),
     },
     { kind: 'surprise', label: 'Sıradaki sürpriz', event: firstOf((e) => e.surprise) },
@@ -470,9 +472,20 @@ export default function Home({ userId }) {
     .filter((h) => h.event)
     .map((h) => ({ ...h, text: h.event.locked ? '🎁 Bir sürpriz yaklaşıyor' : h.event.title }))
 
-  const waitingForMe = withPartner.filter((e) => e.status === 'proposed' && e.awaiting === userId)
-  const invitedMe = withPartner.filter((e) => e.guests?.some((g) => g.id === userId && g.status === 'pending'))
-  const pending = selection.map((id) => byId[id]).filter((c) => c && !c.partnerId)
+  // Questions waiting for me, from the people selected in the people bar (everyone under "Tümü").
+  const selectedPeople = new Set(selection.map((id) => byId[id]?.partnerId).filter(Boolean))
+  const waitingForMe = withPartner.filter(
+    (e) => e.status === 'proposed' && e.awaiting === userId && selection.includes(e.coupleId),
+  )
+  const invitedMe = withPartner.filter(
+    (e) =>
+      e.guests?.some((g) => g.id === userId && g.status === 'pending') &&
+      [e.createdBy, ...e.guests.map((g) => g.id)].some((id) => selectedPeople.has(id)),
+  )
+  // An open invitation is shown on the home screen only while nobody has joined yet (getting started);
+  // later it waits behind "Kişi ekle" and in settings.
+  const openInvites = all.filter((c) => !c.partnerId)
+  const pending = linked.length ? [] : openInvites.slice(0, 1)
   const counter =
     single?.partnerId && single.togetherSince && relationOf(single).counter
       ? relationOf(single).counter(dayNumber(single.togetherSince, todayKey).toLocaleString('tr-TR'))
@@ -480,13 +493,13 @@ export default function Home({ userId }) {
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
   // With plans of several people on screen, each says who it is with.
   const withWhom = (e) => {
-    if (e.shared) return `📅 ${genitive((members[e.owner] ?? UNKNOWN_PERSON).name)} takvimi`
+    if (e.shared) return `${genitive((members[e.owner] ?? UNKNOWN_PERSON).name)} takvimi`
     if (e.guests) {
       const others = [e.createdBy, ...e.guests.map((g) => g.id)].filter((id) => id !== userId)
-      return `👥 ${others.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')}`
+      return others.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')
     }
     const c = byId[e.coupleId]
-    return linked.length > 1 && c?.partnerId ? `${relationOf(c).emoji} ${personOf(c).name}` : null
+    return linked.length > 1 && c?.partnerId ? personOf(c).name : null
   }
   const formConnections = all.map((c) => ({
     id: c.id,
@@ -689,13 +702,26 @@ export default function Home({ userId }) {
         onClick={() => setSheet({ type: 'inbox' })}
         aria-label={unread ? `Bildirimler, ${unread} okunmamış` : 'Bildirimler'}
       >
-        🔔
+        <Bell size={18} aria-hidden="true" />
         {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
       <button className="cover-photo-btn cover-icon" onClick={() => setSheet({ type: 'settings' })} aria-label="Ayarlar">
-        ⚙️
+        <Settings size={18} aria-hidden="true" />
       </button>
     </span>
+  )
+
+  const card = (e, showDate) => (
+    <EventCard
+      key={e.id}
+      event={e}
+      members={members}
+      isNew={isNew(e)}
+      withWhom={withWhom(e)}
+      me={userId}
+      showDate={showDate}
+      onClick={() => openDetail(e)}
+    />
   )
 
   const peopleBar = (
@@ -713,9 +739,9 @@ export default function Home({ userId }) {
   if (!connections) return <div className="splash">UsDay</div>
 
   const welcomeIdeas = templatesFor('date', single?.relation ?? 'partner').items.slice(0, 6)
-  const visiblePeople = [...new Set(selection.map((id) => byId[id]?.partnerId).filter(Boolean))].map(
-    (id) => members[id] ?? UNKNOWN_PERSON,
-  )
+  // Wishes have their own "whose list" choice: everyone I am connected with, whatever is picked above.
+  const wishPeople = [...new Set(linked.map((c) => c.partnerId))].map((id) => ({ ...(members[id] ?? UNKNOWN_PERSON), id }))
+  const waiting = invitedMe.length + waitingForMe.length + pending.length
 
   return (
     <div className="app has-tabbar">
@@ -723,17 +749,14 @@ export default function Home({ userId }) {
         <WishesView
           wishes={wishes}
           me={userId}
-          people={visiblePeople}
+          people={wishPeople}
           onOpen={(wish) => setSheet({ type: 'wishDetail', wish })}
           onAdd={() => setSheet({ type: 'wishForm' })}
           header={
-            <>
-              <header className="page-head">
-                <h1>🎁 Dilekler</h1>
-                {headerButtons}
-              </header>
-              <div className="content people-wrap">{peopleBar}</div>
-            </>
+            <header className="page-head">
+              <h1>Dilekler</h1>
+              {headerButtons}
+            </header>
           }
         />
       ) : (
@@ -754,45 +777,50 @@ export default function Home({ userId }) {
 
             <NotificationCard partnerName={personOf(single)?.name} onToast={setToast} />
 
-            {invitedMe.map((e) => (
-              <InvitationCard
-                key={e.id}
-                event={e}
-                me={userId}
-                members={members}
-                onOpen={openDetail}
-                onAnswered={() => reload()}
-                onToast={setToast}
-              />
-            ))}
+            {waiting > 0 && (
+              <section className="waiting">
+                <h2 className="section-title">Seni bekleyenler</h2>
+                {invitedMe.map((e) => (
+                  <InvitationCard
+                    key={e.id}
+                    event={e}
+                    me={userId}
+                    members={members}
+                    onOpen={openDetail}
+                    onAnswered={() => reload()}
+                    onToast={setToast}
+                  />
+                ))}
 
-            {waitingForMe.map((e) => (
-              <ProposalCard
-                key={e.id}
-                event={{ ...e, seriesId: e.id, seriesDate: e.date }}
-                me={userId}
-                members={members}
-                onOpen={openDetail}
-                onAnswered={() => reload()}
-                onToast={setToast}
-              />
-            ))}
+                {waitingForMe.map((e) => (
+                  <ProposalCard
+                    key={e.id}
+                    event={{ ...e, seriesId: e.id, seriesDate: e.date }}
+                    me={userId}
+                    members={members}
+                    onOpen={openDetail}
+                    onAnswered={() => reload()}
+                    onToast={setToast}
+                  />
+                ))}
 
-            {pending.map((c) => (
-              <InviteCard
-                key={c.id}
-                code={c.inviteCode}
-                relation={c.relation}
-                showJoin={all.length === 1}
-                onToast={setToast}
-                onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
-              />
-            ))}
+                {pending.map((c) => (
+                  <InviteCard
+                    key={c.id}
+                    code={c.inviteCode}
+                    relation={c.relation}
+                    showJoin={all.length === 1}
+                    onToast={setToast}
+                    onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
+                  />
+                ))}
+              </section>
+            )}
 
             {shown.filter((e) => !e.milestone).length === 0 && (
               <section className="welcome card">
-                <strong>UsDay’e hoş geldin 💜</strong>
-                <small>İlk planı ekle. Bir şablona dokunman yeterli:</small>
+                <strong>UsDay’e hoş geldin</strong>
+                <small>İlk planı ekle; bir fikre dokunman yeterli.</small>
                 <div className="templates">
                   {welcomeIdeas.map((t) => (
                     <button key={t.title} className="chip" onClick={() => openForm({ ...t, tag: 'date' })}>
@@ -800,6 +828,22 @@ export default function Home({ userId }) {
                     </button>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {todayEvents.length > 0 && (
+              <section className="agenda">
+                <h2 className="section-title">
+                  Bugün <small>{format(new Date(), 'd MMMM EEEE', { locale: tr })}</small>
+                </h2>
+                <div className="event-list">{todayEvents.map((e) => card(e, false))}</div>
+              </section>
+            )}
+
+            {upcoming.length > 0 && (
+              <section className="agenda">
+                <h2 className="section-title">Yaklaşanlar</h2>
+                <div className="event-list">{upcoming.map((e) => card(e, true))}</div>
               </section>
             )}
 
@@ -824,53 +868,24 @@ export default function Home({ userId }) {
               <MonthCalendar month={month} onMonthChange={setMonth} selected={selected} onSelect={selectDay} events={shown} />
             )}
 
-            <section className="agenda">
-              <h2 className="section-title">{format(selected, 'd MMMM, EEEE', { locale: tr })}</h2>
-              {dayEvents.length ? (
-                <div className="event-list">
-                  {dayEvents.map((e) => (
-                    <EventCard
-                      key={e.id}
-                      event={e}
-                      members={members}
-                      isNew={isNew(e)}
-                      withWhom={withWhom(e)}
-                      me={userId}
-                      onClick={() => openDetail(e)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <button className="empty" onClick={() => setSheet({ type: 'form' })}>
-                  Bu gün boş. Bir plan ekleyelim mi? ✨
-                </button>
-              )}
-            </section>
-
-            {upcoming.length > 0 && (
+            {(selectedKey !== todayKey || !todayEvents.length) && (
               <section className="agenda">
-                <h2 className="section-title">Yaklaşanlar</h2>
-                <div className="event-list">
-                  {upcoming.map((e) => (
-                    <EventCard
-                      key={e.id}
-                      event={e}
-                      members={members}
-                      isNew={isNew(e)}
-                      withWhom={withWhom(e)}
-                      me={userId}
-                      showDate
-                      onClick={() => openDetail(e)}
-                    />
-                  ))}
-                </div>
+                <h2 className="section-title">
+                  {selectedKey === todayKey ? 'Bugün' : format(selected, 'd MMMM, EEEE', { locale: tr })}
+                </h2>
+                {dayEvents.length ? (
+                  <div className="event-list">{dayEvents.map((e) => card(e, false))}</div>
+                ) : (
+                  <button className="empty" onClick={() => setSheet({ type: 'form' })}>
+                    Bu gün boş. Plan ekle
+                  </button>
+                )}
               </section>
             )}
 
             {sharedUpcoming.length > 0 && (
               <section className="agenda">
                 <h2 className="section-title">
-                  📅{' '}
                   {sharedOwners.length === 1
                     ? `${genitive((members[sharedOwners[0]] ?? UNKNOWN_PERSON).name)} takviminden`
                     : 'Paylaşılan takvimlerden'}
@@ -894,26 +909,22 @@ export default function Home({ userId }) {
         </>
       )}
 
-      <button
-        className="fab"
-        onClick={() => setSheet({ type: tab === 'dilekler' ? 'wishForm' : 'form' })}
-        aria-label={tab === 'dilekler' ? 'Dilek ekle' : 'Plan ekle'}
-      >
-        +
-      </button>
-
       <TabBar
         tab={tab}
         onChange={(next) => {
           setTab(next)
           window.scrollTo(0, 0)
         }}
+        onAdd={() => setSheet({ type: tab === 'dilekler' ? 'wishForm' : 'form' })}
+        addLabel={tab === 'dilekler' ? 'Dilek ekle' : 'Plan ekle'}
       />
 
       {sheet && (
         <Sheet onClose={() => setSheet(null)}>
           {sheet.type === 'addPerson' ? (
             <AddPersonSheet
+              invites={openInvites}
+              onToast={setToast}
               onCreated={(id) => connectionReady(id, '💌 Davet kodun hazır, gönderebilirsin')}
               onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
               onClose={() => setSheet(null)}

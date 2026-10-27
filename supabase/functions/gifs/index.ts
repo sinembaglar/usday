@@ -17,7 +17,8 @@ const KEY = Deno.env.get('KLIPY_API_KEY')
 const BASE = 'https://api.klipy.com/api/v1'
 const MAX_BYTES = 8 * 1024 * 1024
 
-type Size = { gif?: { url?: string; width?: number; height?: number; size?: number } }
+type File = { url?: string; width?: number; height?: number; size?: number }
+type Size = { gif?: File; webp?: File }
 type Item = { id: string | number; title?: string; file?: Record<string, Size> }
 
 // A stand-in id for KLIPY: the same for one person, telling nothing about them.
@@ -27,11 +28,11 @@ async function standIn(userId: string) {
   return [...hash.slice(0, 12)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-// A small one for the grid, and one not too heavy to send.
+// A light one for the grid (animated WebP, a fraction of the GIF's size), and a GIF not too heavy to send.
 function pick(item: Item) {
   const f = item.file ?? {}
-  const preview = f.sm?.gif ?? f.xs?.gif ?? f.md?.gif ?? f.hd?.gif
-  const send = [f.md?.gif, f.sm?.gif, f.hd?.gif].find((g) => g?.url && (g.size ?? 0) <= MAX_BYTES) ?? preview
+  const preview = f.sm?.webp ?? f.sm?.gif ?? f.xs?.gif ?? f.md?.gif
+  const send = [f.md?.gif, f.sm?.gif, f.hd?.gif].find((g) => g?.url && (g.size ?? 0) <= MAX_BYTES) ?? f.xs?.gif
   if (!preview?.url || !send?.url) return null
   return {
     id: String(item.id),
