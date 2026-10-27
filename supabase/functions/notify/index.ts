@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     const others = [...new Set(people.filter((p) => p.id !== userId).map((p) => p.id))]
     if (!others.length) return json({ sent: 0 })
     const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
-    const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: '/?tab=dilekler', tag: `wish-${wish.id}` }
+    const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: `/?tab=dilekler&wish=${wish.id}`, tag: `wish-${wish.id}` }
     return json({ sent: await sendToUsers(others, payload) })
   }
 
@@ -80,8 +80,9 @@ Deno.serve(async (req) => {
   // Someone is getting a wish: everyone else who can see it hears who, so it is not bought twice.
   // The wish owner is never told.
   if (body.claim_wish_id) {
-    const { data: claim } = await admin.from('wish_claims').select('claimed_by').eq('wish_id', body.claim_wish_id).maybeSingle()
+    const { data: claim } = await admin.from('wish_claims').select('claimed_by, shared').eq('wish_id', body.claim_wish_id).maybeSingle()
     if (!claim || claim.claimed_by !== userId) return json({ error: 'not_found' }, 404)
+    if (!claim.shared) return json({ sent: 0 }) // the claimer keeps their name hidden
     const { data: wish } = await admin.from('wishes').select('id, owner, title').eq('id', body.claim_wish_id).single()
     const { data: theirs } = await admin.from('couple_members').select('couple_id').eq('user_id', wish!.owner)
     const people = await peopleIn((theirs ?? []).map((m) => m.couple_id))
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
     const payload = {
       title: `🎁 ${me?.name} bunu alıyor`,
       body: `${genitive(ownerName)} dileği: ${wish!.title} — ${ownerName} bilmiyor 🤫`,
-      url: '/?tab=dilekler',
+      url: `/?tab=dilekler&wish=${wish!.id}`,
       tag: `claim-${wish!.id}`,
     }
     return json({ sent: await sendToUsers(others, payload) })
@@ -186,7 +187,7 @@ Deno.serve(async (req) => {
       sent += await sendToUsers(
         insiders.map((g) => g.id),
         comment
-          ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: comment.body.slice(0, 180), url, tag: `${groupPlan.id}-chat` }
+          ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: comment.body.slice(0, 180), url: `${url}&chat=1`, tag: `${groupPlan.id}-chat` }
           : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: groupPlan.title, url, tag: `${groupPlan.id}-react` },
         groupPlan.id,
       )
@@ -232,7 +233,7 @@ Deno.serve(async (req) => {
     // Talking about a still-hidden surprise must not reach the person it is hidden from.
     if (hiddenFrom(event, userId) || hiddenFrom(event, partner.id)) return json({ sent: 0 })
     payload = comment
-      ? { title: `💬 ${me.name} · ${event.title}`, body: comment.body.slice(0, 180), url, tag: `${event.id}-chat` }
+      ? { title: `💬 ${me.name} · ${event.title}`, body: comment.body.slice(0, 180), url: `${url}&chat=1`, tag: `${event.id}-chat` }
       : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: event.title, url, tag: `${event.id}-react` }
   }
 

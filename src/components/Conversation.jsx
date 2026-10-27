@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { addComment, deleteComment, hasPush, loadConversation, setReaction } from '../lib/api'
 import { notifyReaction } from '../lib/push'
@@ -8,7 +8,10 @@ import { UNKNOWN_PERSON } from '../lib/constants'
 const EMOJIS = ['😍', '🥳', '👍', '😂', '🙈']
 
 // Comments and reactions under a plan. Attached to the whole series for repeating plans.
-export default function Conversation({ eventId, me, members, hasPartner, listeners = [] }) {
+export default function Conversation({ eventId, me, members, hasPartner, listeners = [], focus = false }) {
+  // Opened from a comment notification: scroll down to the conversation once it has loaded.
+  const sectionRef = useRef(null)
+  const scrolled = useRef(false)
   const [comments, setComments] = useState([])
   const [reactions, setReactions] = useState([])
   const [draft, setDraft] = useState('')
@@ -48,6 +51,12 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
     }
   }, [eventId, load])
 
+  useEffect(() => {
+    if (!focus || scrolled.current || !comments.length) return
+    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    scrolled.current = true
+  }, [focus, comments.length])
+
   const mine = reactions.find((r) => r.user_id === me)?.emoji
 
   async function react(emoji) {
@@ -83,7 +92,7 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
   }
 
   return (
-    <section className="conversation">
+    <section className="conversation" ref={sectionRef}>
       <div className="reactions" role="group" aria-label="Tepki ver">
         {EMOJIS.map((emoji) => {
           const who = reactions.filter((r) => r.emoji === emoji)

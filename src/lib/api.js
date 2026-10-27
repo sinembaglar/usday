@@ -111,7 +111,8 @@ export async function loadEverything(userId) {
   const claimOf = Object.fromEntries(
     claims.map((c) => [
       c.wish_id,
-      { by: c.claimed_by, byName: c.claimer_name, mine: c.claimed_by === userId, hasPlan: c.has_plan },
+      // by and byName are null when the claimer keeps their name hidden ("biri alıyor").
+      { by: c.claimed_by, byName: c.claimer_name, mine: c.claimed_by === userId, hasPlan: c.has_plan, shared: c.shared },
     ]),
   )
   const teaserCouple = Object.fromEntries(teaserCouples.map((t) => [t.id, t.couple_id]))
@@ -215,11 +216,19 @@ export async function deleteWish(wish) {
 
 // "Bunu ben alıyorum": secret from the wish owner, shown to everyone else who can see the wish.
 // planId links the surprise made from it.
-export async function claimWish(wishId, planId = null, announce = true) {
-  const { error } = await supabase.from('wish_claims').upsert({ wish_id: wishId, plan_id: planId })
+export async function claimWish(wishId, planId = null, announce = true, shared = undefined) {
+  const row = { wish_id: wishId, plan_id: planId, ...(shared === undefined ? {} : { shared }) }
+  const { error } = await supabase.from('wish_claims').upsert(row)
   // Someone else claimed it a moment ago: their row is not mine to update.
   if (error) throw ['42501', '23505'].includes(error.code) ? new Error('taken') : error
   if (announce) supabase.functions.invoke('notify', { body: { claim_wish_id: wishId } }).catch(() => {})
+}
+
+// Show my name to the others ("Yaren alıyor") or only "biri alıyor". The owner never sees either.
+export async function setClaimShared(wishId, shared) {
+  const { error } = await supabase.from('wish_claims').update({ shared }).eq('wish_id', wishId)
+  if (error) throw error
+  if (shared) supabase.functions.invoke('notify', { body: { claim_wish_id: wishId } }).catch(() => {})
 }
 
 export async function unclaimWish(wishId) {

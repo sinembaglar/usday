@@ -19,8 +19,10 @@ export default function WishCard({ wish, onClick }) {
           {wish.claim.mine
             ? wish.claim.hasPlan
               ? '🎁 sürpriz hazır'
-              : '🤫 sen alıyorsun'
-            : `🎁 ${wish.claim.byName} alıyor`}
+              : `${wish.claim.shared ? '🤫' : '🔒'} sen alıyorsun`
+            : wish.claim.byName
+              ? `🎁 ${wish.claim.byName} alıyor`
+              : '🔒 biri alıyor'}
         </span>
       )}
       {wish.status === 'done' && <span className="claim-pill done">✨</span>}

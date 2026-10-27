@@ -129,7 +129,13 @@ function milestoneJobs(coupleId: string, since: string, relation: string, member
         userId: person.id,
         eventId: null,
         claim: { table: 'sent_milestones', row: { couple_id: coupleId, user_id: person.id, key: `${m.kind}:${m.count}:${today ? 'day' : 'eve'}` } },
-        payload: { title, body, url: '/', tag: `milestone-${m.kind}-${m.count}` },
+        // Opens that anniversary in the app (the id the app gives it, see Home).
+        payload: {
+          title,
+          body,
+          url: `/?milestone=milestone-${coupleId}-${m.kind}-${m.count}&with=${coupleId}&day=${m.date}`,
+          tag: `milestone-${m.kind}-${m.count}`,
+        },
       })
     }
   }

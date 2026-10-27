@@ -94,13 +94,15 @@ export default function Home({ userId }) {
   const [unread, setUnread] = useState(0)
   const [admin, setAdmin] = useState(false)
 
+  // The address is cleaned on start, so the admin link is read from where the app was opened.
+  const [startUrl] = useState(() => window.location.href)
   useEffect(() => {
     isAdmin().then((yes) => {
       setAdmin(yes)
-      const section = adminFromUrl(window.location.href)
+      const section = adminFromUrl(startUrl)
       if (yes && section) setSheet({ type: 'admin', section })
     })
-  }, [userId])
+  }, [userId, startUrl])
 
   // Opening the app (or coming back to it) counts as seeing everything: clears the icon badge.
   const reload = useCallback(
@@ -155,22 +157,47 @@ export default function Home({ userId }) {
     navigator.clearAppBadge?.().catch(() => {})
   }, [])
 
-  // A tapped notification opens its plan, both on a cold start (?event=) and while the app is open.
-  const [pendingOpen, setPendingOpen] = useState(() => new URLSearchParams(window.location.search).get('event'))
+  // A tapped notification opens what it is about: a plan (?event=, &chat=1 for a comment), a wish
+  // (?wish=), an anniversary (?milestone=) or the admin panel (?admin=). Works on a cold start, from
+  // the phone while the app is open, and from the in-app inbox.
+  const startParams = useMemo(() => new URLSearchParams(window.location.search), [])
+  const [pendingOpen, setPendingOpen] = useState(() => startParams.get('event'))
+  const [focusChat, setFocusChat] = useState(() => startParams.has('chat'))
+  const [pendingWish, setPendingWish] = useState(() => startParams.get('wish'))
+  const [pendingMilestone, setPendingMilestone] = useState(() =>
+    startParams.get('milestone')
+      ? { id: startParams.get('milestone'), coupleId: startParams.get('with'), day: startParams.get('day') }
+      : null,
+  )
+
+  const openLink = useCallback(
+    (url) => {
+      const p = new URL(url, window.location.origin).searchParams
+      if (p.get('admin')) {
+        if (admin) setSheet({ type: 'admin', section: p.get('admin') })
+        return
+      }
+      if (p.get('tab') === 'dilekler') setTab('dilekler')
+      if (p.get('wish')) setPendingWish(p.get('wish'))
+      if (p.get('event')) {
+        setFocusChat(p.has('chat'))
+        setPendingOpen(p.get('event'))
+      }
+      if (p.get('milestone')) setPendingMilestone({ id: p.get('milestone'), coupleId: p.get('with'), day: p.get('day') })
+    },
+    [admin],
+  )
 
   useEffect(() => {
-    const onMessage = (e) => {
+    const onMessage = async (e) => {
       if (e.data?.type !== 'open') return
-      const wantedTab = tabFromUrl(e.data.url)
-      if (wantedTab) setTab(wantedTab)
-      const section = adminFromUrl(e.data.url)
-      if (section) setSheet({ type: 'admin', section })
-      setPendingOpen(new URL(e.data.url, window.location.origin).searchParams.get('event'))
-      reload({ markAsSeen: true })
+      setSheet(null)
+      await reload({ markAsSeen: true }) // so a brand-new plan or wish is there to open
+      openLink(e.data.url)
     }
     navigator.serviceWorker?.addEventListener('message', onMessage)
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
-  }, [reload])
+  }, [reload, openLink])
 
   // People ---------------------------------------------------------------------
 
@@ -240,7 +267,12 @@ export default function Home({ userId }) {
   useEffect(() => {
     if (!pendingOpen || !connections) return
     const raw = events.find((e) => e.id === pendingOpen)
-    if (raw?.guests && !shown.some((e) => e.seriesId === raw.id)) {
+    if (!raw) {
+      setToast('Bu plan artık yok')
+      setPendingOpen(null)
+      return
+    }
+    if (raw.guests && !shown.some((e) => e.seriesId === raw.id)) {
       choose(all.map((c) => c.id)) // a group plan: show everyone
       return
     }
@@ -250,16 +282,60 @@ export default function Home({ userId }) {
     }
     const matches = shown.filter((e) => e.seriesId === pendingOpen)
     const event = matches.find((e) => e.date >= todayKey) ?? matches[0]
-    if (!event) return
+    if (!event) {
+      // An older plan is outside the loaded months: go to its month first, then open it.
+      const target = startOfMonth(parseISO(raw.date))
+      if (+target !== +month) setMonth(target)
+      else setPendingOpen(null)
+      return
+    }
     setTab('takvim')
-    setSheet({ type: 'detail', event })
+    setSheet({ type: 'detail', event, focusChat })
     setSelected(parseISO(event.date))
     setMonth(startOfMonth(parseISO(event.date)))
     setPendingOpen(null)
-    window.history.replaceState(null, '', '/')
+    setFocusChat(false)
     // choose is stable enough for this one-off jump
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingOpen, shown, todayKey, events, selection, connections])
+
+  // A wish notification opens that wish.
+  useEffect(() => {
+    if (!pendingWish || !connections) return
+    const wish = wishes.find((w) => w.id === pendingWish)
+    if (wish) {
+      setTab('dilekler')
+      setSheet({ type: 'wishDetail', wish })
+    } else {
+      setToast('Bu dilek artık yok')
+    }
+    setPendingWish(null)
+  }, [pendingWish, wishes, connections])
+
+  // An anniversary notification opens that day, with that person selected.
+  useEffect(() => {
+    if (!pendingMilestone || !connections) return
+    const { id, coupleId, day } = pendingMilestone
+    if (!byId[coupleId]) {
+      setPendingMilestone(null)
+      return
+    }
+    if (!selection.includes(coupleId)) {
+      choose([...selection, coupleId])
+      return
+    }
+    const event = shown.find((e) => e.id === id)
+    if (!event && day && +startOfMonth(parseISO(day)) !== +month) {
+      setMonth(startOfMonth(parseISO(day)))
+      return
+    }
+    setTab('takvim')
+    if (day) setSelected(parseISO(day))
+    if (event) setSheet({ type: 'detail', event })
+    setPendingMilestone(null)
+    // choose is stable enough for this one-off jump
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMilestone, shown, selection, byId, connections, month])
 
   useEffect(() => {
     if (!toast) return
@@ -267,11 +343,10 @@ export default function Home({ userId }) {
     return () => clearTimeout(id)
   }, [toast])
 
-  // ?tab=dilekler (from a wish notification) is used once, then the address is cleaned.
+  // A notification link is used once, then the address is cleaned.
   useEffect(() => {
-    const url = window.location.href
-    if ((tabFromUrl(url) || adminFromUrl(url)) && !pendingOpen) window.history.replaceState(null, '', '/')
-  }, [pendingOpen])
+    if (window.location.search) window.history.replaceState(null, '', '/')
+  }, [])
 
   // What the screen shows -------------------------------------------------------
 
@@ -738,11 +813,10 @@ export default function Home({ userId }) {
           ) : sheet.type === 'inbox' ? (
             <NotificationsSheet
               onRead={inboxRead}
-              onOpenEvent={(id) => {
+              onOpenLink={(url) => {
                 setSheet(null)
-                setPendingOpen(id)
+                openLink(url)
               }}
-              onOpenAdmin={admin ? (section) => setSheet({ type: 'admin', section }) : null}
               onClose={() => setSheet(null)}
               onToast={setToast}
             />
@@ -815,6 +889,7 @@ export default function Home({ userId }) {
           ) : (
             <EventDetail
               event={sheet.event}
+              focusChat={sheet.focusChat}
               me={userId}
               members={members}
               withWhom={withWhom(sheet.event)}

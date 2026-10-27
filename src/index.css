@@ -2496,6 +2496,29 @@ p.empty {
   color: var(--rose-deep);
 }
 
+.claim-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--blush);
+  font-size: 14px;
+}
+
+.claim-choice small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.claim-choice .btn small {
+  margin-left: 6px;
+}
+
+.claim-hint {
+  margin: 0;
+}
+
 .silent-hint {
   margin: 0;
   font-size: 12px;

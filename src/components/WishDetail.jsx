@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { UNKNOWN_PERSON, WISH_CATEGORIES } from '../lib/constants'
-import { claimWish, completeWish, unclaimWish } from '../lib/api'
+import { claimWish, completeWish, setClaimShared, unclaimWish } from '../lib/api'
 import { genitive } from '../lib/format'
 
 const safeLink = (link) => (/^https?:\/\//i.test(link) ? link : `https://${link}`)
 
-// The owner edits, plans or ticks off their wish. Others can secretly claim it (everyone but
-// the owner sees who did) and turn it into a surprise plan.
+// The owner edits, plans or ticks off their wish. Others can secretly claim it, showing their
+// name to everyone but the owner or only "biri alıyor", and turn it into a surprise plan.
 export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurprise, onChanged, onClose, onToast }) {
   const [busy, setBusy] = useState(false)
+  const [choosing, setChoosing] = useState(false) // "Bunu ben alıyorum": show my name to the others or not
   const category = WISH_CATEGORIES[wish.category]
   const mine = wish.owner === me
   const owner = members[wish.owner] ?? UNKNOWN_PERSON
@@ -63,11 +64,17 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
 
       {!mine && open && wish.claim && !wish.claim.mine && (
         <div className="status-box is-asking">
-          <span>
-            🎁 <b>{wish.claim.byName}</b> bunu alıyor{wish.claim.hasPlan && ' ve bir sürpriz hazırlıyor'}. {owner.name}{' '}
-            bilmiyor 🤫
-          </span>
-          <small>Birlikte almak istersen {wish.claim.byName} ile konuşabilirsin.</small>
+          {wish.claim.byName ? (
+            <>
+              <span>
+                🎁 <b>{wish.claim.byName}</b> bunu alıyor{wish.claim.hasPlan && ' ve bir sürpriz hazırlıyor'}. {owner.name}{' '}
+                bilmiyor 🤫
+              </span>
+              <small>Birlikte almak istersen {wish.claim.byName} ile konuşabilirsin.</small>
+            </>
+          ) : (
+            <span>🔒 Bunu biri alıyor. {owner.name} bilmiyor 🤫</span>
+          )}
         </div>
       )}
 
@@ -82,6 +89,23 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
           )}
           {wish.claim ? (
             <>
+              <p className="hint claim-hint">
+                {wish.claim.shared
+                  ? `🎁 Diğerleri senin aldığını görüyor. ${owner.name} görmüyor.`
+                  : `🔒 Diğerleri sadece “biri alıyor” görüyor. ${owner.name} hiçbir şey görmüyor.`}{' '}
+                <button
+                  className="link-btn"
+                  disabled={busy}
+                  onClick={() =>
+                    run(
+                      () => setClaimShared(wish.id, !wish.claim.shared),
+                      wish.claim.shared ? '🔒 Adın artık gizli' : '🎁 Adın artık görünüyor',
+                    )
+                  }
+                >
+                  {wish.claim.shared ? 'Adımı gizle' : 'Adım görünsün'}
+                </button>
+              </p>
               <button className="btn btn-ghost bordered" disabled={busy} onClick={() => run(() => completeWish(wish.id), '✨ Gerçekleşti olarak işaretlendi')}>
                 ✨ Gerçekleşti
               </button>
@@ -89,8 +113,30 @@ export default function WishDetail({ wish, me, members, onEdit, onPlan, onSurpri
                 “Ben alıyorum” işaretini kaldır
               </button>
             </>
+          ) : choosing ? (
+            <div className="claim-choice">
+              <strong>Diğerleri görsün mü?</strong>
+              <small>{owner.name} iki durumda da hiçbir şey görmez.</small>
+              <button
+                className="btn btn-ghost bordered"
+                disabled={busy}
+                onClick={() => run(() => claimWish(wish.id, null, true, true), '🎁 Not alındı, diğerleri senin aldığını görecek')}
+              >
+                🎁 Adım görünsün <small>“{members[me]?.name ?? 'Sen'} alıyor”</small>
+              </button>
+              <button
+                className="btn btn-ghost bordered"
+                disabled={busy}
+                onClick={() => run(() => claimWish(wish.id, null, false, false), '🔒 Not alındı, adın gizli')}
+              >
+                🔒 Adım gizli kalsın <small>“Biri alıyor”</small>
+              </button>
+              <button className="link-btn" onClick={() => setChoosing(false)}>
+                Vazgeç
+              </button>
+            </div>
           ) : (
-            <button className="btn btn-ghost bordered" disabled={busy} onClick={() => run(() => claimWish(wish.id), `🤫 Not alındı. ${owner.name} görmeyecek, diğerleri senin aldığını görecek`)}>
+            <button className="btn btn-ghost bordered" disabled={busy} onClick={() => setChoosing(true)}>
               🤫 Bunu ben alıyorum
             </button>
           )}

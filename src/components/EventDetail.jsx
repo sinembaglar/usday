@@ -102,7 +102,7 @@ function listenersOf(event, me, partner) {
   return partner && !secret ? [partner.id] : []
 }
 
-export default function EventDetail({ event, me, members, withWhom, onEdit, onClose, onAnswered, onToast }) {
+export default function EventDetail({ event, focusChat, me, members, withWhom, onEdit, onClose, onAnswered, onToast }) {
   const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
   const when = [format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr }), timeSpan(event)]
@@ -213,6 +213,7 @@ export default function EventDetail({ event, me, members, withWhom, onEdit, onCl
         members={members}
         hasPartner={Boolean(partner)}
         listeners={listenersOf(event, me, partner)}
+        focus={focusChat}
       />
 
       <div className="form-actions">

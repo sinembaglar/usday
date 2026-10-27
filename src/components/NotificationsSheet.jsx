@@ -11,7 +11,10 @@ function groupOf(iso) {
 }
 
 // The in-app inbox: everything that was (or would have been) sent to the phone.
-export default function NotificationsSheet({ onOpenEvent, onOpenAdmin, onRead, onClose, onToast }) {
+// Where a notification leads; older ones without a link still open their plan.
+const linkOf = (n) => (n.url && n.url !== '/' ? n.url : n.event_id ? `/?event=${n.event_id}` : null)
+
+export default function NotificationsSheet({ onOpenLink, onRead, onClose, onToast }) {
   const [items, setItems] = useState(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -84,14 +87,13 @@ export default function NotificationsSheet({ onOpenEvent, onOpenAdmin, onRead, o
         <section key={group.name} className="inbox-group">
           <small>{group.name}</small>
           {group.items.map((n) => {
-            // Admin notifications open their part of the panel.
-            const section = onOpenAdmin && n.url?.startsWith('/?admin=') ? n.url.slice(8) : null
+            const link = linkOf(n)
             return (
               <button
                 key={n.id}
                 className={`inbox-item ${n.read_at ? '' : 'is-unread'}`}
-                onClick={() => (section ? onOpenAdmin(section) : n.event_id && onOpenEvent(n.event_id))}
-                disabled={!n.event_id && !section}
+                onClick={() => link && onOpenLink(link)}
+                disabled={!link}
               >
                 <span className="inbox-text">
                   <strong>{n.title}</strong>
