@@ -647,7 +647,7 @@ export async function setCalendarShare(userId, viewer, level, announce = false) 
 export async function loadShareComments(eventId) {
   const { data, error } = await supabase
     .from('share_comments')
-    .select('id, owner, viewer, author, body, image_path, created_at')
+    .select('id, owner, viewer, author, author_name, body, image_path, open, created_at')
     .eq('event_id', eventId)
     .order('created_at')
   if (error) throw error

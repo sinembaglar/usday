@@ -145,11 +145,22 @@ export default function EventDetail({
           eventId={event.eventId}
           owner={event.owner}
           viewer={me}
+          mode="viewer"
           me={me}
           members={members}
           focus={focusChat}
           onToast={onToast}
-          title={`💬 ${dative(owner.name)} yaz`}
+          {...(event.busy
+            ? {
+                title: `💬 ${dative(owner.name)} yaz`,
+                hint: `Burada yazdıklarını sadece ${owner.name} görür; plandaki diğer kişiler görmez.`,
+                placeholder: `${dative(owner.name)} yaz… 💬`,
+              }
+            : {
+                title: '💬 Bu plan hakkında',
+                hint: `${owner.name} ve takvimini plan adlarıyla gören herkes burada yazılanları görür; plandaki diğer kişiler görmez.`,
+                placeholder: 'Bir şey yaz… 💬',
+              })}
         />
         <div className="form-actions">
           <button className="btn btn-primary" onClick={onClose}>

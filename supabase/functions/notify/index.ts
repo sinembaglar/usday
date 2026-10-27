@@ -81,12 +81,13 @@ Deno.serve(async (req) => {
     return json({ sent: await sendToUsers(others, payload) })
   }
 
-  // A word about a plan on someone's shared calendar: only the other side of that side conversation
-  // hears it. A surprise for the calendar's owner is never named to them.
+  // A word about a plan on someone's shared calendar. In the shared conversation the owner and everyone
+  // who has joined it hear it (while they still see plan names); in a private one only the other side.
+  // A surprise for the calendar's owner is never named to them.
   if (body.share_comment_id) {
     const { data: c } = await admin
       .from('share_comments')
-      .select('id, event_id, owner, viewer, author, body, image_path, notified_at')
+      .select('id, event_id, owner, viewer, author, body, image_path, notified_at, open, created_at')
       .eq('id', body.share_comment_id)
       .maybeSingle()
     if (!c || c.author !== userId) return json({ error: 'not_found' }, 404)
@@ -99,6 +100,47 @@ Deno.serve(async (req) => {
     if (!first?.length) return json({ sent: 0 })
     const { data: event } = await admin.from('events').select('*').eq('id', c.event_id).single<EventRow>()
     const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
+
+    if (c.open) {
+      const { data: earlier } = await admin
+        .from('share_comments')
+        .select('author')
+        .eq('event_id', c.event_id)
+        .eq('owner', c.owner)
+        .eq('open', true)
+        .lt('created_at', c.created_at)
+      const { data: shares } = await admin.from('calendar_shares').select('viewer').eq('owner', c.owner).eq('level', 'details')
+      const seeing = new Set((shares ?? []).map((s) => s.viewer))
+      const joined = [...new Set((earlier ?? []).map((e) => e.author))].filter(
+        (id) => id !== c.author && id !== c.owner && seeing.has(id),
+      )
+      const { data: owner } = await admin.from('profiles').select('name').eq('id', c.owner).single()
+      const text = commentText(c).slice(0, 180)
+      const tag = `share-chat-${c.event_id}-open`
+      let sent = 0
+      if (c.author !== c.owner) {
+        const plan = hiddenFrom(event!, c.owner) ? 'bir planın' : `“${event!.title}” planın`
+        sent += await sendToUsers([c.owner], {
+          title: `💬 ${me?.name}, ${plan} hakkında yazdı`,
+          body: text,
+          url: `/?event=${c.event_id}&about=open`,
+          tag,
+        })
+      }
+      if (joined.length) {
+        sent += await sendToUsers(joined, {
+          title:
+            c.author === c.owner
+              ? `💬 ${me?.name} cevap verdi · “${event!.title}”`
+              : `💬 ${me?.name}, ${genitive(owner?.name ?? '')} “${event!.title}” planı hakkında yazdı`,
+          body: text,
+          url: `/?shared=${c.owner}&event=${c.event_id}`,
+          tag,
+        })
+      }
+      return json({ sent })
+    }
+
     const toOwner = c.author === c.viewer
     const recipient = toOwner ? c.owner : c.viewer
     const { data: share } = await admin.from('calendar_shares').select('level').eq('owner', c.owner).eq('viewer', c.viewer).maybeSingle()

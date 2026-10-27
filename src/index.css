@@ -1406,6 +1406,12 @@ p.empty {
   font-size: 11px;
 }
 
+.bubble-name {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* A picture or GIF in a comment. */
 .comment-image {
   display: block;
