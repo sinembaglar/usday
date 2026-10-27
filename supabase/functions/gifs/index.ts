@@ -30,7 +30,7 @@ async function standIn(userId: string) {
 // A small one for the grid, and one not too heavy to send.
 function pick(item: Item) {
   const f = item.file ?? {}
-  const preview = f.xs?.gif ?? f.sm?.gif ?? f.md?.gif ?? f.hd?.gif
+  const preview = f.sm?.gif ?? f.xs?.gif ?? f.md?.gif ?? f.hd?.gif
   const send = [f.md?.gif, f.sm?.gif, f.hd?.gif].find((g) => g?.url && (g.size ?? 0) <= MAX_BYTES) ?? preview
   if (!preview?.url || !send?.url) return null
   return {
