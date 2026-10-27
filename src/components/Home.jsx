@@ -45,11 +45,9 @@ import RemoveConnectionSheet from './RemoveConnectionSheet'
 import AdminPanel from './AdminPanel'
 import { dative, genitive } from '../lib/format'
 import { findConflicts } from '../lib/conflicts'
+import { forgetLink, rememberLink, startLink } from '../lib/updates'
 import NotificationCard from './NotificationCard'
 import { notifyPartner, notifyWish } from '../lib/push'
-
-// ?admin=feedback or ?admin=reports (from an admin notification) opens that part of the panel.
-const adminFromUrl = (url) => new URL(url, window.location.origin).searchParams.get('admin')
 
 const tabFromUrl = (url) =>
   new URL(url, window.location.origin).searchParams.get('tab') === 'dilekler' ? 'dilekler' : null
@@ -98,14 +96,13 @@ export default function Home({ userId }) {
   const [admin, setAdmin] = useState(false)
 
   // The address is cleaned on start, so the admin link is read from where the app was opened.
-  const [startUrl] = useState(() => window.location.href)
   useEffect(() => {
     isAdmin().then((yes) => {
       setAdmin(yes)
-      const section = adminFromUrl(startUrl)
+      const section = new URLSearchParams(startLink()).get('admin')
       if (yes && section) setSheet({ type: 'admin', section })
     })
-  }, [userId, startUrl])
+  }, [userId])
 
   // Opening the app (or coming back to it) counts as seeing everything: clears the icon badge.
   const reload = useCallback(
@@ -166,7 +163,7 @@ export default function Home({ userId }) {
   // A tapped notification opens what it is about: a plan (?event=, &chat=1 for a comment), a wish
   // (?wish=), an anniversary (?milestone=) or the admin panel (?admin=). Works on a cold start, from
   // the phone while the app is open, and from the in-app inbox.
-  const startParams = useMemo(() => new URLSearchParams(window.location.search), [])
+  const startParams = useMemo(() => new URLSearchParams(startLink()), [])
   const [pendingOpen, setPendingOpen] = useState(() => startParams.get('event'))
   const [focusChat, setFocusChat] = useState(() => startParams.has('chat'))
   const [pendingWish, setPendingWish] = useState(() => startParams.get('wish'))
@@ -199,9 +196,11 @@ export default function Home({ userId }) {
   useEffect(() => {
     const onMessage = async (e) => {
       if (e.data?.type !== 'open') return
+      rememberLink(e.data.url) // in case the app reloads for a new version first
       setSheet(null)
       await reload({ markAsSeen: true }) // so a brand-new plan or wish is there to open
       openLink(e.data.url)
+      forgetLink()
     }
     navigator.serviceWorker?.addEventListener('message', onMessage)
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)

@@ -4,10 +4,12 @@ import './index.css'
 import App from './App.jsx'
 import { registerServiceWorker } from './lib/push'
 import { applyTheme, watchSystemTheme } from './lib/theme'
+import { watchForUpdates } from './lib/updates'
 
 applyTheme()
 watchSystemTheme()
 registerServiceWorker()
+watchForUpdates()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
