@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { gifSearchOn } from '../lib/api'
+import GifPicker from './GifPicker'
 
 // The box under a conversation: text, and a picture or GIF from the phone (shown before sending).
 // onSend(text, file) resolves when it is saved; the form then empties itself.
@@ -7,7 +9,17 @@ export default function CommentForm({ placeholder, onSend, onError }) {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [sending, setSending] = useState(false)
+  const [gifsOn, setGifsOn] = useState(false)
+  const [findingGif, setFindingGif] = useState(false)
   const inputRef = useRef(null)
+
+  useEffect(() => {
+    let active = true
+    gifSearchOn().then((on) => active && setGifsOn(on))
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!file) return setPreview(null)
@@ -33,6 +45,16 @@ export default function CommentForm({ placeholder, onSend, onError }) {
 
   return (
     <form className="comment-form-wrap" onSubmit={submit}>
+      {findingGif && (
+        <GifPicker
+          onPick={(gif) => {
+            setFile(gif)
+            setFindingGif(false)
+          }}
+          onClose={() => setFindingGif(false)}
+          onError={onError}
+        />
+      )}
       {preview && (
         <div className="comment-preview">
           <img src={preview} alt="Gönderilecek görsel" />
@@ -51,6 +73,18 @@ export default function CommentForm({ placeholder, onSend, onError }) {
         >
           🖼️
         </button>
+        {gifsOn && (
+          <button
+            type="button"
+            className={`btn btn-ghost bordered attach-btn gif-btn ${findingGif ? 'is-active' : ''}`}
+            onClick={() => setFindingGif((f) => !f)}
+            aria-label="GIF ara"
+            aria-expanded={findingGif}
+            disabled={sending}
+          >
+            GIF
+          </button>
+        )}
         <input
           className="input"
           placeholder={placeholder}

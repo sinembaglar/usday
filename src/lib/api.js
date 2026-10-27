@@ -547,6 +547,29 @@ export async function uploadCommentImage(folder, file) {
   return path
 }
 
+// GIF search (KLIPY, through our own server). Whether it is switched on is asked once.
+let gifSearch = null
+export function gifSearchOn() {
+  gifSearch ??= supabase.functions
+    .invoke('gifs', { body: { status: true } })
+    .then(({ data }) => Boolean(data?.configured))
+    .catch(() => false)
+  return gifSearch
+}
+
+export async function searchGifs(q, page = 1) {
+  const { data, error } = await supabase.functions.invoke('gifs', { body: { q, page } })
+  if (error) throw error
+  return data
+}
+
+// The chosen GIF as a file, attached like a photo (so it follows the conversation's rules).
+export async function gifAsFile(gif) {
+  const { data, error } = await supabase.functions.invoke('gifs', { body: { url: gif.url } })
+  if (error) throw error
+  return new File([data], `${gif.id}.gif`, { type: 'image/gif' })
+}
+
 export async function addComment(eventId, body, imagePath = null) {
   const { data, error } = await supabase
     .from('event_comments')
