@@ -329,6 +329,21 @@ export default function Home({ userId }) {
     if (c) {
       setTab('takvim')
       choose([c.id])
+      // Go to their next plan, so the shared calendar is visible right away.
+      const name = (members[pendingPerson] ?? UNKNOWN_PERSON).name
+      const theirs = expandEvents(
+        sharedPlans.filter((p) => p.owner === pendingPerson),
+        todayKey,
+        addDaysKey(todayKey, 400),
+      ).sort(byDateTime)
+      if (theirs.length) {
+        const first = parseISO(theirs[0].date)
+        setSelected(first)
+        setMonth(startOfMonth(first))
+        setToast(`📅 ${genitive(name)} takvimi açıldı: ilk plan ${format(first, 'd MMMM', { locale: tr })}`)
+      } else {
+        setToast(`📅 ${genitive(name)} takviminde şimdilik yaklaşan plan yok`)
+      }
     }
     setPendingPerson(null)
     // choose is stable enough for this one-off jump
@@ -377,11 +392,17 @@ export default function Home({ userId }) {
   const sorted = useMemo(() => [...shown].sort(byDateTime), [shown])
   const dayEvents = sorted.filter((e) => e.date === selectedKey)
   // One line per plan in "Yaklaşanlar": a weekly plan shows only its next time.
-  // Others' shared calendars show on the calendar and the selected day, not in my own lists.
+  // Others' shared calendars show on the calendar, the selected day and in a list of their own.
+  const nextOnce = (e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i
   const upcoming = sorted
     .filter((e) => !e.shared && e.date >= todayKey && e.date !== selectedKey)
-    .filter((e, i, list) => !e.seriesId || list.findIndex((o) => o.seriesId === e.seriesId) === i)
+    .filter(nextOnce)
     .slice(0, 5)
+  const sharedUpcoming = sorted
+    .filter((e) => e.shared && e.date >= todayKey && e.date !== selectedKey)
+    .filter(nextOnce)
+    .slice(0, 5)
+  const sharedOwners = [...new Set(sharedUpcoming.map((e) => e.owner))]
 
   // Cover cards: the next confirmed plan of each kind that has not ended yet.
   const nowHM = format(new Date(), 'HH:mm')
@@ -791,6 +812,30 @@ export default function Home({ userId }) {
                       members={members}
                       isNew={isNew(e)}
                       withWhom={withWhom(e)}
+                      me={userId}
+                      showDate
+                      onClick={() => openDetail(e)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {sharedUpcoming.length > 0 && (
+              <section className="agenda">
+                <h2 className="section-title">
+                  📅{' '}
+                  {sharedOwners.length === 1
+                    ? `${genitive((members[sharedOwners[0]] ?? UNKNOWN_PERSON).name)} takviminden`
+                    : 'Paylaşılan takvimlerden'}
+                </h2>
+                <div className="event-list">
+                  {sharedUpcoming.map((e) => (
+                    <EventCard
+                      key={e.id}
+                      event={e}
+                      members={members}
+                      withWhom={sharedOwners.length === 1 ? null : withWhom(e)}
                       me={userId}
                       showDate
                       onClick={() => openDetail(e)}
