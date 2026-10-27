@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { COMMENT_FEELINGS } from '../lib/constants'
 
 // The box under a conversation: text, and a picture or GIF from the phone (shown before sending).
 // onSend(text, file) resolves when it is saved; the form then empties itself.
@@ -77,9 +76,8 @@ export default function CommentForm({ placeholder, onSend, onError }) {
   )
 }
 
-// A picture in a comment bubble; tapping shows it large (with emojis to leave on someone else's),
-// a double tap laughs at it.
-export function CommentImage({ url, onDoubleTap, mine, onFeel }) {
+// A picture in a comment bubble; tapping shows it large, a double tap laughs at it.
+export function CommentImage({ url, onDoubleTap }) {
   const [open, setOpen] = useState(false)
   const waiting = useRef(null)
   if (!url) return null
@@ -101,7 +99,7 @@ export function CommentImage({ url, onDoubleTap, mine, onFeel }) {
   return (
     <>
       <button type="button" className="comment-image" onClick={tap}>
-        <img src={url} alt="" loading="lazy" />
+        <img src={url} alt="" loading="lazy" draggable={false} />
       </button>
       {open && (
         <div
@@ -112,23 +110,6 @@ export function CommentImage({ url, onDoubleTap, mine, onFeel }) {
           }}
         >
           <img src={url} alt="" />
-          {onFeel && (
-            <div className="lightbox-feelings" role="group" aria-label="Tepki bırak" onClick={(e) => e.stopPropagation()}>
-              {COMMENT_FEELINGS.map((emoji) => (
-                <button
-                  type="button"
-                  key={emoji}
-                  className={mine === emoji ? 'is-mine' : ''}
-                  onClick={() => {
-                    setOpen(false)
-                    onFeel(emoji)
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </>
