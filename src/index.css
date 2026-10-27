@@ -2423,7 +2423,8 @@ p.empty {
   align-self: center;
 }
 
-/* With a photo, the cover cards sit on the photo's lower edge instead of covering it. */
+/* Cover cards sit on the cover's lower edge with no box, the same for every person:
+   white on a photo, ink and lilac on the plain cover. */
 .cover.has-photo .cover-shade {
   background: linear-gradient(
     180deg,
@@ -2434,34 +2435,56 @@ p.empty {
   );
 }
 
-.cover.has-photo .countdown {
+.cover .countdown {
   padding: 0;
   gap: 0;
   background: none;
   backdrop-filter: none;
   box-shadow: none;
+}
+
+.cover .countdown small {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cover .countdown strong {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.cover .countdown span {
+  font-size: 13px;
+}
+
+.cover .highlights {
+  gap: 6px;
+}
+
+.cover:not(.has-photo) .countdown span {
+  color: var(--ink);
+  opacity: 0.75;
+}
+
+.cover:not(.has-photo) .highlight-dots button {
+  background: var(--rose);
+}
+
+.cover:not(.has-photo) .highlight-dots button.is-active {
+  background: var(--rose-deep);
+}
+
+.cover.has-photo .countdown {
   color: #fff;
   text-shadow: 0 1px 10px rgba(40, 28, 48, 0.45);
 }
 
 .cover.has-photo .countdown small {
-  font-size: 11px;
-  font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
 }
 
-.cover.has-photo .countdown strong {
-  font-size: 22px;
-  line-height: 1.2;
-}
-
 .cover.has-photo .countdown span {
-  font-size: 13px;
   color: rgba(255, 255, 255, 0.9);
-}
-
-.cover.has-photo .highlights {
-  gap: 6px;
 }
 
 .claim-pill.is-other {
@@ -2471,4 +2494,12 @@ p.empty {
   background: var(--blush);
   border-color: var(--line);
   color: var(--rose-deep);
+}
+
+.cover.has-photo .highlight-dots button {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.cover.has-photo .highlight-dots button.is-active {
+  background: #fff;
 }
