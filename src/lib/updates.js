@@ -22,6 +22,9 @@ export function watchForUpdates() {
   }
   document.addEventListener('visibilitychange', check)
   window.addEventListener('pageshow', check)
+  // iOS does not always say the app came back (opened from a notification, or after a long sleep),
+  // so look now and then while it is on screen too.
+  setInterval(check, 5 * 60 * 1000)
 }
 
 // A notification tapped while the app was in the background: remember it until it has been opened.
