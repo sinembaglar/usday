@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { addShareComment, deleteShareComment, loadShareComments } from '../lib/api'
+import { addShareComment, deleteShareComment, loadShareComments, uploadCommentImage } from '../lib/api'
+import CommentForm, { CommentImage } from './CommentForm'
 import { dative, timeAgo } from '../lib/format'
 import { UNKNOWN_PERSON } from '../lib/constants'
 
@@ -9,9 +10,8 @@ const QUICK = ['Bensiz mi? 😤', 'Ben de gelebilir miyim? 🙋', 'İyi eğlence
 
 // One side conversation about a plan on a shared calendar: the calendar's owner and one viewer.
 // The plan's other people never see it.
-export function ShareThread({ eventId, owner, viewer, me, members, title, focus = false }) {
+export function ShareThread({ eventId, owner, viewer, me, members, title, focus = false, onToast }) {
   const [comments, setComments] = useState([])
-  const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const ref = useRef(null)
   const scrolled = useRef(false)
@@ -42,14 +42,19 @@ export function ShareThread({ eventId, owner, viewer, me, members, title, focus 
     scrolled.current = true
   }, [focus, comments.length])
 
-  async function send(text) {
-    const body = text.trim()
-    if (!body || sending) return
+  async function send(text, file = null) {
+    const imagePath = file ? await uploadCommentImage(`s-${owner}-${viewer}`, file) : null
+    await addShareComment({ eventId, owner, viewer, author: me, body: text, imagePath })
+    await load()
+  }
+
+  async function quick(text) {
+    if (sending) return
     setSending(true)
     try {
-      await addShareComment({ eventId, owner, viewer, author: me, body })
-      setDraft('')
-      await load()
+      await send(text)
+    } catch {
+      onToast?.('Gönderilemedi, tekrar dener misin?')
     } finally {
       setSending(false)
     }
@@ -57,7 +62,7 @@ export function ShareThread({ eventId, owner, viewer, me, members, title, focus 
 
   async function remove(c) {
     if (!window.confirm('Bu yorum silinsin mi?')) return
-    await deleteShareComment(c.id)
+    await deleteShareComment(c)
     load()
   }
 
@@ -81,7 +86,8 @@ export function ShareThread({ eventId, owner, viewer, me, members, title, focus 
                   {author.short}
                 </span>
                 <div className="bubble">
-                  <p>{c.body}</p>
+                  <CommentImage url={c.imageUrl} />
+                  {c.body && <p>{c.body}</p>}
                   <small>
                     {timeAgo(c.created_at)}
                     {own && (
@@ -99,36 +105,19 @@ export function ShareThread({ eventId, owner, viewer, me, members, title, focus 
       {iAmViewer && (
         <div className="quick-words">
           {QUICK.map((q) => (
-            <button key={q} type="button" className="chip" disabled={sending} onClick={() => send(q)}>
+            <button key={q} type="button" className="chip" disabled={sending} onClick={() => quick(q)}>
               {q}
             </button>
           ))}
         </div>
       )}
-      <form
-        className="comment-form"
-        onSubmit={(e) => {
-          e.preventDefault()
-          send(draft)
-        }}
-      >
-        <input
-          className="input"
-          placeholder={iAmViewer ? `${dative(other)} yaz… 💬` : 'Cevap yaz…'}
-          maxLength={1000}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <button className="btn btn-primary" disabled={!draft.trim() || sending} aria-label="Gönder">
-          ➤
-        </button>
-      </form>
+      <CommentForm placeholder={iAmViewer ? `${dative(other)} yaz… 💬` : 'Cevap yaz…'} onSend={send} onError={onToast} />
     </section>
   )
 }
 
 // On my own plan: what the people I share my calendar with said about it, one thread each.
-export function ThreadsOnMyPlan({ eventId, me, members, focusViewer }) {
+export function ThreadsOnMyPlan({ eventId, me, members, focusViewer, onToast }) {
   const [viewers, setViewers] = useState([])
 
   useEffect(() => {
@@ -157,6 +146,7 @@ export function ThreadsOnMyPlan({ eventId, me, members, focusViewer }) {
       me={me}
       members={members}
       focus={v === focusViewer}
+      onToast={onToast}
       title={`💬 ${(members[v] ?? UNKNOWN_PERSON).name} ile bu plan hakkında`}
     />
   ))

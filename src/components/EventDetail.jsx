@@ -148,6 +148,7 @@ export default function EventDetail({
           me={me}
           members={members}
           focus={focusChat}
+          onToast={onToast}
           title={`💬 ${dative(owner.name)} yaz`}
         />
         <div className="form-actions">
@@ -251,7 +252,13 @@ export default function EventDetail({
         📸 Hikâyende paylaş
       </button>
 
-      <ThreadsOnMyPlan eventId={event.seriesId ?? event.id} me={me} members={members} focusViewer={focusAbout} />
+      <ThreadsOnMyPlan
+        eventId={event.seriesId ?? event.id}
+        me={me}
+        members={members}
+        focusViewer={focusAbout}
+        onToast={onToast}
+      />
 
       <Conversation
         eventId={event.seriesId ?? event.id}
@@ -260,6 +267,7 @@ export default function EventDetail({
         hasPartner={Boolean(partner)}
         listeners={listenersOf(event, me, partner)}
         focus={focusChat}
+        onToast={onToast}
       />
 
       <div className="form-actions">

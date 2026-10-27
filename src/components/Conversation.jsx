@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { addComment, deleteComment, hasPush, loadConversation, setReaction } from '../lib/api'
+import { addComment, deleteComment, hasPush, loadConversation, setReaction, uploadCommentImage } from '../lib/api'
+import CommentForm, { CommentImage } from './CommentForm'
 import { notifyReaction } from '../lib/push'
 import { timeAgo } from '../lib/format'
 import { UNKNOWN_PERSON } from '../lib/constants'
@@ -8,14 +9,12 @@ import { UNKNOWN_PERSON } from '../lib/constants'
 const EMOJIS = ['😍', '🥳', '👍', '😂', '🙈']
 
 // Comments and reactions under a plan. Attached to the whole series for repeating plans.
-export default function Conversation({ eventId, me, members, hasPartner, listeners = [], focus = false }) {
+export default function Conversation({ eventId, me, members, hasPartner, listeners = [], focus = false, onToast }) {
   // Opened from a comment notification: scroll down to the conversation once it has loaded.
   const sectionRef = useRef(null)
   const scrolled = useRef(false)
   const [comments, setComments] = useState([])
   const [reactions, setReactions] = useState([])
-  const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
   const [silent, setSilent] = useState([]) // people who would hear about a comment but have notifications off
   const listenerKey = listeners.join()
 
@@ -70,24 +69,16 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
     }
   }
 
-  async function send(e) {
-    e.preventDefault()
-    const body = draft.trim()
-    if (!body || sending) return
-    setSending(true)
-    try {
-      // The database sends the notification for a new comment.
-      await addComment(eventId, body)
-      setDraft('')
-      await load()
-    } finally {
-      setSending(false)
-    }
+  // The database sends the notification for a new comment.
+  async function send(text, file) {
+    const imagePath = file ? await uploadCommentImage(`c-${eventId}`, file) : null
+    await addComment(eventId, text, imagePath)
+    await load()
   }
 
   async function remove(comment) {
     if (!window.confirm('Bu yorum silinsin mi?')) return
-    await deleteComment(comment.id)
+    await deleteComment(comment)
     load()
   }
 
@@ -122,7 +113,8 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
                   {author.short}
                 </span>
                 <div className="bubble">
-                  <p>{c.body}</p>
+                  <CommentImage url={c.imageUrl} />
+                  {c.body && <p>{c.body}</p>}
                   <small>
                     {timeAgo(c.created_at)}
                     {own && (
@@ -138,18 +130,7 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
         </ul>
       )}
 
-      <form className="comment-form" onSubmit={send}>
-        <input
-          className="input"
-          placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz… 💬'}
-          maxLength={1000}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <button className="btn btn-primary" disabled={!draft.trim() || sending} aria-label="Gönder">
-          ➤
-        </button>
-      </form>
+      <CommentForm placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz… 💬'} onSend={send} onError={onToast} />
       {silent.length > 0 && (
         <p className="hint silent-hint">
           🔕 {silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirimleri açmamış; yazdıklarını

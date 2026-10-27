@@ -22,6 +22,12 @@ const json = (body: unknown, status = 200) =>
 
 const REACTIONS = ['😍', '🥳', '👍', '😂', '🙈']
 
+// What a comment says in a notification; a picture or GIF on its own shows as such.
+const commentText = (c: { body: string; image_path?: string | null }) => {
+  const picture = c.image_path ? (c.image_path.endsWith('.gif') ? '🎞️ GIF' : '📷 Görsel') : ''
+  return [picture, c.body.trim()].filter(Boolean).join(' · ')
+}
+
 // Turkish genitive, same as the app's: "Sinem’in", "Ayşe’nin", "Serhat Han’ın".
 function genitive(name: string) {
   const lower = name.toLocaleLowerCase('tr')
@@ -80,7 +86,7 @@ Deno.serve(async (req) => {
   if (body.share_comment_id) {
     const { data: c } = await admin
       .from('share_comments')
-      .select('id, event_id, owner, viewer, author, body, notified_at')
+      .select('id, event_id, owner, viewer, author, body, image_path, notified_at')
       .eq('id', body.share_comment_id)
       .maybeSingle()
     if (!c || c.author !== userId) return json({ error: 'not_found' }, 404)
@@ -106,7 +112,7 @@ Deno.serve(async (req) => {
         : 'takvimindeki plan'
     const payload = {
       title: toOwner ? `💬 ${me?.name}, ${plan} hakkında yazdı` : `💬 ${me?.name} cevap verdi · ${plan}`,
-      body: c.body.slice(0, 180),
+      body: commentText(c).slice(0, 180),
       url: toOwner ? `/?event=${c.event_id}&about=${c.viewer}` : `/?shared=${c.owner}&event=${c.event_id}`,
       tag: `share-chat-${c.event_id}-${c.viewer}`,
     }
@@ -185,7 +191,11 @@ Deno.serve(async (req) => {
   let eventId = body.event_id ?? body.response_event_id ?? body.moved_event_id
   let comment: { body: string } | null = null
   if (body.comment_id) {
-    const { data } = await admin.from('event_comments').select('event_id, author, body').eq('id', body.comment_id).maybeSingle()
+    const { data } = await admin
+      .from('event_comments')
+      .select('event_id, author, body, image_path')
+      .eq('id', body.comment_id)
+      .maybeSingle()
     if (!data || data.author !== userId) return json({ error: 'not_found' }, 404)
     // Only once per comment, whoever asks first (the database or an older app version).
     const { data: first } = await admin
@@ -196,7 +206,7 @@ Deno.serve(async (req) => {
       .select('id')
     if (!first?.length) return json({ sent: 0 })
     eventId = data.event_id
-    comment = data
+    comment = { body: commentText(data) }
   } else if (body.reaction_event_id) {
     if (!REACTIONS.includes(body.emoji)) return json({ error: 'bad_emoji' }, 400)
     eventId = body.reaction_event_id

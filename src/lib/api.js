@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { initials } from './constants'
+import { resizeImage } from './image'
 
 const BUCKET = 'photos'
 const URL_TTL = 60 * 60 * 24
@@ -464,25 +465,51 @@ export async function setTogetherSince(coupleId, date) {
   if (error) throw error
 }
 
+// Comments with a picture get a short-lived link to it.
+async function withImageUrls(comments) {
+  const urlFor = await signedUrls(comments.map((c) => c.image_path).filter(Boolean))
+  return comments.map((c) => ({ ...c, imageUrl: c.image_path ? urlFor(c.image_path) : null }))
+}
+
 export async function loadConversation(eventId) {
   const [comments, reactions] = await Promise.all([
-    supabase.from('event_comments').select('id, author, body, created_at').eq('event_id', eventId).order('created_at'),
+    supabase.from('event_comments').select('id, author, body, image_path, created_at').eq('event_id', eventId).order('created_at'),
     supabase.from('event_reactions').select('user_id, emoji').eq('event_id', eventId),
   ])
   if (comments.error) throw comments.error
   if (reactions.error) throw reactions.error
-  return { comments: comments.data, reactions: reactions.data }
+  return { comments: await withImageUrls(comments.data), reactions: reactions.data }
 }
 
-export async function addComment(eventId, body) {
-  const { data, error } = await supabase.from('event_comments').insert({ event_id: eventId, body }).select('id').single()
+const MAX_GIF = 8 * 1024 * 1024
+
+// A picture for a comment: photos are made smaller; a GIF stays as it is so it keeps moving.
+export async function uploadCommentImage(folder, file) {
+  const gif = file.type === 'image/gif'
+  if (gif && file.size > MAX_GIF) throw new Error('too_big')
+  const blob = gif ? file : await (await fetch(await resizeImage(file, 1600))).blob()
+  const path = `${folder}/${crypto.randomUUID()}.${gif ? 'gif' : 'jpg'}`
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, { contentType: gif ? 'image/gif' : 'image/jpeg' })
+  if (error) throw error
+  return path
+}
+
+export async function addComment(eventId, body, imagePath = null) {
+  const { data, error } = await supabase
+    .from('event_comments')
+    .insert({ event_id: eventId, body: body.trim(), image_path: imagePath })
+    .select('id')
+    .single()
   if (error) throw error
   return data.id
 }
 
-export async function deleteComment(id) {
-  const { error } = await supabase.from('event_comments').delete().eq('id', id)
+export async function deleteComment(comment) {
+  const { error } = await supabase.from('event_comments').delete().eq('id', comment.id)
   if (error) throw error
+  if (comment.image_path) await supabase.storage.from(BUCKET).remove([comment.image_path])
 }
 
 // emoji = null removes my reaction.
@@ -620,23 +647,24 @@ export async function setCalendarShare(userId, viewer, level, announce = false) 
 export async function loadShareComments(eventId) {
   const { data, error } = await supabase
     .from('share_comments')
-    .select('id, owner, viewer, author, body, created_at')
+    .select('id, owner, viewer, author, body, image_path, created_at')
     .eq('event_id', eventId)
     .order('created_at')
   if (error) throw error
-  return data
+  return withImageUrls(data)
 }
 
-export async function addShareComment({ eventId, owner, viewer, author, body }) {
+export async function addShareComment({ eventId, owner, viewer, author, body, imagePath = null }) {
   const { error } = await supabase
     .from('share_comments')
-    .insert({ event_id: eventId, owner, viewer, author, body: body.trim() })
+    .insert({ event_id: eventId, owner, viewer, author, body: body.trim(), image_path: imagePath })
   if (error) throw error
 }
 
-export async function deleteShareComment(id) {
-  const { error } = await supabase.from('share_comments').delete().eq('id', id)
+export async function deleteShareComment(comment) {
+  const { error } = await supabase.from('share_comments').delete().eq('id', comment.id)
   if (error) throw error
+  if (comment.image_path) await supabase.storage.from(BUCKET).remove([comment.image_path])
 }
 
 // Ending a connection: its shared plans and photos are deleted for both; blocking also stops new invites.
