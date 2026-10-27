@@ -450,11 +450,16 @@ export default function Home({ userId }) {
   const formConnections = all.map((c) => ({
     id: c.id,
     relation: c.relation,
+    relationLabel: relationOf(c).label,
     emoji: relationOf(c).emoji,
     partnerName: personOf(c)?.name,
     partnerId: c.partnerId,
+    color: personOf(c)?.color,
+    short: personOf(c)?.short ?? '⏳',
   }))
   const defaultCoupleId = single?.id ?? selection.find((id) => byId[id]?.partnerId) ?? selection[0]
+  // People picked one by one in the people bar ("Tümü" is not a choice of guests).
+  const chosenGuests = chosen.filter((id) => byId[id]?.partnerId)
 
   // Plans that clash with a plan being made: mine, and what I can see of the people I am inviting.
   const conflictsFor = (when, coupleIds, editingId) =>
@@ -958,6 +963,7 @@ export default function Home({ userId }) {
               defaultDate={selectedKey}
               templates={templates}
               connections={formConnections}
+              defaultCoupleIds={chosenGuests}
               findConflicts={conflictsFor}
               defaultCoupleId={defaultCoupleId}
               onAddTemplate={async (t) => {

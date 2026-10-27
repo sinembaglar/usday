@@ -28,8 +28,9 @@ export default function EventForm({
   templates = [],
   onAddTemplate,
   onDeleteTemplate,
-  connections = [], // [{ id, relation, partnerName, partnerId, emoji }]
+  connections = [], // [{ id, relation, relationLabel, partnerName, partnerId, emoji, color, short }]
   defaultCoupleId,
+  defaultCoupleIds, // several people chosen in the people bar: start as a group plan with them
   findConflicts, // (when, coupleIds, editingId) => ["O saatte “Sinema” planın var (20:00)", …]
   onSave, // gets the form with coupleIds: one id = two-person plan, several = group plan
   onDelete, // (scope: 'one' | 'all') => void
@@ -40,7 +41,11 @@ export default function EventForm({
     const invited = initial?.guests
       ? connections.filter((c) => initial.guests.some((g) => g.id === c.partnerId)).map((c) => c.id)
       : null
-    const coupleIds = invited ?? [initial?.coupleId ?? preset?.coupleId ?? defaultCoupleId ?? connections[0]?.id]
+    const coupleIds =
+      invited ??
+      (!initial && !preset?.coupleId && defaultCoupleIds?.length > 1
+        ? defaultCoupleIds
+        : [initial?.coupleId ?? preset?.coupleId ?? defaultCoupleId ?? connections[0]?.id])
     const canAsk = coupleIds.length === 1 && Boolean(connections.find((c) => c.id === coupleIds[0])?.partnerName)
     return {
       ...EMPTY,
@@ -72,6 +77,7 @@ export default function EventForm({
   const linked = connections.filter((c) => c.partnerName)
   // Editing a two-person plan keeps it with the same person; a group plan can change its guests.
   const canChoose = (!initial || initial.guests) && connections.length > 1
+  const allPicked = linked.length > 1 && linked.every((c) => form.coupleIds.includes(c.id))
 
   function togglePerson(c) {
     setForm((f) => {
@@ -147,28 +153,57 @@ export default function EventForm({
       <h3>{initial ? 'Planı düzenle' : 'Yeni plan'}</h3>
 
       {canChoose && (
-        <div className="field">
-          <span>Kiminle? {group ? `· 👥 ${picked.length} kişilik grup planı` : '· birden fazla kişi seçebilirsin'}</span>
-          <div className="chips" role="group" aria-label="Kiminle">
-            {(initial?.guests ? linked : connections).map((c) => (
+        <div className="field guest-picker">
+          <div className="guest-picker-head">
+            <span>{group ? `👥 ${picked.length} kişi davetli` : 'Kimleri davet ediyorsun?'}</span>
+            {linked.length > 1 && (
               <button
                 type="button"
-                key={c.id}
-                aria-pressed={form.coupleIds.includes(c.id)}
-                className={`chip ${form.coupleIds.includes(c.id) ? 'is-active' : ''}`}
-                style={{ '--tag': 'var(--rose)' }}
-                onClick={() => togglePerson(c)}
+                className="link-btn"
+                onClick={() =>
+                  allPicked
+                    ? setForm((f) => ({ ...f, coupleIds: [linked[0].id], hiddenFrom: [] }))
+                    : setForm((f) => ({ ...f, coupleIds: linked.map((c) => c.id), propose: false }))
+                }
               >
-                {form.coupleIds.includes(c.id) && group ? '✓ ' : ''}
-                {c.emoji} {c.partnerName ?? 'Davet bekleyen'}
+                {allPicked ? 'Temizle' : 'Tümünü seç'}
               </button>
-            ))}
+            )}
           </div>
-          {group && (
-            <small className="hint">
-              Herkese davet gider; “katılıyorum / katılamıyorum” der. Davetliler birbirinin adını bu planda görür.
-            </small>
-          )}
+          <ul className="guest-options" role="group" aria-label="Davetliler">
+            {/* People who joined first; open invitations last, as they can only be a plan on their own. */}
+            {(initial?.guests ? linked : [...linked, ...connections.filter((c) => !c.partnerName)]).map((c) => {
+              const on = form.coupleIds.includes(c.id)
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    className={`${on ? 'is-on' : ''} ${c.partnerName ? '' : 'is-waiting'}`}
+                    onClick={() => togglePerson(c)}
+                  >
+                    <span className="avatar small" style={{ background: c.color ?? 'var(--rose)' }}>
+                      {c.short ?? '?'}
+                    </span>
+                    <span className="guest-option-name">
+                      {c.partnerName ?? 'Davet bekleyen'}
+                      <small>
+                        {c.emoji} {c.relationLabel}
+                      </small>
+                    </span>
+                    <span className="guest-check" aria-hidden="true">
+                      {on ? '✓' : ''}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <small className="hint">
+            {group
+              ? 'Herkese davet gider; katılıyorum, belki, başka zaman ya da katılamıyorum diyebilir. Davetliler birbirinin adını bu planda görür.'
+              : 'Birden fazla kişi seçersen grup planı olur, örneğin toplu bir doğum günü.'}
+          </small>
         </div>
       )}
 
