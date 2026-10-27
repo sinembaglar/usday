@@ -87,7 +87,7 @@ export default function ImageCropper({ src, aspect, onCancel, onDone }) {
   }
 
   return (
-    <div className="cropper">
+    <div className="cropper" data-no-swipe>
       <h3>Fotoğrafı ayarla</h3>
       <p className="hint">Sürükleyerek kaydır, iki parmakla ya da çubukla yakınlaştır.</p>
 

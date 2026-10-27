@@ -289,7 +289,7 @@ export const NOTIFICATION_PAGE = 30
 export async function loadNotifications(before = null) {
   let query = supabase
     .from('notifications')
-    .select('id, event_id, title, body, created_at, read_at')
+    .select('id, event_id, title, body, url, created_at, read_at')
     .order('created_at', { ascending: false })
     .limit(NOTIFICATION_PAGE)
   if (before) query = query.lt('created_at', before)

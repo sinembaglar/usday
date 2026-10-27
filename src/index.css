@@ -1813,6 +1813,7 @@ p.empty {
   background: var(--cream);
   border-radius: 28px 28px 0 0;
   animation: rise 0.25s ease;
+  overscroll-behavior: contain; /* pulling down moves the sheet, not the page behind */
 }
 
 .sheet-handle {

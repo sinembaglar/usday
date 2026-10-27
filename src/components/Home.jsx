@@ -330,8 +330,9 @@ export default function Home({ userId }) {
       choose([c.id])
       // Go to their next plan, so the shared calendar is visible right away.
       const name = (members[pendingPerson] ?? UNKNOWN_PERSON).name
+      // Their shared calendar and our plans together, whichever comes first.
       const theirs = expandEvents(
-        sharedPlans.filter((p) => p.owner === pendingPerson),
+        [...sharedPlans.filter((p) => p.owner === pendingPerson), ...events.filter((e) => e.coupleId === c.id)],
         todayKey,
         addDaysKey(todayKey, 400),
       ).sort(byDateTime)
