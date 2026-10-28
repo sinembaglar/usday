@@ -3789,3 +3789,175 @@ p.empty {
   gap: 8px;
   margin-top: 8px;
 }
+
+/* Subscriptions: the UsDay+ offer, who a subscription covers, read-only calendars. */
+.paywall {
+  align-items: stretch;
+}
+
+.paywall h3 {
+  text-align: center;
+  font-family: 'Newsreader', serif;
+  font-size: var(--fs-2xl);
+}
+
+.paywall > .hint,
+.paywall-reason {
+  text-align: center;
+}
+
+.paywall-reason {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--blush);
+  color: var(--rose-deep);
+  font-size: var(--fs-sm);
+}
+
+.paywall-perks {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.paywall-perks li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--fs-md);
+}
+
+.paywall-perks small {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.paywall-plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.paywall-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  text-align: left;
+}
+
+.paywall-plan.is-active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.paywall-plan-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--rose-deep);
+}
+
+.paywall-price {
+  font-family: 'Newsreader', serif;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+}
+
+.paywall-price small,
+.paywall-plan > small {
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.paywall-buy {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.paywall-store {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+
+.paywall-code {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.paywall-legal {
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.paywall-legal a {
+  color: inherit;
+}
+
+.cover-hint {
+  margin: 10px 2px 8px;
+}
+
+.cover-row .switch {
+  margin-left: auto;
+}
+
+.cover-row.is-on .switch {
+  background: var(--primary);
+}
+
+.row-text small.is-locked {
+  color: var(--no);
+}
+
+.person-lock {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--rose-deep);
+  border: 1px solid var(--line);
+}
+
+.readonly-card {
+  align-items: flex-start;
+  border: 1px solid color-mix(in srgb, var(--rose) 50%, var(--line));
+}
+
+.readonly-card > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.readonly-line {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--blush);
+  color: var(--rose-deep);
+  font-size: var(--fs-sm);
+}

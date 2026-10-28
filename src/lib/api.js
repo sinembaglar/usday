@@ -784,3 +784,20 @@ export async function hasPush(userId) {
   if (error) throw error
   return data
 }
+
+// Subscriptions ---------------------------------------------------------------------
+
+// What the app shows about paying: whether it applies to me, my subscription, which connections are open.
+export async function loadBilling() {
+  const { data, error } = await supabase.rpc('my_billing')
+  if (error) throw error
+  return data
+}
+
+// Whether my subscription covers a connection. Throws 'no_slot' when every slot is in use.
+export async function setCovered(userId, coupleId, on) {
+  const { error } = on
+    ? await supabase.from('covered_connections').insert({ payer: userId, couple_id: coupleId })
+    : await supabase.from('covered_connections').delete().eq('payer', userId).eq('couple_id', coupleId)
+  if (error) throw new Error(error.message?.includes('no_slot') ? 'no_slot' : error.message)
+}

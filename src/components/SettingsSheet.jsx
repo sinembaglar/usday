@@ -7,6 +7,7 @@ import { getTheme, setTheme } from '../lib/theme'
 import { enablePush, pushSupported, sendTestPush } from '../lib/push'
 import ConnectionSettings from './ConnectionSettings'
 import CalendarSharing from './CalendarSharing'
+import SubscriptionSettings from './SubscriptionSettings'
 
 const THEMES = [
   { id: 'system', label: 'Telefona göre' },
@@ -25,6 +26,9 @@ export default function SettingsSheet({
   onFeedback,
   onAdmin,
   onBirthday,
+  billing,
+  onBillingChanged,
+  onPaywall,
   onClose,
   onToast,
 }) {
@@ -124,6 +128,18 @@ export default function SettingsSheet({
   return (
     <div className="settings">
       <h3>Ayarlar</h3>
+
+      {billing?.enabled && me && (
+        <SubscriptionSettings
+          billing={billing}
+          me={me}
+          connections={connections}
+          members={members}
+          onPaywall={onPaywall}
+          onChanged={onBillingChanged}
+          onToast={onToast}
+        />
+      )}
 
       <ConnectionSettings connections={connections} members={members} {...connectionActions} />
 

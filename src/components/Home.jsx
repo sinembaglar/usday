@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { Bell, Cake, Settings } from 'lucide-react'
+import { Bell, Cake, Lock, Settings } from 'lucide-react'
 import Cover from './Cover'
 import MonthCalendar from './MonthCalendar'
 import WeekView from './WeekView'
@@ -13,6 +13,7 @@ import SettingsSheet from './SettingsSheet'
 import PeopleBar from './PeopleBar'
 import AddPersonSheet from './AddPersonSheet'
 import BirthdaySheet from './BirthdaySheet'
+import PaywallSheet from './PaywallSheet'
 import { supabase } from '../lib/supabase'
 import {
   addTemplate,
@@ -21,6 +22,7 @@ import {
   deleteEvent,
   deleteTemplate,
   deleteWish,
+  loadBilling,
   loadEverything,
   markSeen,
   setBirthday,
@@ -55,6 +57,9 @@ import { notifyPartner, notifyWish } from '../lib/push'
 
 const tabFromUrl = (url) =>
   new URL(url, window.location.origin).searchParams.get('tab') === 'dilekler' ? 'dilekler' : null
+
+// "Ece", "Ece ve Can", "Ece, Can ve Ali"
+const listNames = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} ve ${names.at(-1)}` : names[0])
 
 const byDateTime = (a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`)
 
@@ -98,6 +103,7 @@ export default function Home({ userId }) {
   const [toast, setToast] = useState(null)
   const [unread, setUnread] = useState(0)
   const [admin, setAdmin] = useState(false)
+  const [billing, setBilling] = useState(null) // subscriptions: off until launch, then who can add plans
 
   // The address is cleaned on start, so the admin link is read from where the app was opened.
   useEffect(() => {
@@ -112,7 +118,8 @@ export default function Home({ userId }) {
   const reload = useCallback(
     async ({ markAsSeen = false } = {}) => {
       try {
-        const data = await loadEverything(userId)
+        const [data, bill] = await Promise.all([loadEverything(userId), loadBilling().catch(() => null)])
+        if (bill) setBilling(bill)
         setConnections(data.connections)
         setMembers(data.members)
         setEvents(data.events)
@@ -158,6 +165,14 @@ export default function Home({ userId }) {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [reload, userId])
+
+  const refreshBilling = useCallback(async () => {
+    try {
+      setBilling(await loadBilling())
+    } catch {
+      // the next reload tries again
+    }
+  }, [])
 
   const inboxRead = useCallback(() => {
     setUnread(0)
@@ -234,6 +249,11 @@ export default function Home({ userId }) {
   const linked = all.filter((c) => c.partnerId) // connections someone has joined
   const personOf = (c) => (c?.partnerId ? (members[c.partnerId] ?? UNKNOWN_PERSON) : null)
   const relationOf = (c) => RELATIONS[c?.relation] ?? RELATIONS.partner
+  // Connections nobody pays for while billing is on: their plans stay, but nothing new can be added.
+  const closed = useMemo(
+    () => new Set(billing?.enabled ? billing.connections.filter((c) => !c.open).map((c) => c.couple_id) : []),
+    [billing],
+  )
 
   function choose(ids) {
     setChosen(ids)
@@ -542,7 +562,8 @@ export default function Home({ userId }) {
     const c = byId[e.coupleId]
     return linked.length > 1 && c?.partnerId ? personOf(c).name : null
   }
-  const formConnections = all.map((c) => ({
+  // A new plan can only be made over open connections; editing keeps everyone already on it.
+  const formConnections = all.filter((c) => sheet?.event || !closed.has(c.id)).map((c) => ({
     id: c.id,
     relation: c.relation,
     relationLabel: relationOf(c).label,
@@ -552,9 +573,16 @@ export default function Home({ userId }) {
     color: personOf(c)?.color,
     short: personOf(c)?.short ?? '⏳',
   }))
-  const defaultCoupleId = single?.id ?? selection.find((id) => byId[id]?.partnerId) ?? selection[0]
+  const openSelection = selection.filter((id) => !closed.has(id))
+  const defaultCoupleId =
+    (single && !closed.has(single.id) ? single.id : null) ??
+    openSelection.find((id) => byId[id]?.partnerId) ??
+    openSelection[0] ??
+    all.find((c) => !closed.has(c.id))?.id
   // People picked one by one in the people bar ("Tümü" is not a choice of guests).
-  const chosenGuests = chosen.filter((id) => byId[id]?.partnerId)
+  const chosenGuests = chosen.filter((id) => byId[id]?.partnerId && !closed.has(id))
+  // Selected people whose calendar is read-only, for the notice under the people bar.
+  const lockedHere = selection.filter((id) => closed.has(id) && byId[id]?.partnerId)
 
   // Plans that clash with a plan being made: mine, and what I can see of the people I am inviting.
   const conflictsFor = (when, coupleIds, editingId) =>
@@ -581,7 +609,42 @@ export default function Home({ userId }) {
 
   // Actions ------------------------------------------------------------------------
 
+  // Why a plan cannot be added: the subscription offer, or (for a subscriber) choosing who it covers.
+  function showPaywall(coupleId = null) {
+    if (billing?.subscribed) {
+      setSheet({ type: 'settings' })
+      setToast(`Aboneliğin en fazla ${billing.max} kişiyi kapsar; kimleri kapsayacağını buradan seç`)
+      return
+    }
+    const person = personOf(byId[coupleId])
+    setSheet({
+      type: 'paywall',
+      reason: person
+        ? `${person.name} ile takviminiz salt okunur. Biriniz UsDay+’a geçince ikiniz de devam edersiniz; planlarınız yerinde duruyor.`
+        : 'Yeni plan eklemek için UsDay+’a geç. Bağlandığın biri abone olursa sen ayrıca ödemezsin.',
+    })
+  }
+
+  // While billing is on, a plan needs a connection someone pays for.
+  function canPlan(coupleId) {
+    if (!closed.size) return true
+    const ok = coupleId ? !closed.has(coupleId) : all.some((c) => !closed.has(c.id))
+    if (!ok) showPaywall(coupleId ?? (lockedHere.length === 1 ? lockedHere[0] : null))
+    return ok
+  }
+
   async function handleSave(form) {
+    try {
+      await savePlan(form)
+    } catch (err) {
+      // The connection closed while the form was open (a subscription ended): say why instead.
+      if (!billing?.enabled || !['42501', 'PGRST116'].includes(err?.code)) throw err
+      refreshBilling()
+      showPaywall(form.coupleIds.length === 1 ? form.coupleIds[0] : null)
+    }
+  }
+
+  async function savePlan(form) {
     // Several people picked: a group plan everyone is invited to.
     if (form.coupleIds.length > 1) {
       const guestIds = form.coupleIds.map((id) => byId[id]?.partnerId).filter(Boolean)
@@ -684,7 +747,7 @@ export default function Home({ userId }) {
     onRemove: (connection, person) => setSheet({ type: 'remove', connection, person }),
   }
 
-  const openForm = (preset) => setSheet({ type: 'form', preset })
+  const openForm = (preset) => canPlan(preset?.coupleId) && setSheet({ type: 'form', preset })
 
   // A birthday becomes a surprise: with that person (hidden from them), or a group surprise if more
   // people are added in the form.
@@ -719,6 +782,7 @@ export default function Home({ userId }) {
   function planFromWish(wish, surprise) {
     const extra = [wish.note, wish.link, wish.price && `💸 ${wish.price}`].filter(Boolean).join('\n')
     const withOwner = all.find((c) => c.partnerId === wish.owner)
+    if (!canPlan(wish.owner === userId ? defaultCoupleId : withOwner?.id)) return
     setSheet({
       type: 'form',
       fromWish: wish.id,
@@ -799,12 +863,15 @@ export default function Home({ userId }) {
       connections={all}
       members={members}
       selected={selection}
+      locked={closed}
       onChange={choose}
       onAdd={() => setSheet({ type: 'addPerson' })}
     />
   )
 
   const openDetail = (event) => setSheet({ type: 'detail', event })
+  // A two-person plan in a connection nobody pays for: no new comments.
+  const isLocked = (e) => Boolean(e.coupleId && !e.guests && !e.shared && !e.milestone && !e.birthday && closed.has(e.coupleId))
 
   if (!connections) return <div className="splash">UsDay</div>
 
@@ -857,6 +924,34 @@ export default function Home({ userId }) {
 
           <main className="content">
             {peopleBar}
+
+            {lockedHere.length > 0 && (
+              <section className="notice card readonly-card">
+                <span className="notice-icon">
+                  <Lock size={18} aria-hidden="true" />
+                </span>
+                <span>
+                  <strong>
+                    {lockedHere.length > 3
+                      ? `${lockedHere.length} kişiyle takvimin salt okunur`
+                      : `${listNames(lockedHere.map((id) => personOf(byId[id]).name))} ile takviminiz salt okunur`}
+                  </strong>
+                  <small>
+                    {billing.subscribed
+                      ? 'Aboneliğine eklersen yeniden plan ekleyebilirsiniz.'
+                      : 'Planlarınız yerinde duruyor. Biriniz UsDay+’a geçince yeni plan ve yorum ekleyebilirsiniz.'}
+                  </small>
+                  <span className="birthday-actions">
+                    <button
+                      className="btn btn-primary btn-small"
+                      onClick={() => showPaywall(lockedHere.length === 1 ? lockedHere[0] : null)}
+                    >
+                      {billing.subscribed ? 'Aboneliğime ekle' : 'UsDay+’a bak'}
+                    </button>
+                  </span>
+                </span>
+              </section>
+            )}
 
             <NotificationCard partnerName={personOf(single)?.name} onToast={setToast} />
 
@@ -987,7 +1082,7 @@ export default function Home({ userId }) {
                 {dayEvents.length ? (
                   <div className="event-list">{dayEvents.map((e) => card(e, false))}</div>
                 ) : (
-                  <button className="empty" onClick={() => setSheet({ type: 'form' })}>
+                  <button className="empty" onClick={() => openForm()}>
                     Bu gün boş. Plan ekle
                   </button>
                 )}
@@ -1026,7 +1121,7 @@ export default function Home({ userId }) {
           setTab(next)
           window.scrollTo(0, 0)
         }}
-        onAdd={() => setSheet({ type: tab === 'dilekler' ? 'wishForm' : 'form' })}
+        onAdd={() => (tab === 'dilekler' ? setSheet({ type: 'wishForm' }) : openForm())}
         addLabel={tab === 'dilekler' ? 'Dilek ekle' : 'Plan ekle'}
       />
 
@@ -1035,6 +1130,7 @@ export default function Home({ userId }) {
           {sheet.type === 'addPerson' ? (
             <AddPersonSheet
               invites={openInvites}
+              initialMode={sheet.mode}
               onToast={setToast}
               onCreated={(id) => connectionReady(id, '💌 Davet kodun hazır, gönderebilirsin')}
               onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
@@ -1105,6 +1201,13 @@ export default function Home({ userId }) {
             />
           ) : sheet.type === 'admin' ? (
             <AdminPanel initialSection={sheet.section} onClose={() => setSheet(null)} onToast={setToast} />
+          ) : sheet.type === 'paywall' ? (
+            <PaywallSheet
+              reason={sheet.reason}
+              max={billing?.max}
+              onHaveCode={() => setSheet({ type: 'addPerson', mode: 'join' })}
+              onClose={() => setSheet(null)}
+            />
           ) : sheet.type === 'birthday' ? (
             <BirthdaySheet current={me?.birthday ?? ''} onSave={saveBirthday} onClose={() => setSheet(null)} />
           ) : sheet.type === 'settings' ? (
@@ -1116,6 +1219,9 @@ export default function Home({ userId }) {
               onFeedback={() => setSheet({ type: 'feedback' })}
               onAdmin={() => setSheet({ type: 'admin', section: 'overview' })}
               onBirthday={() => setSheet({ type: 'birthday' })}
+              billing={billing}
+              onBillingChanged={refreshBilling}
+              onPaywall={() => showPaywall()}
               connections={all}
               members={members}
               connectionActions={connectionActions}
@@ -1155,8 +1261,11 @@ export default function Home({ userId }) {
               withWhom={withWhom(sheet.event)}
               onPlanBirthday={planBirthday}
               onShowWishes={showWishes}
+              readOnly={isLocked(sheet.event)}
+              onPaywall={() => showPaywall(sheet.event.coupleId)}
               onEdit={() =>
                 // The form edits the whole series from its first day; the opened day is kept for "sadece bu günü sil".
+                canPlan(sheet.event.coupleId) &&
                 setSheet({
                   type: 'form',
                   event: { ...sheet.event, date: sheet.event.seriesDate ?? sheet.event.date },

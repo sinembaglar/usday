@@ -153,6 +153,8 @@ export default function EventDetail({
   onToast,
   onPlanBirthday, // (personId, date) => opens a surprise plan for that birthday
   onShowWishes, // (personId) => their wish list
+  readOnly = false, // nobody pays for this connection: plans stay, nothing new can be added
+  onPaywall,
 }) {
   const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
@@ -370,6 +372,8 @@ export default function EventDetail({
         hasPartner={Boolean(partner)}
         listeners={listenersOf(event, me, partner)}
         focus={focusChat}
+        readOnly={readOnly}
+        onPaywall={onPaywall}
         onToast={onToast}
       />
     </div>

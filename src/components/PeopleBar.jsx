@@ -1,9 +1,9 @@
-import { Plus, Users } from 'lucide-react'
+import { Lock, Plus, Users } from 'lucide-react'
 import { UNKNOWN_PERSON } from '../lib/constants'
 
 // The people strip: pick one or several connections; calendar and cover follow the choice.
 // An invitation nobody has joined yet is not a person: it waits behind "Kişi ekle".
-export default function PeopleBar({ connections, members, selected, onChange, onAdd }) {
+export default function PeopleBar({ connections, members, selected, locked, onChange, onAdd }) {
   const joined = connections.filter((c) => c.partnerId)
   const all = selected.length === connections.length
 
@@ -39,6 +39,11 @@ export default function PeopleBar({ connections, members, selected, onChange, on
           >
             <span className="person-avatar" style={{ background: person.color }}>
               {person.short}
+              {locked?.has(c.id) && (
+                <span className="person-lock" aria-label="salt okunur">
+                  <Lock size={9} strokeWidth={2.6} aria-hidden="true" />
+                </span>
+              )}
             </span>
             {person.name}
           </button>

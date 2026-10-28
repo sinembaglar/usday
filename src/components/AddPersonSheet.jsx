@@ -12,8 +12,8 @@ const JOIN_ERRORS = {
 
 // Add someone: open a new invitation (choosing who they are to you) or join theirs with a code.
 // Invitations nobody has joined yet are here too, ready to send again.
-export default function AddPersonSheet({ invites = [], onCreated, onJoined, onClose, onToast }) {
-  const [mode, setMode] = useState('invite') // invite | join
+export default function AddPersonSheet({ invites = [], initialMode = 'invite', onCreated, onJoined, onClose, onToast }) {
+  const [mode, setMode] = useState(initialMode) // invite | join
   const [relation, setRelation] = useState('friend')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)

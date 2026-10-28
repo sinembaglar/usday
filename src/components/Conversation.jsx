@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BellOff } from 'lucide-react'
+import { BellOff, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { addComment, deleteComment, hasPush, loadConversation, setCommentReaction, setReaction, uploadCommentImage } from '../lib/api'
 import CommentForm from './CommentForm'
@@ -11,7 +11,17 @@ import { UNKNOWN_PERSON } from '../lib/constants'
 const EMOJIS = ['😍', '🥳', '👍', '😂', '🙈']
 
 // Comments and reactions under a plan. Attached to the whole series for repeating plans.
-export default function Conversation({ eventId, me, members, hasPartner, listeners = [], focus = false, onToast }) {
+export default function Conversation({
+  eventId,
+  me,
+  members,
+  hasPartner,
+  listeners = [],
+  focus = false,
+  readOnly = false,
+  onPaywall,
+  onToast,
+}) {
   // Opened from a comment notification: scroll down to the conversation once it has loaded.
   const sectionRef = useRef(null)
   const scrolled = useRef(false)
@@ -145,8 +155,15 @@ export default function Conversation({ eventId, me, members, hasPartner, listene
         </ul>
       )}
 
-      <CommentForm placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz…'} onSend={send} onError={onToast} />
-      {silent.length > 0 && (
+      {readOnly ? (
+        <button className="readonly-line" onClick={onPaywall}>
+          <Lock size={14} aria-hidden="true" />
+          Salt okunur · yorum için biriniz UsDay+’a geçmeli
+        </button>
+      ) : (
+        <CommentForm placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz…'} onSend={send} onError={onToast} />
+      )}
+      {!readOnly && silent.length > 0 && (
         <p className="hint silent-hint">
           <BellOff size={13} aria-hidden="true" />
           {silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirim almıyor, açınca görecek.
