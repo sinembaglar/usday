@@ -142,6 +142,79 @@ function milestoneJobs(coupleId: string, since: string, relation: string, member
   return jobs
 }
 
+// Turkish genitive, as in the app: "Can’ın", "Ece’nin", "Serhat Han’ın".
+function genitive(name: string) {
+  const lower = name.toLocaleLowerCase('tr')
+  const last = [...lower].filter((c) => 'aeıioöuü'.includes(c)).at(-1) ?? 'e'
+  const vowel = ({ a: 'ı', ı: 'ı', e: 'i', i: 'i', o: 'u', u: 'u', ö: 'ü', ü: 'ü' } as Record<string, string>)[last]
+  const endsWithVowel = 'aeıioöuü'.includes(lower.at(-1) ?? '')
+  return `${name}’${endsWithVowel ? 'n' : ''}${vowel}n`
+}
+
+// Birthdays: the people someone is connected to hear about it a month, two weeks, a week and a day
+// before, and on the morning itself. The birthday person only gets a greeting on the day.
+const BIRTHDAY_STEPS = [30, 14, 7, 1, 0]
+const dayMonth = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', weekday: 'long', timeZone: 'UTC' })
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
+
+// The next birthday on or after today; 29 February falls on the 28th in other years.
+function nextBirthday(birthday: string, today: string) {
+  const md = birthday.slice(5)
+  const on = (y: number) => {
+    const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
+    return `${y}-${md === '02-29' && !leap ? '02-28' : md}`
+  }
+  const year = Number(today.slice(0, 4))
+  return on(year) >= today ? on(year) : on(year + 1)
+}
+
+function birthdayWords(days: number, who: string, when: string): [string, string] {
+  if (days === 30) return [`🎂 ${who} doğum gününe 1 ay var`, `${when}. Bir sürpriz planlamak ya da dilek listesine bakmak için güzel bir zaman.`]
+  if (days === 14) return [`🎂 ${who} doğum gününe 2 hafta kaldı`, `${when}. Bir planınız var mı?`]
+  if (days === 7) return [`🎂 ${who} doğum gününe 1 hafta kaldı`, `${when}. Hediye ya da plan hazır mı?`]
+  if (days === 1) return [`🎂 Yarın ${who} doğum günü`, 'Kutlamaya hazır mısın? 🎉']
+  return [`🎂 Bugün ${who} doğum günü`, 'Bir mesaj atmayı unutma 💜']
+}
+
+async function birthdayJobs(now: Now): Promise<Job[]> {
+  if (now.minutes < MORNING) return []
+  const { data: born } = await admin.from('profiles').select('id, name, birthday').not('birthday', 'is', null)
+  const due = (born ?? [])
+    .map((p) => {
+      const date = nextBirthday(p.birthday, now.today)
+      return { ...p, date, days: daysBetween(now.today, date) }
+    })
+    .filter((p) => BIRTHDAY_STEPS.includes(p.days))
+  if (!due.length) return []
+
+  const { data: memberships } = await admin.from('couple_members').select('couple_id, user_id').in('user_id', due.map((p) => p.id))
+  const people = await peopleIn([...new Set((memberships ?? []).map((m) => m.couple_id))])
+  const jobs: Job[] = []
+  for (const p of due) {
+    const theirs = (memberships ?? []).filter((m) => m.user_id === p.id).map((m) => m.couple_id)
+    const friends = [...new Set(people.filter((x) => theirs.includes(x.couple_id) && x.id !== p.id).map((x) => x.id))]
+    const year = p.date.slice(0, 4)
+    const [title, body] = birthdayWords(p.days, genitive(p.name), dayMonth.format(new Date(`${p.date}T00:00:00Z`)))
+    for (const id of friends) {
+      jobs.push({
+        userId: id,
+        eventId: null,
+        claim: { table: 'sent_birthdays', row: { person_id: p.id, user_id: id, key: `${p.days}:${year}` } },
+        payload: { title, body, url: `/?birthday=${p.id}`, tag: `birthday-${p.id}` },
+      })
+    }
+    if (p.days === 0) {
+      jobs.push({
+        userId: p.id,
+        eventId: null,
+        claim: { table: 'sent_birthdays', row: { person_id: p.id, user_id: p.id, key: `self:${year}` } },
+        payload: { title: `🎂 İyi ki doğdun, ${p.name}!`, body: 'Sevdiklerin bugün seni kutlayacak 💜', url: '/', tag: 'birthday-self' },
+      })
+    }
+  }
+  return jobs
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
     return new Response('unauthorized', { status: 401 })
@@ -194,6 +267,7 @@ Deno.serve(async (req) => {
       attendeesOf(event).flatMap((person) => eventJobs(event, person, attendeesOf(event), now)),
     ),
     ...(couples ?? []).flatMap((c) => milestoneJobs(c.id, c.together_since, c.relation, membersOf(c.id), now)),
+    ...(await birthdayJobs(now)),
   ]
 
   // A surprise made from a wish makes that wish come true on its reveal morning.

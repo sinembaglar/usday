@@ -22,15 +22,19 @@ function groupLine(event, me) {
     .join(' · ')
 }
 
-// The category's icon, or what matters more: a surprise, a milestone, busy time on a shared calendar.
+// The category's icon, or what matters more: a surprise, a birthday, a milestone, busy time on a
+// shared calendar.
 function EventIcon({ event }) {
-  const Icon = event.locked
-    ? SPECIAL_ICONS.surprise
-    : event.milestone
-      ? SPECIAL_ICONS.milestone
-      : event.busy
-        ? SPECIAL_ICONS.busy
-        : tagIcon(event.tag, event.relation)
+  const special = event.locked
+    ? 'surprise'
+    : event.birthday
+      ? 'birthday'
+      : event.milestone
+        ? 'milestone'
+        : event.busy
+          ? 'busy'
+          : null
+  const Icon = special ? SPECIAL_ICONS[special] : tagIcon(event.tag, event.relation)
   return <Icon size={18} strokeWidth={2} />
 }
 
@@ -38,7 +42,7 @@ function EventIcon({ event }) {
 export default function EventCard({ event, members, onClick, showDate, isNew, withWhom, me }) {
   const hidden = event.locked
   const tag = TAGS[event.tag] ?? TAGS.plan
-  const author = event.milestone ? US : (members[event.createdBy] ?? UNKNOWN_PERSON)
+  const author = event.milestone ? US : (members[event.birthday ?? event.createdBy] ?? UNKNOWN_PERSON)
   const thumb = event.photos[0]
   const status = event.guests
     ? groupLine(event, me)

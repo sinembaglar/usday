@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarPlus, ChevronRight, Copy, KeyRound, LogOut, MessageSquare, RefreshCw, Wrench } from 'lucide-react'
+import { Bell, Cake, CalendarPlus, ChevronRight, Copy, KeyRound, LogOut, MessageSquare, RefreshCw, Wrench } from 'lucide-react'
+import { formatBirthday } from '../lib/birthdays'
 import { supabase } from '../lib/supabase'
 import { calendarToken, deleteAccount, loadBlocks, unblock } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
@@ -23,6 +24,7 @@ export default function SettingsSheet({
   onSharesChanged,
   onFeedback,
   onAdmin,
+  onBirthday,
   onClose,
   onToast,
 }) {
@@ -229,6 +231,16 @@ export default function SettingsSheet({
       <section className="settings-group">
         <h4>Hesap{me ? ` · ${me.name}` : ''}</h4>
         <div className="list-card">
+          <button className="list-row" onClick={onBirthday}>
+            <span className="row-icon">
+              <Cake size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">
+              Doğum günüm
+              <small>{me?.birthday ? formatBirthday(me.birthday) : 'Eklenmedi'}</small>
+            </span>
+            <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
+          </button>
           {changing ? (
             <form className="inline-form list-form" onSubmit={changePassword}>
               <input

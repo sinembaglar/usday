@@ -5,8 +5,8 @@ import WishCard from './WishCard'
 
 // My wish list and those of the people I am connected with: one row to pick whose list, with the
 // category as a small menu at its end. Claims ("sen alıyorsun") are never loaded on my own wishes.
-export default function WishesView({ wishes, me, people, onOpen, onAdd, header }) {
-  const [whose, setWhose] = useState('mine')
+export default function WishesView({ wishes, me, people, initialWhose, onOpen, onAdd, header }) {
+  const [whose, setWhose] = useState(initialWhose ?? 'mine')
   const [category, setCategory] = useState('all')
   const [showDone, setShowDone] = useState(false)
 

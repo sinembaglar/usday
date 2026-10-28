@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { Bell, Settings } from 'lucide-react'
+import { Bell, Cake, Settings } from 'lucide-react'
 import Cover from './Cover'
 import MonthCalendar from './MonthCalendar'
 import WeekView from './WeekView'
@@ -12,6 +12,7 @@ import EventDetail from './EventDetail'
 import SettingsSheet from './SettingsSheet'
 import PeopleBar from './PeopleBar'
 import AddPersonSheet from './AddPersonSheet'
+import BirthdaySheet from './BirthdaySheet'
 import { supabase } from '../lib/supabase'
 import {
   addTemplate,
@@ -22,6 +23,7 @@ import {
   deleteWish,
   loadEverything,
   markSeen,
+  setBirthday,
   saveEvent,
   saveWish,
   setCover,
@@ -36,6 +38,7 @@ import WishesView from './WishesView'
 import WishForm from './WishForm'
 import WishDetail from './WishDetail'
 import { addDaysKey, dayNumber, expandEvents, milestones } from '../lib/recurrence'
+import { birthdaysBetween, daysUntil, nextBirthday } from '../lib/birthdays'
 import InviteCard from './InviteCard'
 import ProposalCard from './ProposalCard'
 import InvitationCard from './InvitationCard'
@@ -174,6 +177,8 @@ export default function Home({ userId }) {
   )
   const [pendingWish, setPendingWish] = useState(() => startParams.get('wish'))
   const [pendingPerson, setPendingPerson] = useState(() => startParams.get('person'))
+  const [pendingBirthday, setPendingBirthday] = useState(() => startParams.get('birthday'))
+  const [wishFocus, setWishFocus] = useState(null) // whose wish list the wishes tab opens on
   const [pendingMilestone, setPendingMilestone] = useState(() =>
     startParams.get('milestone')
       ? { id: startParams.get('milestone'), coupleId: startParams.get('with'), day: startParams.get('day') }
@@ -189,6 +194,7 @@ export default function Home({ userId }) {
       }
       if (p.get('tab') === 'dilekler') setTab('dilekler')
       if (p.get('person')) setPendingPerson(p.get('person'))
+      if (p.get('birthday')) setPendingBirthday(p.get('birthday'))
       if (p.get('wish')) setPendingWish(p.get('wish'))
       if (p.get('shared')) {
         setPendingShared({ owner: p.get('shared'), eventId: p.get('event') })
@@ -276,10 +282,25 @@ export default function Home({ userId }) {
         photos: [],
       }))
     })
+    // Birthdays of the selected people, and mine.
+    const birthdays = [...pickedPeople, userId].flatMap((pid) => {
+      const person = members[pid]
+      return birthdaysBetween(person?.birthday, from, to).map((date) => ({
+        id: `birthday-${pid}-${date}`,
+        seriesId: null,
+        birthday: pid,
+        coupleId: Object.values(byId).find((c) => c.partnerId === pid)?.id ?? null,
+        title: pid === userId ? '🎂 Doğum günün' : `🎂 ${genitive(person.name)} doğum günü`,
+        date,
+        time: '',
+        tag: 'ozel',
+        photos: [],
+      }))
+    })
     // Calendars the selected people share with me: their other plans, as busy time or by name.
     const sharedOnScreen = sharedPlans.filter((p) => pickedPeople.has(p.owner))
-    return [...expandEvents([...withPartner.filter(onScreen), ...sharedOnScreen], from, to), ...special]
-  }, [withPartner, sharedPlans, selection, byId, members, monthKey, todayKey])
+    return [...expandEvents([...withPartner.filter(onScreen), ...sharedOnScreen], from, to), ...special, ...birthdays]
+  }, [withPartner, sharedPlans, selection, byId, members, monthKey, todayKey, userId])
 
   // Opening a plan of someone who is not selected adds them to the selection first.
   useEffect(() => {
@@ -416,6 +437,26 @@ export default function Home({ userId }) {
     // choose is stable enough for this one-off jump
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingMilestone, shown, selection, byId, connections, month])
+
+  // "Ece’nin doğum gününe 1 ay var" opens that birthday, with Ece selected.
+  useEffect(() => {
+    if (!pendingBirthday || !connections) return
+    const c = connections.find((x) => x.partnerId === pendingBirthday)
+    if (c && !selection.includes(c.id)) {
+      choose([...selection, c.id])
+      return
+    }
+    const event = shown.find((e) => e.birthday === pendingBirthday && e.date >= todayKey)
+    if (event) {
+      setTab('takvim')
+      setSelected(parseISO(event.date))
+      setMonth(startOfMonth(parseISO(event.date)))
+      setSheet({ type: 'detail', event })
+    }
+    setPendingBirthday(null)
+    // choose is stable enough for this one-off jump
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBirthday, connections, selection, shown, todayKey])
 
   useEffect(() => {
     if (!toast) return
@@ -645,6 +686,35 @@ export default function Home({ userId }) {
 
   const openForm = (preset) => setSheet({ type: 'form', preset })
 
+  // A birthday becomes a surprise: with that person (hidden from them), or a group surprise if more
+  // people are added in the form.
+  function planBirthday(personId, date) {
+    const person = members[personId] ?? UNKNOWN_PERSON
+    openForm({
+      title: `🎂 ${genitive(person.name)} doğum günü`,
+      date,
+      tag: 'ozel',
+      surprise: true,
+      revealOn: date,
+      coupleId: all.find((c) => c.partnerId === personId)?.id,
+      hiddenFrom: [personId],
+    })
+  }
+
+  function showWishes(personId) {
+    setSheet(null)
+    setWishFocus(personId === userId ? null : personId)
+    setTab('dilekler')
+    window.scrollTo(0, 0)
+  }
+
+  async function saveBirthday(mmdd) {
+    await setBirthday(userId, mmdd)
+    setSheet((s) => (s?.type === 'birthday' ? null : s))
+    setToast('🎂 Doğum günün kaydedildi')
+    reload()
+  }
+
   // A wish becomes a plan: the owner plans it openly, others as a surprise (asking first).
   function planFromWish(wish, surprise) {
     const extra = [wish.note, wish.link, wish.price && `💸 ${wish.price}`].filter(Boolean).join('\n')
@@ -742,11 +812,24 @@ export default function Home({ userId }) {
   // Wishes have their own "whose list" choice: everyone I am connected with, whatever is picked above.
   const wishPeople = [...new Set(linked.map((c) => c.partnerId))].map((id) => ({ ...(members[id] ?? UNKNOWN_PERSON), id }))
   const waiting = invitedMe.length + waitingForMe.length + pending.length
+  const me = members[userId]
+  // Birthdays of the selected people in the next 30 days: time to plan something.
+  const birthdaysSoon = [...new Set(linked.filter((c) => selection.includes(c.id)).map((c) => c.partnerId))]
+    .map((id) => members[id])
+    .filter((p) => p?.birthday)
+    .map((person) => {
+      const date = nextBirthday(person.birthday, todayKey)
+      return { person, date, days: daysUntil(todayKey, date) }
+    })
+    .filter((b) => b.days <= 30)
+    .sort((a, b) => a.days - b.days)
 
   return (
     <div className="app has-tabbar">
       {tab === 'dilekler' ? (
         <WishesView
+          key={wishFocus ?? 'mine'}
+          initialWhose={wishFocus}
           wishes={wishes}
           me={userId}
           people={wishPeople}
@@ -817,7 +900,35 @@ export default function Home({ userId }) {
               </section>
             )}
 
-            {shown.filter((e) => !e.milestone).length === 0 && (
+            {birthdaysSoon.length > 0 && (
+              <section className="waiting">
+                <h2 className="section-title">Yaklaşan doğum günleri</h2>
+                {birthdaysSoon.map(({ person, date, days }) => (
+                  <section key={person.id} className="notice card birthday-card">
+                    <span className="notice-icon">
+                      <Cake size={20} aria-hidden="true" />
+                    </span>
+                    <span>
+                      <strong>{genitive(person.name)} doğum günü</strong>
+                      <small>
+                        {days === 0 ? 'Bugün' : days === 1 ? 'Yarın' : `${days} gün sonra`} ·{' '}
+                        {format(parseISO(date), 'd MMMM EEEE', { locale: tr })}
+                      </small>
+                      <span className="birthday-actions">
+                        <button className="btn btn-primary btn-small" onClick={() => planBirthday(person.id, date)}>
+                          Sürpriz planla
+                        </button>
+                        <button className="btn btn-secondary btn-small" onClick={() => showWishes(person.id)}>
+                          Dileklerine bak
+                        </button>
+                      </span>
+                    </span>
+                  </section>
+                ))}
+              </section>
+            )}
+
+            {shown.filter((e) => !e.milestone && !e.birthday).length === 0 && (
               <section className="welcome card">
                 <strong>UsDay’e hoş geldin</strong>
                 <small>İlk planı ekle; bir fikre dokunman yeterli.</small>
@@ -994,6 +1105,8 @@ export default function Home({ userId }) {
             />
           ) : sheet.type === 'admin' ? (
             <AdminPanel initialSection={sheet.section} onClose={() => setSheet(null)} onToast={setToast} />
+          ) : sheet.type === 'birthday' ? (
+            <BirthdaySheet current={me?.birthday ?? ''} onSave={saveBirthday} onClose={() => setSheet(null)} />
           ) : sheet.type === 'settings' ? (
             <SettingsSheet
               me={members[userId]}
@@ -1002,6 +1115,7 @@ export default function Home({ userId }) {
               onSharesChanged={() => reload()}
               onFeedback={() => setSheet({ type: 'feedback' })}
               onAdmin={() => setSheet({ type: 'admin', section: 'overview' })}
+              onBirthday={() => setSheet({ type: 'birthday' })}
               connections={all}
               members={members}
               connectionActions={connectionActions}
@@ -1039,6 +1153,8 @@ export default function Home({ userId }) {
               me={userId}
               members={members}
               withWhom={withWhom(sheet.event)}
+              onPlanBirthday={planBirthday}
+              onShowWishes={showWishes}
               onEdit={() =>
                 // The form edits the whole series from its first day; the opened day is kept for "sadece bu günü sil".
                 setSheet({
@@ -1055,6 +1171,13 @@ export default function Home({ userId }) {
               onToast={setToast}
             />
           )}
+        </Sheet>
+      )}
+
+      {/* Everyone gives their birthday once; until then this stays on top. */}
+      {me && !me.birthday && (
+        <Sheet locked onClose={() => {}}>
+          <BirthdaySheet required onSave={saveBirthday} />
         </Sheet>
       )}
 

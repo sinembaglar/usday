@@ -34,6 +34,7 @@ const toPerson = (p) => ({
   name: p.name,
   short: initials(p.name),
   color: personColor(p),
+  birthday: p.birthday ? p.birthday.slice(5) : null, // "MM-DD"
   lastSeenAt: p.last_seen_at,
 })
 
@@ -98,7 +99,7 @@ function fromTeaser(t, urlFor) {
 export async function loadEverything(userId) {
   const results = await Promise.all([
     supabase.from('couples').select('id, cover_path, invite_code, together_since, relation, created_by, created_at').order('created_at'),
-    supabase.from('profiles').select('id, name, color, last_seen_at').order('created_at'),
+    supabase.from('profiles').select('id, name, color, last_seen_at, birthday').order('created_at'),
     supabase.from('events').select('*'),
     supabase.rpc('surprise_teasers'),
     supabase.from('custom_templates').select('id, couple_id, tag, title, event_time').order('created_at'),
@@ -530,6 +531,12 @@ export async function markConversationSeen(eventId, userId, owner = null, viewer
       { user_id: userId, event_id: eventId, thread: threadOf(owner, viewer), owner, viewer },
       { onConflict: 'user_id,event_id,thread' },
     )
+  if (error) throw error
+}
+
+// My birthday, as "MM-DD" (stored with the year 2000; the real year is never asked).
+export async function setBirthday(userId, mmdd) {
+  const { error } = await supabase.from('profiles').update({ birthday: `2000-${mmdd}` }).eq('id', userId)
   if (error) throw error
 }
 

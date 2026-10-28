@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { checkInvite } from '../lib/api'
+import BirthdayPicker from './BirthdayPicker'
 
 const MESSAGES = {
   invalid_credentials: 'E-posta ya da şifre hatalı.',
@@ -15,7 +16,7 @@ const inviteFromUrl = new URLSearchParams(window.location.search).get('davet')?.
 
 export default function AuthScreen() {
   const [mode, setMode] = useState(inviteFromUrl ? 'signup' : 'login') // login | signup | forgot
-  const [form, setForm] = useState({ name: '', email: '', password: '', invite: inviteFromUrl })
+  const [form, setForm] = useState({ name: '', email: '', password: '', invite: inviteFromUrl, birthday: '' })
   const [inviter, setInviter] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -56,6 +57,12 @@ export default function AuthScreen() {
       return
     }
 
+    if (mode === 'signup' && !form.birthday) {
+      setError('Doğum gününü seç; sevdiklerin hatırlasın diye.')
+      setBusy(false)
+      return
+    }
+
     if (mode === 'signup' && code) {
       const name = await checkInvite(code).catch(() => null)
       if (!name) {
@@ -71,7 +78,7 @@ export default function AuthScreen() {
         : await supabase.auth.signUp({
             email,
             password: form.password,
-            options: { data: { name: form.name.trim(), invite_code: code } },
+            options: { data: { name: form.name.trim(), invite_code: code, birthday: `2000-${form.birthday}` } },
           })
     if (error) setError(MESSAGES[error.code] ?? 'Bir şeyler ters gitti, tekrar dener misin?')
     else if (inviteFromUrl) window.history.replaceState(null, '', '/')
@@ -108,6 +115,12 @@ export default function AuthScreen() {
         )}
 
         {signup && <input className="input" placeholder="Adın" value={form.name} onChange={set('name')} required />}
+        {signup && (
+          <label className="field">
+            <span>Doğum günün (yıl sorulmaz)</span>
+            <BirthdayPicker value={form.birthday} onChange={(birthday) => setForm((f) => ({ ...f, birthday }))} id="signup-birthday" />
+          </label>
+        )}
         <input
           className="input"
           type="email"

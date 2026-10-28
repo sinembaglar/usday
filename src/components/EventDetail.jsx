@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { Clock, Lock, MapPin, Pencil, Repeat, Share2, Users, X } from 'lucide-react'
+import { Clock, Gift, Lock, MapPin, Pencil, Repeat, Share2, Users, X } from 'lucide-react'
 import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
 import { RELATION_ICONS } from '../lib/icons'
 import { genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
@@ -151,6 +151,8 @@ export default function EventDetail({
   onClose,
   onAnswered,
   onToast,
+  onPlanBirthday, // (personId, date) => opens a surprise plan for that birthday
+  onShowWishes, // (personId) => their wish list
 }) {
   const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
@@ -216,6 +218,41 @@ export default function EventDetail({
         </button>
         <button className="btn btn-secondary" onClick={share}>
           <Share2 size={16} aria-hidden="true" /> Hikâyende paylaş
+        </button>
+      </div>
+    )
+  }
+
+  // Someone's birthday (or mine): time to plan something, or to look at their wish list.
+  if (event.birthday) {
+    const mine = event.birthday === me
+    const person = members[event.birthday] ?? UNKNOWN_PERSON
+    const days = differenceInCalendarDays(parseISO(event.date), new Date())
+    return (
+      <div className="detail detail-surprise">
+        <div className="gift">🎂</div>
+        <h3>{mine ? 'Doğum günün' : `${genitive(person.name)} doğum günü`}</h3>
+        <p className="when">{format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr })}</p>
+        <p className="reveal">
+          {days === 0 ? 'Bugün!' : days > 0 ? `${days} gün kaldı.` : 'Geçti.'}
+          {!mine && ' Sana bir ay önceden hatırlatırız, ona söylemeyiz.'}
+        </p>
+        {mine ? (
+          <button className="btn btn-primary" onClick={() => onShowWishes(me)}>
+            Dilek listeni güncelle
+          </button>
+        ) : (
+          <>
+            <button className="btn btn-primary" onClick={() => onPlanBirthday(person.id, event.date)}>
+              <Gift size={17} aria-hidden="true" /> Sürpriz planla
+            </button>
+            <button className="btn btn-secondary" onClick={() => onShowWishes(person.id)}>
+              Dileklerine bak
+            </button>
+          </>
+        )}
+        <button className="link-btn" onClick={onClose}>
+          Kapat
         </button>
       </div>
     )

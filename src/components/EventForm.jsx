@@ -55,7 +55,7 @@ export default function EventForm({
       ...preset,
       ...initial,
       coupleIds,
-      hiddenFrom: initial?.hiddenFrom ?? [],
+      hiddenFrom: initial?.hiddenFrom ?? preset?.hiddenFrom ?? [],
       // Keep asking while a plan is unanswered; a declined one is re-asked by default.
       propose: canAsk && (preset?.propose ?? (initial?.status === 'proposed' || initial?.status === 'declined')),
     }

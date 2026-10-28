@@ -2,6 +2,7 @@
 // comments and the emojis they leave on them.
 import {
   Briefcase,
+  Cake,
   Coffee,
   Gift,
   Heart,
@@ -26,4 +27,4 @@ export const RELATION_ICONS = { partner: Heart, friend: Smile, sibling: Users, f
 export const WISH_ICONS = { gift: Gift, travel: Plane, experience: Sparkles }
 
 // What a plan card shows when its own category is not the point.
-export const SPECIAL_ICONS = { surprise: Gift, milestone: Sparkles, busy: Lock }
+export const SPECIAL_ICONS = { surprise: Gift, milestone: Sparkles, busy: Lock, birthday: Cake }

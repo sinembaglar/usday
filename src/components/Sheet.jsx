@@ -3,14 +3,15 @@ import { useRef } from 'react'
 const CLOSE_AFTER = 110 // px pulled down
 
 // A bottom sheet. Pulling it down from the top closes it, like on iPhone; parts that use dragging
-// themselves (the photo cropper) are marked with data-no-swipe.
-export default function Sheet({ onClose, children }) {
+// themselves (the photo cropper) are marked with data-no-swipe. A locked sheet (a required answer)
+// cannot be pulled away or closed by tapping outside.
+export default function Sheet({ onClose, locked = false, children }) {
   const ref = useRef(null)
   const drag = useRef(null)
 
   function onTouchStart(e) {
     const sheet = ref.current
-    if (sheet.scrollTop > 0 || e.target.closest('[data-no-swipe]')) return
+    if (locked || sheet.scrollTop > 0 || e.target.closest('[data-no-swipe]')) return
     drag.current = { y: e.touches[0].clientY, dy: 0 }
   }
 
@@ -44,7 +45,7 @@ export default function Sheet({ onClose, children }) {
   }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop" onClick={locked ? undefined : onClose}>
       <div
         ref={ref}
         className="sheet"
@@ -56,7 +57,7 @@ export default function Sheet({ onClose, children }) {
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       >
-        <span className="sheet-handle" />
+        {!locked && <span className="sheet-handle" />}
         {children}
       </div>
     </div>
