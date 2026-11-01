@@ -1,5 +1,5 @@
 const KEY = 'usday:theme' // 'system' | 'light' | 'dark'
-const BACKGROUND = { light: '#F8F4FA', dark: '#1B1520' }
+const BACKGROUND = { light: '#F6F3EF', dark: '#1A1418' }
 
 export function getTheme() {
   try {
@@ -10,6 +10,12 @@ export function getTheme() {
 }
 
 const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches
+
+// Whether the app is showing its dark theme right now.
+export const isDark = () => {
+  const theme = getTheme()
+  return theme === 'system' ? systemDark() : theme === 'dark'
+}
 
 export function applyTheme(theme = getTheme()) {
   const root = document.documentElement

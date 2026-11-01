@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, Smartphone, TriangleAlert } from 'lucide-react'
 import { enablePush, isIos, isStandalone, pushSupported } from '../lib/push'
+import { isNative } from '../lib/native'
 
 function initialState() {
+  if (isNative) return 'granted' // phone app: notifications come with the store version's push setup
   if (!pushSupported()) return isIos() && !isStandalone() ? 'install' : 'unsupported'
   return Notification.permission // 'default' | 'granted' | 'denied'
 }

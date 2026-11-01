@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isNative, shareImage } from '../lib/native'
 import { drawCard } from '../lib/shareCard'
 
 // Preview of a story card, then the phone's share menu (Instagram, WhatsApp…) or a download.
@@ -23,6 +24,10 @@ export default function ShareCard({ card, onClose, onToast }) {
   }, [card, withPhoto, onToast])
 
   async function share() {
+    if (isNative) {
+      await shareImage(image.blob, 'usday.png').catch(() => onToast('Kart paylaşılamadı'))
+      return
+    }
     const file = new File([image.blob], 'usday.png', { type: 'image/png' })
     if (navigator.canShare?.({ files: [file] })) {
       try {

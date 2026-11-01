@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarHeart, Gift, KeyRound, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { siteUrl } from '../lib/native'
 
 const TRIAL_DAYS = 3
 const PLANS = [
@@ -89,11 +90,11 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
       <p className="hint paywall-legal">
         Ücretsiz deneme bitmeden en az 24 saat önce iptal edilmezse abonelik seçtiğin ücretle başlar ve her dönem aynı ücretle
         yenilenir. Ödeme ve iptal, App Store ya da Google Play hesabından yapılır.{' '}
-        <a href="/kosullar" target="_blank" rel="noreferrer">
+        <a href={siteUrl('/kosullar')} target="_blank" rel="noreferrer">
           Kullanım Koşulları
         </a>{' '}
         ·{' '}
-        <a href="/gizlilik" target="_blank" rel="noreferrer">
+        <a href={siteUrl('/gizlilik')} target="_blank" rel="noreferrer">
           Gizlilik
         </a>
       </p>

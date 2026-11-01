@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">UsDay</string>
+    <string name="title_activity_main">UsDay</string>
+    <string name="package_name">app.usday</string>
+    <string name="custom_url_scheme">app.usday</string>
+</resources>

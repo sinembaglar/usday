@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { publicOrigin, siteUrl } from '../lib/native'
 import { checkInvite } from '../lib/api'
 import BirthdayPicker from './BirthdayPicker'
 
@@ -51,7 +52,7 @@ export default function AuthScreen({ initialMode = 'login', onBack = null }) {
     const email = form.email.trim()
 
     if (mode === 'forgot') {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` })
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${publicOrigin()}/` })
       if (error) setError(MESSAGES[error.code] ?? 'E-posta gönderilemedi, tekrar dener misin?')
       else setNotice('📬 Şifre yenileme bağlantısını e-postana gönderdik. Gelen kutunu (ve gereksiz klasörünü) kontrol et.')
       setBusy(false)
@@ -189,7 +190,7 @@ export default function AuthScreen({ initialMode = 'login', onBack = null }) {
 
       <p className="legal-links">
         {signup && 'Kayıt olarak '}
-        <a href="/kosullar">Kullanım Koşulları</a> · <a href="/gizlilik">Gizlilik Politikası</a>
+        <a href={siteUrl('/kosullar')}>Kullanım Koşulları</a> · <a href={siteUrl('/gizlilik')}>Gizlilik Politikası</a>
         {signup && '’nı kabul etmiş olursun.'}
       </p>
     </div>

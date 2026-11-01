@@ -16,6 +16,8 @@ import BirthdaySheet from './BirthdaySheet'
 import PaywallSheet from './PaywallSheet'
 import { supabase } from '../lib/supabase'
 import { reportError } from '../lib/errors'
+import { statusBarText } from '../lib/native'
+import { isDark } from '../lib/theme'
 import {
   addTemplate,
   cancelConnection,
@@ -180,6 +182,11 @@ export default function Home({ userId }) {
       // the next reload tries again
     }
   }, [])
+
+  // Phone app status bar: light text over the dark cover of the calendar and in the dark theme.
+  useEffect(() => {
+    statusBarText(tab === 'takvim' || isDark())
+  }, [tab])
 
   const inboxRead = useCallback(() => {
     setUnread(0)

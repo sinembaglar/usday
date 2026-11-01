@@ -1,0 +1,19 @@
+{
+  "appId": "app.usday",
+  "appName": "UsDay",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#F6F3EF"
+  },
+  "android": {
+    "backgroundColor": "#F6F3EF"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#3A1832",
+      "showSpinner": false
+    }
+  }
+}

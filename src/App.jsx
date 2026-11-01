@@ -4,6 +4,8 @@ import AuthScreen from './components/AuthScreen'
 import Landing from './components/Landing'
 import NewPasswordScreen from './components/NewPasswordScreen'
 import Home from './components/Home'
+import { hideSplash, isNative, statusBarText } from './lib/native'
+import { isDark } from './lib/theme'
 
 const RETURNING_KEY = 'usday:returning'
 
@@ -18,7 +20,8 @@ function firstScreen() {
     // private mode
   }
   const installed = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone
-  return params.has('davet') || params.has('giris') || installed || returning ? 'login' : 'landing'
+  // The phone app was found in a store: no need to introduce UsDay again.
+  return isNative || params.has('davet') || params.has('giris') || installed || returning ? 'login' : 'landing'
 }
 
 export default function App() {
@@ -42,6 +45,13 @@ export default function App() {
     } catch {
       // private mode
     }
+  }, [session])
+
+  // In the phone app: drop the launch screen once we know what to show; signed-out screens are light.
+  useEffect(() => {
+    if (session === undefined) return
+    hideSplash()
+    if (!session) statusBarText(isDark())
   }, [session])
 
   function go(next) {

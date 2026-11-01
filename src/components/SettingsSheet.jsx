@@ -6,6 +6,7 @@ import { calendarToken, deleteAccount, loadBlocks, unblock } from '../lib/api'
 import { getTheme, setTheme } from '../lib/theme'
 import { enablePush, pushSupported, sendTestPush } from '../lib/push'
 import ConnectionSettings from './ConnectionSettings'
+import { isNative, siteUrl } from '../lib/native'
 import CalendarSharing from './CalendarSharing'
 import SubscriptionSettings from './SubscriptionSettings'
 
@@ -216,15 +217,18 @@ export default function SettingsSheet({
       <section className="settings-group">
         <h4>Bildirimler ve destek</h4>
         <div className="list-card">
-          <button className="list-row" onClick={testPush} disabled={testing}>
-            <span className="row-icon">
-              <Bell size={18} aria-hidden="true" />
-            </span>
-            <span className="row-text">
-              {testing ? 'Gönderiliyor…' : 'Test bildirimi gönder'}
-              <small>Bildirim gelmiyorsa buradan dene</small>
-            </span>
-          </button>
+          {/* Phone notifications in the app come with the store version's push setup. */}
+          {!isNative && (
+            <button className="list-row" onClick={testPush} disabled={testing}>
+              <span className="row-icon">
+                <Bell size={18} aria-hidden="true" />
+              </span>
+              <span className="row-text">
+                {testing ? 'Gönderiliyor…' : 'Test bildirimi gönder'}
+                <small>Bildirim gelmiyorsa buradan dene</small>
+              </span>
+            </button>
+          )}
           <button className="list-row" onClick={onFeedback}>
             <span className="row-icon">
               <MessageSquare size={18} aria-hidden="true" />
@@ -294,11 +298,11 @@ export default function SettingsSheet({
       </section>
 
       <p className="legal-links">
-        <a href="/gizlilik" target="_blank" rel="noreferrer">
+        <a href={siteUrl('/gizlilik')} target="_blank" rel="noreferrer">
           Gizlilik Politikası
         </a>{' '}
         ·{' '}
-        <a href="/kosullar" target="_blank" rel="noreferrer">
+        <a href={siteUrl('/kosullar')} target="_blank" rel="noreferrer">
           Kullanım Koşulları
         </a>
       </p>
