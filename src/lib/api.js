@@ -96,41 +96,26 @@ function fromTeaser(t, urlFor) {
 }
 
 // Everything the signed-in person can see, across all their connections.
+// Everything the home screen shows, in one request (load_home runs every query under my own access rules).
 export async function loadEverything(userId) {
-  const results = await Promise.all([
-    supabase.from('couples').select('id, cover_path, invite_code, together_since, relation, created_by, created_at').order('created_at'),
-    supabase.from('profiles').select('id, name, color, last_seen_at, birthday').order('created_at'),
-    supabase.from('events').select('*'),
-    supabase.rpc('surprise_teasers'),
-    supabase.from('custom_templates').select('id, couple_id, tag, title, event_time').order('created_at'),
-    supabase.from('event_comments').select('event_id'),
-    supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
-    supabase.from('wishes').select('*').order('created_at', { ascending: false }),
-    supabase.rpc('visible_claims'),
-    supabase.from('couple_members').select('couple_id, user_id'),
-    supabase.rpc('surprise_teaser_connections'),
-    supabase.from('event_participants').select('event_id, user_id, status, note, suggested_date, suggested_time'),
-    supabase.rpc('shared_calendar'),
-    supabase.from('calendar_shares').select('owner, viewer, level'),
-  ])
-  const failed = results.find((r) => r.error)
-  if (failed) throw failed.error
-  const [
+  const { data, error } = await supabase.rpc('load_home')
+  if (error) throw error
+  const {
     couples,
     profiles,
-    rows,
+    events: rows,
     teasers,
     templates,
-    comments,
-    ,
-    wishRows,
+    comment_counts: commentCounts,
+    unread: unreadNotifications,
+    wishes: wishRows,
     claims,
-    memberRows,
-    teaserCouples,
-    guestRows,
-    sharedRows,
-    shareRows,
-  ] = results.map((r) => r.data)
+    members: memberRows,
+    teaser_couples: teaserCouples,
+    guests: guestRows,
+    shared: sharedRows,
+    shares: shareRows,
+  } = data
   // Group plans: who is invited and what they answered.
   const guestsOf = (eventId) =>
     guestRows
@@ -142,7 +127,6 @@ export async function loadEverything(userId) {
         // "Başka zaman öner": the date and time this guest would rather have.
         suggested: g.suggested_date ? { date: g.suggested_date, time: g.suggested_time?.slice(0, 5) ?? '' } : null,
       }))
-  const unreadNotifications = results[6].count ?? 0
   // Who is getting which of the others' wishes (never loaded for my own wishes).
   const claimOf = Object.fromEntries(
     claims.map((c) => [
@@ -152,9 +136,6 @@ export async function loadEverything(userId) {
     ]),
   )
   const teaserCouple = Object.fromEntries(teaserCouples.map((t) => [t.id, t.couple_id]))
-
-  const commentCounts = {}
-  for (const c of comments) commentCounts[c.event_id] = (commentCounts[c.event_id] ?? 0) + 1
 
   const urlFor = await signedUrls(
     [

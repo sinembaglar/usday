@@ -150,13 +150,14 @@ export default function Home({ userId }) {
   )
 
   // Live updates: the database pings my own private channel when something of mine changes. A burst of
-  // changes (a plan with its guests) becomes one reload.
+  // changes (a plan with its guests) becomes one reload, and reloads are spread over a second or two so the
+  // apps of everyone a change concerns do not all ask the server at the same moment.
   useEffect(() => {
     reload({ markAsSeen: true })
     let timer = null
     const reloadSoon = () => {
       clearTimeout(timer)
-      timer = setTimeout(() => reload(), 300)
+      timer = setTimeout(() => reload(), 300 + Math.random() * 1500)
     }
     const channel = supabase.channel(`user:${userId}`, { config: { private: true } })
     supabase.realtime
