@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { adminFeedback, adminOverview, adminReports, adminUsers, setBanned, setStatus } from '../lib/api'
+import { adminErrors, adminFeedback, adminOverview, adminReports, adminUsers, setBanned, setStatus } from '../lib/api'
 import { RELATIONS } from '../lib/constants'
 import { timeAgo } from '../lib/format'
 import { REPORT_REASONS } from './ReportSheet'
@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: 'overview', label: '📊 Rapor' },
   { id: 'feedback', label: '💬 Geri bildirim' },
   { id: 'reports', label: '🚩 Şikayetler' },
+  { id: 'errors', label: '🐞 Hatalar' },
   { id: 'users', label: '👤 Kişiler' },
 ]
 
@@ -308,11 +309,47 @@ function UserList({ onToast }) {
   )
 }
 
+const ERROR_KINDS = { error: 'Hata', rejection: 'Yakalanmamış hata', render: 'Ekran çöktü', load: 'Veri yüklenemedi' }
+
+// "iPhone · Safari 18", "Android · Chrome 131", from the browser's own description.
+function device(ua = '') {
+  const os = /iPhone|iPad/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Mac OS/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Diğer'
+  const browser =
+    ua.match(/(?:CriOS|Chrome)\/(\d+)/)?.[1] ? `Chrome ${ua.match(/(?:CriOS|Chrome)\/(\d+)/)[1]}`
+    : ua.match(/Version\/(\d+).*Safari/)?.[1] ? `Safari ${ua.match(/Version\/(\d+).*Safari/)[1]}`
+    : ua.match(/Firefox\/(\d+)/)?.[1] ? `Firefox ${ua.match(/Firefox\/(\d+)/)[1]}`
+    : /AppleWebKit/.test(ua) ? 'Uygulama içi' : ''
+  return [os, browser].filter(Boolean).join(' · ')
+}
+
+function ErrorList({ items }) {
+  if (!items.length) return <p className="hint">Son 14 günde hata yok. 🎉</p>
+  return items.map((e) => (
+    <article key={e.message} className={`admin-item ${e.recent ? 'is-new' : ''}`}>
+      <header>
+        <strong>{ERROR_KINDS[e.kind] ?? e.kind}</strong>
+        <small>son {ago(e.last_at)}</small>
+      </header>
+      <p>{e.message}</p>
+      <small className="admin-meta">
+        {e.count} kez · {e.people} kişi · {device(e.user_agent)} · sayfa {e.url || '/'} · sürüm {e.version}
+      </small>
+      {e.stack && (
+        <details className="error-stack">
+          <summary>Ayrıntı</summary>
+          <pre>{e.stack}</pre>
+        </details>
+      )}
+    </article>
+  ))
+}
+
 export default function AdminPanel({ initialSection = 'overview', onClose, onToast }) {
   const [section, setSection] = useState(initialSection)
   const [overview, setOverview] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [reports, setReports] = useState(null)
+  const [errors, setErrors] = useState(null)
 
   const load = useCallback(() => {
     adminOverview()
@@ -324,6 +361,10 @@ export default function AdminPanel({ initialSection = 'overview', onClose, onToa
     adminReports()
       .then(setReports)
       .catch(() => setReports([]))
+    adminErrors()
+      // Seen in the last 24 hours: highlighted and counted on the tab.
+      .then((list) => setErrors(list.map((e) => ({ ...e, recent: Date.now() - new Date(e.last_at) < 86_400_000 }))))
+      .catch(() => setErrors([]))
   }, [onToast])
 
   useEffect(load, [load])
@@ -331,6 +372,7 @@ export default function AdminPanel({ initialSection = 'overview', onClose, onToa
   const badge = {
     feedback: overview?.feedback_new,
     reports: overview?.reports_open,
+    errors: errors?.filter((e) => e.recent).length,
   }
 
   return (
@@ -365,6 +407,7 @@ export default function AdminPanel({ initialSection = 'overview', onClose, onToa
         ) : (
           <p className="hint">Yükleniyor…</p>
         ))}
+      {section === 'errors' && (errors ? <ErrorList items={errors} /> : <p className="hint">Yükleniyor…</p>)}
       {section === 'users' && <UserList onToast={onToast} />}
 
       <div className="form-actions">

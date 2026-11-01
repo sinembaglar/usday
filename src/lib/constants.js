@@ -148,7 +148,7 @@ export const SURPRISE_COLOR = '#C49A45'
 
 export const DEFAULT_TEASER = 'O günü boş tut, sana bir sürprizim var 💌'
 
-export const UNKNOWN_PERSON = { name: 'Eşin', short: '?', color: '#9c8f96' }
+export const UNKNOWN_PERSON = { name: 'Biri', short: '?', color: '#9c8f96' }
 
 // How a comment made you feel; a double tap on a comment is the first one.
 export const COMMENT_FEELINGS = ['😂', '😍', '😮', '😢', '😡', '👍']

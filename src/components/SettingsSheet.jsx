@@ -89,7 +89,7 @@ export default function SettingsSheet({
 
   async function removeAccount() {
     const answer = window.prompt(
-      'Hesabın, eklediğin tüm planlar, fotoğraflar ve şablonlar kalıcı olarak silinecek. Eşinin eklediği planlar onda kalır. Bu işlem geri alınamaz.\n\nOnaylamak için SİL yaz:',
+      'Hesabın, eklediğin tüm planlar, fotoğraflar ve şablonlar kalıcı olarak silinecek. Bağlı olduğun kişilerin eklediği planlar onlarda kalır. Bu işlem geri alınamaz.\n\nOnaylamak için SİL yaz:',
     )
     if (answer?.trim().toLocaleUpperCase('tr') !== 'SİL') return
     setDeleting(true)

@@ -712,6 +712,7 @@ export const adminOverview = () => rpc('admin_overview')
 export const adminUsers = (search) => rpc('admin_users', { search: search || null })
 export const adminFeedback = () => rpc('admin_feedback')
 export const adminReports = () => rpc('admin_reports')
+export const adminErrors = () => rpc('admin_errors')
 
 export async function setStatus(table, id, status) {
   const { error } = await supabase.from(table).update({ status }).eq('id', id)

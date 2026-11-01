@@ -94,7 +94,7 @@ function eventJobs(event: EventRow, person: Person, people: Person[], now: Now):
   }
 
   if (event.surprise && event.reveal_on === now.today && isTarget && now.minutes >= MORNING) {
-    const author = people.find((p) => p.id === event.created_by)?.name ?? 'Eşin'
+    const author = people.find((p) => p.id === event.created_by)?.name ?? 'Biri'
     jobs.push(job('reveal', now.today, '🎁 Sürpriz açıldı!', `${author} sana: ${event.title} · ${formatWhen(event)}`))
   }
 

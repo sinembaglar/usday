@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { checkInvite } from '../lib/api'
 import BirthdayPicker from './BirthdayPicker'
@@ -14,8 +15,8 @@ const MESSAGES = {
 
 const inviteFromUrl = new URLSearchParams(window.location.search).get('davet')?.toUpperCase() ?? ''
 
-export default function AuthScreen() {
-  const [mode, setMode] = useState(inviteFromUrl ? 'signup' : 'login') // login | signup | forgot
+export default function AuthScreen({ initialMode = 'login', onBack = null }) {
+  const [mode, setMode] = useState(inviteFromUrl ? 'signup' : initialMode) // login | signup | forgot
   const [form, setForm] = useState({ name: '', email: '', password: '', invite: inviteFromUrl, birthday: '' })
   const [inviter, setInviter] = useState(null)
   const [error, setError] = useState('')
@@ -66,7 +67,7 @@ export default function AuthScreen() {
     if (mode === 'signup' && code) {
       const name = await checkInvite(code).catch(() => null)
       if (!name) {
-        setError('Bu davet kodu geçersiz ya da kullanılmış. Kodu eşinden tekrar iste.')
+        setError('Bu davet kodu geçersiz ya da kullanılmış. Kodu seni davet eden kişiden tekrar iste.')
         setBusy(false)
         return
       }
@@ -91,6 +92,11 @@ export default function AuthScreen() {
 
   return (
     <div className="auth">
+      {onBack && (
+        <button className="link-btn auth-back" onClick={onBack}>
+          <ArrowLeft size={16} aria-hidden="true" /> UsDay nedir?
+        </button>
+      )}
       <div className="auth-hero">
         <img src="/icon-192.png" alt="" className="auth-logo" />
         <h1>UsDay</h1>
@@ -145,7 +151,7 @@ export default function AuthScreen() {
 
         {signup && (
           <label className="field">
-            <span>Davet kodu · eşin seni davet ettiyse</span>
+            <span>Davet kodu · biri seni davet ettiyse</span>
             <input
               className="input code-input"
               placeholder="Örn. K7MP2X"
@@ -157,7 +163,7 @@ export default function AuthScreen() {
             <small className="hint">
               {greeting
                 ? `✓ ${inviter} ile aynı takvime bağlanacaksın`
-                : 'Kod yoksa boş bırak. Kendi takvimini açarsın, eşini sonra davet edersin.'}
+                : 'Kod yoksa boş bırak. Takvimini açarsın, sevdiklerini sonra davet edersin.'}
             </small>
           </label>
         )}

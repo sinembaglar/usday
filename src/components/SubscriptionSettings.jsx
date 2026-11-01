@@ -19,13 +19,16 @@ export default function SubscriptionSettings({ billing, me, connections, members
   const people = connections.filter((c) => c.partnerId && state[c.id])
   const until = sub?.expires_at ? format(parseISO(sub.expires_at), 'd MMMM yyyy', { locale: tr }) : null
 
+  const plan = sub?.product === 'yearly' ? 'Yıllık' : 'Aylık'
   const status = !billing.subscribed
     ? null
-    : sub?.status === 'cancelled'
+    : sub?.trial && sub?.status === 'active'
+      ? `Ücretsiz deneme · ${until} tarihinde ${plan.toLocaleLowerCase('tr')} abonelik başlar`
+      : sub?.status === 'cancelled'
       ? `İptal edildi · ${until} tarihine kadar açık`
       : sub?.status === 'grace'
         ? 'Ödeme alınamadı · mağaza hesabını kontrol et'
-        : [sub?.product === 'yearly' ? 'Yıllık' : 'Aylık', until && `yenilenme ${until}`].filter(Boolean).join(' · ')
+        : [plan, until && `yenilenme ${until}`].filter(Boolean).join(' · ')
 
   async function toggle(c, on) {
     setBusy(c.id)
@@ -71,7 +74,7 @@ export default function SubscriptionSettings({ billing, me, connections, members
             </span>
             <span className="row-text">
               UsDay+’a geç
-              <small>Sen + {billing.max} kişi · aylık 129,99 TL</small>
+              <small>3 gün ücretsiz · sen + {billing.max} kişi · aylık 99,90 TL</small>
             </span>
             <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
           </button>

@@ -15,6 +15,7 @@ import AddPersonSheet from './AddPersonSheet'
 import BirthdaySheet from './BirthdaySheet'
 import PaywallSheet from './PaywallSheet'
 import { supabase } from '../lib/supabase'
+import { reportError } from '../lib/errors'
 import {
   addTemplate,
   cancelConnection,
@@ -42,6 +43,7 @@ import WishDetail from './WishDetail'
 import { addDaysKey, dayNumber, expandEvents, milestones } from '../lib/recurrence'
 import { birthdaysBetween, daysUntil, nextBirthday } from '../lib/birthdays'
 import InviteCard from './InviteCard'
+import StartGuide from './StartGuide'
 import ProposalCard from './ProposalCard'
 import InvitationCard from './InvitationCard'
 import NotificationsSheet from './NotificationsSheet'
@@ -84,6 +86,7 @@ function remember(key, value) {
 
 const VIEW_KEY = 'usday:view'
 const PEOPLE_KEY = 'usday:people'
+const INVITE_SENT_KEY = 'usday:invite-sent'
 
 export default function Home({ userId }) {
   const [connections, setConnections] = useState(null)
@@ -103,6 +106,7 @@ export default function Home({ userId }) {
   const [toast, setToast] = useState(null)
   const [unread, setUnread] = useState(0)
   const [admin, setAdmin] = useState(false)
+  const [inviteSent, setInviteSent] = useState(() => remembered(INVITE_SENT_KEY, false) === true)
   const [billing, setBilling] = useState(null) // subscriptions: off until launch, then who can add plans
 
   // The address is cleaned on start, so the admin link is read from where the app was opened.
@@ -137,30 +141,32 @@ export default function Home({ userId }) {
             : navigator.clearAppBadge?.()
           badge?.catch(() => {})
         }
-      } catch {
+      } catch (err) {
+        reportError('load', err)
         setToast('Bağlantı sorunu, birazdan tekrar deneyeceğim')
       }
     },
     [userId],
   )
 
+  // Live updates: the database pings my own private channel when something of mine changes. A burst of
+  // changes (a plan with its guests) becomes one reload.
   useEffect(() => {
     reload({ markAsSeen: true })
-    const channel = supabase
-      .channel('events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => reload())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wishes' }, () => reload())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wish_claims' }, () => reload())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_shares' }, () => reload())
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userId}` },
-        () => reload(),
-      )
-      .subscribe()
+    let timer = null
+    const reloadSoon = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => reload(), 300)
+    }
+    const channel = supabase.channel(`user:${userId}`, { config: { private: true } })
+    supabase.realtime
+      .setAuth()
+      .catch(() => {})
+      .then(() => channel.on('broadcast', { event: 'changed' }, reloadSoon).subscribe())
     const onVisible = () => document.visibilityState === 'visible' && reload({ markAsSeen: true })
     document.addEventListener('visibilitychange', onVisible)
     return () => {
+      clearTimeout(timer)
       supabase.removeChannel(channel)
       document.removeEventListener('visibilitychange', onVisible)
     }
@@ -891,6 +897,28 @@ export default function Home({ userId }) {
     .filter((b) => b.days <= 30)
     .sort((a, b) => a.days - b.days)
 
+  // First steps while nobody has joined: the calendar is ready when they arrive.
+  const startSteps = [
+    { id: 'birthday', title: 'Doğum gününü ekle', hint: 'Sevdiklerine bir ay önceden hatırlatılır.', done: Boolean(me?.birthday) },
+    { id: 'invite', title: 'Davet linkini gönder', hint: 'Sevgilin, ailen, kardeşin ya da arkadaşın.', done: inviteSent },
+    {
+      id: 'plan',
+      title: 'İlk planını ekle',
+      hint: 'Katıldığında takvimde hazır bulur.',
+      done: events.some((e) => e.createdBy === userId),
+      action: () => openForm(),
+      actionLabel: 'Plan ekle',
+    },
+    {
+      id: 'wish',
+      title: 'Dilek listene bir şey ekle',
+      hint: 'Sana hediye düşünenlere ipucu olur.',
+      done: wishes.some((w) => w.owner === userId),
+      action: () => setSheet({ type: 'wishForm' }),
+      actionLabel: 'Dilek ekle',
+    },
+  ]
+
   return (
     <div className="app has-tabbar">
       {tab === 'dilekler' ? (
@@ -987,11 +1015,18 @@ export default function Home({ userId }) {
                     key={c.id}
                     code={c.inviteCode}
                     relation={c.relation}
+                    onRelation={(relation) => connectionActions.onRelation(c, relation)}
+                    onShared={() => {
+                      setInviteSent(true)
+                      remember(INVITE_SENT_KEY, true)
+                    }}
                     showJoin={all.length === 1}
                     onToast={setToast}
                     onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
                   />
                 ))}
+
+                {pending.length > 0 && <StartGuide steps={startSteps} />}
               </section>
             )}
 
@@ -1023,7 +1058,7 @@ export default function Home({ userId }) {
               </section>
             )}
 
-            {shown.filter((e) => !e.milestone && !e.birthday).length === 0 && (
+            {linked.length > 0 && shown.filter((e) => !e.milestone && !e.birthday).length === 0 && (
               <section className="welcome card">
                 <strong>UsDay’e hoş geldin</strong>
                 <small>İlk planı ekle; bir fikre dokunman yeterli.</small>
@@ -1290,7 +1325,15 @@ export default function Home({ userId }) {
         </Sheet>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className="toast" aria-hidden="true">
+          {toast}
+        </div>
+      )}
+      {/* Read out by screen readers; always present so the change is announced. */}
+      <div className="visually-hidden" role="status" aria-live="polite">
+        {toast}
+      </div>
     </div>
   )
 }

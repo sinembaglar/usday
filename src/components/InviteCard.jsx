@@ -10,14 +10,15 @@ const JOIN_ERRORS = {
   already_connected: 'Bu kişiyle zaten bağlısınız.',
 }
 
-// An open invitation: share its code, or join someone else's with theirs.
-export default function InviteCard({ code, relation = 'partner', onJoined, onToast, showJoin = true }) {
+// An open invitation: share its code, or join someone else's with theirs. With onRelation, the first
+// invitation also asks who it is for (it starts as 'partner').
+export default function InviteCard({ code, relation = 'partner', onRelation, onShared, onJoined, onToast, showJoin = true }) {
   const [joining, setJoining] = useState(false)
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
   const words = RELATIONS[relation] ?? RELATIONS.partner
 
-  const share = () => shareInvite(code, onToast)
+  const share = async () => (await shareInvite(code, onToast)) && onShared?.()
 
   async function join(e) {
     e.preventDefault()
@@ -41,9 +42,31 @@ export default function InviteCard({ code, relation = 'partner', onJoined, onToa
         </span>
         <span>
           <strong>{words.invite}</strong>
-          <small>Linki gönder ya da kodu söyle.</small>
+          <small>{onRelation ? 'Kimi davet ettiğini seç, linki gönder.' : 'Linki gönder ya da kodu söyle.'}</small>
         </span>
       </div>
+
+      {onRelation && (
+        <div className="chips invite-relations" role="radiogroup" aria-label="Kimi davet ediyorsun?">
+          {Object.entries(RELATIONS).map(([key, r]) => {
+            const RelationIcon = RELATION_ICONS[key]
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={relation === key}
+                className={`chip icon-chip ${relation === key ? 'is-active' : ''}`}
+                style={{ '--tag': 'var(--rose)' }}
+                onClick={() => key !== relation && onRelation(key)}
+              >
+                <RelationIcon size={14} aria-hidden="true" />
+                {r.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div className="invite-code">{code}</div>
 

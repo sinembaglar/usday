@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
     product: /year|annual|yil/i.test(event.product_id ?? '') ? 'yearly' : 'monthly',
     store: STORES[event.store] ?? (event.store ? String(event.store).toLowerCase() : null),
     expires_at: ms ? new Date(ms).toISOString() : null,
+    trial: event.period_type === 'TRIAL',
     updated_at: new Date().toISOString(),
   })
   if (error) return reply({ error: error.message }, 500)

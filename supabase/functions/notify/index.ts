@@ -64,6 +64,15 @@ Deno.serve(async (req) => {
   // The database announces new comments itself (with the shared secret), on behalf of their author.
   let userId: string | undefined
   const fromDatabase = req.headers.get('x-cron-secret') === Deno.env.get('CRON_SECRET')
+
+  // A new kind of error in someone's app (the database sends the first of each kind in a day): tell the admins.
+  if (fromDatabase && body.client_error_id) {
+    const { data: e } = await admin.from('client_errors').select('message').eq('id', body.client_error_id).maybeSingle()
+    if (!e) return json({ error: 'not_found' }, 404)
+    const { data: admins } = await admin.from('admins').select('user_id')
+    const payload = { title: '🐞 Uygulamada yeni bir hata', body: e.message.slice(0, 180), url: '/?admin=errors', tag: `error-${body.client_error_id}` }
+    return json({ sent: await sendToUsers((admins ?? []).map((a) => a.user_id), payload) })
+  }
   if (fromDatabase && body.comment_id) {
     const { data } = await admin.from('event_comments').select('author').eq('id', body.comment_id).maybeSingle()
     userId = data?.author
