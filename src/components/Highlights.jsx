@@ -111,12 +111,12 @@ export default function Highlights({ items, onOpen }) {
               key={item.kind}
               role="tab"
               aria-selected={i === index}
-              aria-label={item.label}
+              aria-label={pinned && i === index ? `${item.label} (sabitlendi)` : item.label}
               className={i === index ? 'is-active' : ''}
               onClick={() => goTo(i)}
             />
           ))}
-          {pinned && <Pin className="pin-mark" size={12} aria-label="Seçimin sabit" />}
+          {pinned && <Pin className="pin-mark" size={12} aria-hidden="true" />}
         </div>
       )}
     </div>

@@ -1089,11 +1089,11 @@ export default function Home({ userId }) {
               </section>
             )}
 
-            <div className="segmented view-switch" role="tablist" aria-label="Takvim görünümü">
-              <button className={view === 'month' ? 'is-active' : ''} onClick={() => changeView('month')}>
+            <div className="segmented view-switch" role="group" aria-label="Takvim görünümü">
+              <button className={view === 'month' ? 'is-active' : ''} aria-pressed={view === 'month'} onClick={() => changeView('month')}>
                 Ay
               </button>
-              <button className={view === 'week' ? 'is-active' : ''} onClick={() => changeView('week')}>
+              <button className={view === 'week' ? 'is-active' : ''} aria-pressed={view === 'week'} onClick={() => changeView('week')}>
                 Hafta
               </button>
             </div>

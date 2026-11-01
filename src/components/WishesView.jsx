@@ -21,13 +21,18 @@ export default function WishesView({ wishes, me, people, initialWhose, onOpen, o
       {header}
       <main className="content">
         <div className="filter-row">
-          <div className="people-bar" role="tablist" aria-label="Kimin listesi">
-            <button className={`person-chip ${!person ? 'is-active' : ''}`} onClick={() => setWhose('mine')}>
+          <div className="people-bar" role="group" aria-label="Kimin listesi">
+            <button className={`person-chip ${!person ? 'is-active' : ''}`} aria-pressed={!person} onClick={() => setWhose('mine')}>
               <span className="person-avatar all">Ben</span>
               Benim
             </button>
             {people.map((p) => (
-              <button key={p.id} className={`person-chip ${whose === p.id ? 'is-active' : ''}`} onClick={() => setWhose(p.id)}>
+              <button
+                key={p.id}
+                className={`person-chip ${whose === p.id ? 'is-active' : ''}`}
+                aria-pressed={whose === p.id}
+                onClick={() => setWhose(p.id)}
+              >
                 <span className="person-avatar" style={{ background: p.color }}>
                   {p.short}
                 </span>

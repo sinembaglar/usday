@@ -29,7 +29,7 @@
   --fs-xl: 22px;
   --fs-2xl: 28px;
   --dash: #d9cfcd;
-  --outside: #c4b8b8;
+  --outside: #7d6f77; /* still faded next to normal days, but readable (4.8:1) */
   --danger: #b0304a;
   --gold-bg: #f8f1e3;
   --gold-line: #e8d5ad;
@@ -65,7 +65,7 @@
     --muted: #b3a4ad;
     --line: #3a2d36;
     --dash: #4d3d48;
-    --outside: #5e4d58;
+    --outside: #9a8893;
     --danger: #ef8a9b;
     --gold-bg: #33291c;
     --gold-line: #6b5530;
@@ -101,7 +101,7 @@
   --muted: #b3a4ad;
   --line: #3a2d36;
   --dash: #4d3d48;
-  --outside: #5e4d58;
+  --outside: #9a8893;
   --danger: #ef8a9b;
   --gold-bg: #33291c;
   --gold-line: #6b5530;
