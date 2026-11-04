@@ -304,6 +304,10 @@ export default function SettingsSheet({
         ·{' '}
         <a href={siteUrl('/kosullar')} target="_blank" rel="noreferrer">
           Kullanım Koşulları
+        </a>{' '}
+        ·{' '}
+        <a href={siteUrl('/destek')} target="_blank" rel="noreferrer">
+          Destek
         </a>
       </p>
 

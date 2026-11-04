@@ -234,7 +234,7 @@ export default function Landing({ onStart, onLogin }) {
 
       <footer className="legal-links landing-footer">
         <a href="/gizlilik">Gizlilik Politikası</a> · <a href="/kosullar">Kullanım Koşulları</a> ·{' '}
-        <a href="/hesap-silme">Hesap silme</a>
+        <a href="/hesap-silme">Hesap silme</a> · <a href="/destek">Destek</a>
       </footer>
     </div>
   )
