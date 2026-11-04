@@ -3,19 +3,19 @@
   --card: #ffffff;
   --ink: #24161f;
   --muted: #6c5f66;
-  --accent: #5b2f4a;
+  --accent: #8e1f33;
   --line: #e6dfdc;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1a1418;
-    --card: #241c22;
+    --bg: #1a1416;
+    --card: #251b1e;
     --ink: #f3ebef;
     --muted: #b3a4ad;
-    --accent: #cdb6e8;
-    --line: #382d42;
+    --accent: #f5b3bc;
+    --line: #3b2b2f;
     color-scheme: dark;
   }
 }

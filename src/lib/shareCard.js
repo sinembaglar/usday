@@ -6,7 +6,7 @@ const H = 1920
 const SERIF = 'Newsreader, Georgia, serif'
 const SANS = 'Inter, system-ui, sans-serif'
 const INK = '#24161f'
-const DEEP = '#5b2f4a'
+const DEEP = '#8e1f33'
 const MUTED = '#6c5f66'
 
 // The app's fonts, but never wait more than two seconds for them (slow connection).
@@ -72,9 +72,9 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function background(ctx) {
   const g = ctx.createLinearGradient(0, 0, W, H)
-  g.addColorStop(0, '#5a2a4e')
-  g.addColorStop(0.55, '#4a2140')
-  g.addColorStop(1, '#2c1426')
+  g.addColorStop(0, '#a8283e')
+  g.addColorStop(0.55, '#8e1f33')
+  g.addColorStop(1, '#5a1020')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, W, H)
   // Soft light circles.
@@ -97,9 +97,9 @@ function photoBackground(ctx, img) {
   const h = img.height * scale
   ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h)
   const g = ctx.createLinearGradient(0, H * 0.35, 0, H)
-  g.addColorStop(0, 'rgba(40,28,48,0)')
-  g.addColorStop(0.55, 'rgba(40,28,48,0.55)')
-  g.addColorStop(1, 'rgba(40,28,48,0.85)')
+  g.addColorStop(0, 'rgba(48,14,22,0)')
+  g.addColorStop(0.55, 'rgba(48,14,22,0.55)')
+  g.addColorStop(1, 'rgba(48,14,22,0.85)')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, W, H)
 }
@@ -169,7 +169,7 @@ export async function drawCard(card) {
     const top = Math.max(160, (H - height) / 2 - 60)
 
     ctx.save()
-    ctx.shadowColor = 'rgba(20,8,16,0.35)'
+    ctx.shadowColor = 'rgba(30,6,12,0.35)'
     ctx.shadowBlur = 60
     ctx.shadowOffsetY = 20
     roundRect(ctx, 80, top, W - 160, height, 64)

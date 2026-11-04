@@ -1,5 +1,5 @@
 const KEY = 'usday:theme' // 'system' | 'light' | 'dark'
-const BACKGROUND = { light: '#F6F3EF', dark: '#1A1418' }
+const BACKGROUND = { light: '#F6F3EF', dark: '#1A1416' }
 
 export function getTheme() {
   try {

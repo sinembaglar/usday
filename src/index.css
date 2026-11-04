@@ -1,14 +1,15 @@
 /* Design language
-   Colour: lilac stays the identity; text and buttons use deeper tones so they read at 4.5:1 or more.
+   Colour: pomegranate (nar) is the identity; text and buttons use deeper tones so they read at 4.5:1 or more.
+   Red for warnings is brighter and more orange than the brand so a delete button never looks like the main one.
    Type: 12 · 13 · 15 · 17 · 22 · 28. Space: 4 · 8 · 12 · 16 · 24.
    Buttons: primary (filled), secondary (outlined), text. Icons: one line set (Lucide), 20px. */
 :root {
   --cream: #f6f3ef;
   --card: #ffffff;
-  --blush: #efe8e9;
-  --rose: #b68c9a; /* decoration only: borders, dots, soft fills */
-  --rose-deep: #5b2f4a; /* text links and accents */
-  --primary: #4a2140; /* filled buttons, white text on it */
+  --blush: #f6e5e7;
+  --rose: #d99aa4; /* decoration only: borders, dots, soft fills */
+  --rose-deep: #8e1f33; /* text links and accents */
+  --primary: #8e1f33; /* filled buttons, white text on it */
   --on-primary: #ffffff;
   --gold: #c49a45;
   --ink: #24161f;
@@ -18,8 +19,8 @@
   --ok-soft: #e3f3ea;
   --maybe: #96600f;
   --maybe-soft: #fbf0dc;
-  --no: #b0304a;
-  --no-soft: #fbe9ec;
+  --no: #6c5f66;
+  --no-soft: #efe9ea;
   --wait: #5d5566;
   --wait-soft: #efecf2;
   --fs-xs: 12px;
@@ -30,7 +31,7 @@
   --fs-2xl: 28px;
   --dash: #d9cfcd;
   --outside: #7d6f77; /* still faded next to normal days, but readable (4.8:1) */
-  --danger: #b0304a;
+  --danger: #c0392b;
   --gold-bg: #f8f1e3;
   --gold-line: #e8d5ad;
   --glass: rgba(255, 255, 255, 0.78);
@@ -38,11 +39,11 @@
   --solid: #24161f; /* toast and small dark chips */
   --on-solid: #ffffff;
   --knob: #ffffff;
-  --cover-gradient: linear-gradient(160deg, #4a2140 0%, #2c1426 100%);
-  --locked: #f1e7ea;
+  --cover-gradient: linear-gradient(160deg, #9e2438 0%, #5a1020 100%);
+  --locked: #f4e6e8;
   --grid-line: #efe9e6;
   --radius: 16px;
-  --shadow: 0 6px 24px rgba(74, 33, 64, 0.08);
+  --shadow: 0 6px 24px rgba(90, 16, 32, 0.08);
 
   color-scheme: light;
   font-family: 'Inter', system-ui, sans-serif;
@@ -52,38 +53,38 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Night theme: plum and lilac. Follows the phone unless chosen in settings. */
+/* Night theme: deep pomegranate. Follows the phone unless chosen in settings. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --cream: #1a1418;
-    --card: #241c22;
-    --blush: #33262f;
-    --rose: #a87b8d;
-    --rose-deep: #e3bfd0;
-    --primary: #8a4470;
+    --cream: #1a1416;
+    --card: #251b1e;
+    --blush: #3a2226;
+    --rose: #c4707d;
+    --rose-deep: #f5b3bc;
+    --primary: #b0384e;
     --ink: #f3ebef;
     --muted: #b3a4ad;
-    --line: #3a2d36;
-    --dash: #4d3d48;
+    --line: #3b2b2f;
+    --dash: #4d3b3f;
     --outside: #9a8893;
     --danger: #ef8a9b;
     --gold-bg: #33291c;
     --gold-line: #6b5530;
-    --glass: rgba(36, 28, 34, 0.72);
-    --glass-strong: rgba(36, 28, 34, 0.96);
+    --glass: rgba(37, 27, 30, 0.72);
+    --glass-strong: rgba(37, 27, 30, 0.96);
     --solid: #f3ebef;
-    --on-solid: #241c22;
+    --on-solid: #251b1e;
     --knob: #f3ebef;
-    --cover-gradient: linear-gradient(160deg, #3a1832 0%, #1f0f1c 100%);
-    --locked: #33262f;
-    --grid-line: #2e242b;
+    --cover-gradient: linear-gradient(160deg, #6e1a2a 0%, #2c0910 100%);
+    --locked: #3a2a2e;
+    --grid-line: #30252a;
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
     --ok: #7fd0a4;
     --ok-soft: #1c3127;
     --maybe: #e6b363;
     --maybe-soft: #3a2e1b;
-    --no: #f08a9c;
-    --no-soft: #3a1f27;
+    --no: #b3a4ad;
+    --no-soft: #2e2628;
     --wait: #b9b0c2;
     --wait-soft: #2f2836;
     color-scheme: dark;
@@ -91,35 +92,35 @@
 }
 
 :root[data-theme='dark'] {
-  --cream: #1a1418;
-  --card: #241c22;
-  --blush: #33262f;
-  --rose: #a87b8d;
-  --rose-deep: #e3bfd0;
-  --primary: #8a4470;
+  --cream: #1a1416;
+  --card: #251b1e;
+  --blush: #3a2226;
+  --rose: #c4707d;
+  --rose-deep: #f5b3bc;
+  --primary: #b0384e;
   --ink: #f3ebef;
   --muted: #b3a4ad;
-  --line: #3a2d36;
-  --dash: #4d3d48;
+  --line: #3b2b2f;
+  --dash: #4d3b3f;
   --outside: #9a8893;
   --danger: #ef8a9b;
   --gold-bg: #33291c;
   --gold-line: #6b5530;
-  --glass: rgba(36, 28, 34, 0.72);
-  --glass-strong: rgba(36, 28, 34, 0.96);
+  --glass: rgba(37, 27, 30, 0.72);
+  --glass-strong: rgba(37, 27, 30, 0.96);
   --solid: #f3ebef;
-  --on-solid: #241c22;
+  --on-solid: #251b1e;
   --knob: #f3ebef;
-  --cover-gradient: linear-gradient(160deg, #3a1832 0%, #1f0f1c 100%);
-  --locked: #33262f;
-  --grid-line: #2e242b;
+  --cover-gradient: linear-gradient(160deg, #6e1a2a 0%, #2c0910 100%);
+  --locked: #3a2a2e;
+  --grid-line: #30252a;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
   --ok: #7fd0a4;
   --ok-soft: #1c3127;
   --maybe: #e6b363;
   --maybe-soft: #3a2e1b;
-  --no: #f08a9c;
-  --no-soft: #3a1f27;
+  --no: #b3a4ad;
+  --no-soft: #2e2628;
   --wait: #b9b0c2;
   --wait-soft: #2f2836;
   color-scheme: dark;
@@ -180,7 +181,7 @@ h3 {
 .cover-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(58, 46, 64, 0.18) 0%, transparent 35%, rgba(58, 46, 64, 0.45) 100%);
+  background: linear-gradient(180deg, rgba(60, 30, 36, 0.18) 0%, transparent 35%, rgba(60, 30, 36, 0.45) 100%);
   pointer-events: none;
 }
 
@@ -200,7 +201,7 @@ h3 {
   font-size: 26px;
   font-weight: 600;
   color: #fff;
-  text-shadow: 0 1px 8px rgba(58, 46, 64, 0.3);
+  text-shadow: 0 1px 8px rgba(60, 30, 36, 0.3);
 }
 
 .cover-photo-btn {
@@ -310,7 +311,7 @@ h3 {
 .auth-tabs button.is-active {
   background: var(--card);
   color: var(--ink);
-  box-shadow: 0 1px 4px rgba(58, 46, 64, 0.08);
+  box-shadow: 0 1px 4px rgba(60, 30, 36, 0.08);
 }
 
 .form-error {
@@ -833,7 +834,7 @@ h3 {
   border-radius: 50%;
   background: var(--primary);
   color: var(--on-primary);
-  box-shadow: 0 6px 18px rgba(123, 94, 167, 0.35);
+  box-shadow: 0 6px 18px rgba(142, 31, 51, 0.35);
 }
 
 .page-head {
@@ -1973,7 +1974,7 @@ p.empty {
   width: 100%;
   overflow: hidden;
   border-radius: 20px;
-  background: #2b2230;
+  background: #2a1d20;
   touch-action: none;
   cursor: grab;
 }
@@ -2202,7 +2203,7 @@ p.empty {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(58, 46, 64, 0.35);
+  background: rgba(60, 30, 36, 0.35);
   animation: fade 0.2s ease;
 }
 
@@ -2586,7 +2587,7 @@ p.empty {
 .card-thumb.is-locked {
   background:
     radial-gradient(circle at 30% 30%, #f3dcae 0%, transparent 55%),
-    radial-gradient(circle at 70% 70%, #d9c8ec 0%, transparent 60%),
+    radial-gradient(circle at 70% 70%, #f3c9cf 0%, transparent 60%),
     var(--locked);
 }
 
@@ -2763,7 +2764,7 @@ p.empty {
   color: var(--on-solid);
   font-size: 14px;
   white-space: nowrap;
-  box-shadow: 0 10px 30px rgba(58, 46, 64, 0.25);
+  box-shadow: 0 10px 30px rgba(60, 30, 36, 0.25);
   animation: rise 0.25s ease;
 }
 
@@ -3008,10 +3009,10 @@ p.empty {
 .cover.has-photo .cover-shade {
   background: linear-gradient(
     180deg,
-    rgba(40, 28, 48, 0.22) 0%,
+    rgba(48, 14, 22, 0.22) 0%,
     transparent 22%,
     transparent 62%,
-    rgba(40, 28, 48, 0.62) 100%
+    rgba(48, 14, 22, 0.62) 100%
   );
 }
 
@@ -3056,7 +3057,7 @@ p.empty {
 
 .cover.has-photo .countdown {
   color: #fff;
-  text-shadow: 0 1px 10px rgba(40, 28, 48, 0.45);
+  text-shadow: 0 1px 10px rgba(48, 14, 22, 0.45);
 }
 
 .cover.has-photo .countdown small {
@@ -3334,7 +3335,7 @@ p.empty {
 }
 
 .title-heart {
-  color: #d9668f;
+  color: #c62f45;
   vertical-align: -2px;
 }
 
@@ -3625,7 +3626,7 @@ p.empty {
   place-items: center;
   border-radius: 50%;
   background: var(--card);
-  color: #d9668f;
+  color: #c62f45;
 }
 
 .wish-text {
@@ -3699,7 +3700,7 @@ p.empty {
 }
 
 .cover:not(.has-photo) .countdown small {
-  color: #e8c7d4;
+  color: #f9c6c0;
 }
 
 .cover:not(.has-photo) .countdown span {
@@ -3730,16 +3731,16 @@ p.empty {
 }
 
 .tabbar .tabbar-add {
-  box-shadow: 0 6px 18px rgba(74, 33, 64, 0.35);
+  box-shadow: 0 6px 18px rgba(90, 16, 32, 0.35);
 }
 
 .title-heart,
 .wish-loved {
-  color: #b5677f;
+  color: #c62f45;
 }
 
 .day-count svg {
-  color: #b5677f;
+  color: #c62f45;
 }
 
 /* Birthdays */
@@ -4242,7 +4243,7 @@ p.empty {
   height: auto;
   border-radius: 28px;
   border: 1px solid var(--line);
-  box-shadow: 0 18px 40px rgba(74, 33, 64, 0.16);
+  box-shadow: 0 18px 40px rgba(90, 16, 32, 0.16);
   background: var(--card);
 }
 
@@ -4280,7 +4281,7 @@ p.empty {
 }
 
 .landing-surprise .landing-eyebrow {
-  color: #e8b4c8;
+  color: #f9c6c0;
 }
 
 .landing-pair {
