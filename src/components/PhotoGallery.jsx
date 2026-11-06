@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Lock } from 'lucide-react'
+import { useBackButton } from '../lib/back'
 
 export default function PhotoGallery({ photos }) {
   const [open, setOpen] = useState(null)
+  useBackButton(!!open, () => setOpen(null), 2)
 
   return (
     <>

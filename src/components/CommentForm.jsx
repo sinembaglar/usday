@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ImagePlus, Plus, Search, SendHorizontal, X } from 'lucide-react'
 import { gifSearchOn } from '../lib/api'
+import { useBackButton } from '../lib/back'
 import GifPicker from './GifPicker'
 
 // The box under a conversation: text, and a picture or GIF from the phone (shown before sending).
@@ -13,6 +14,8 @@ export default function CommentForm({ placeholder, onSend, onError }) {
   const [gifsOn, setGifsOn] = useState(null) // null while asking; only false hides GIF search
   const [findingGif, setFindingGif] = useState(false)
   const [attaching, setAttaching] = useState(false) // the "+" menu: a photo or a GIF
+  useBackButton(findingGif, () => setFindingGif(false), 2)
+  useBackButton(attaching, () => setAttaching(false), 2)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -130,6 +133,7 @@ export default function CommentForm({ placeholder, onSend, onError }) {
 export function CommentImage({ url, onDoubleTap }) {
   const [open, setOpen] = useState(false)
   const waiting = useRef(null)
+  useBackButton(open, () => setOpen(false), 2)
   if (!url) return null
 
   function tap() {

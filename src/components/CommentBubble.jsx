@@ -3,6 +3,7 @@ import { CommentImage } from './CommentForm'
 import CommentReactions from './CommentReactions'
 import { COMMENT_FEELINGS } from '../lib/constants'
 import { timeAgo } from '../lib/format'
+import { useBackButton } from '../lib/back'
 
 const DOUBLE_TAP = 300
 const LONG_PRESS = 450
@@ -15,6 +16,7 @@ export default function CommentBubble({ comment: c, author, showName, me, member
   const mine = c.reactions?.find((r) => r.user_id === me)?.emoji
   const [pop, setPop] = useState(null)
   const [menu, setMenu] = useState(null) // where the emoji menu sits on screen
+  useBackButton(!!menu, () => setMenu(null), 2)
   const bubble = useRef(null)
   const lastTap = useRef(0)
   const press = useRef(null)

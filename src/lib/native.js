@@ -45,10 +45,24 @@ export async function shareImage(blob, name) {
   }
 }
 
-// Status bar text: light on the dark cover and in the dark theme, dark on light pages.
+// On Android with an older WebView (before 140) the page is drawn below the status bar, which then
+// sits on the app's light window background instead of on the page.
+function belowStatusBar() {
+  if (Capacitor.getPlatform() !== 'android') return false
+  const probe = document.createElement('div')
+  probe.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none'
+  document.body.append(probe)
+  const height = probe.getBoundingClientRect().height
+  probe.remove()
+  return height === 0
+}
+
+// Status bar text: light on the dark cover and in the dark theme, dark on light pages (and always dark
+// when the status bar is not over the page).
 export function statusBarText(light) {
   if (!isNative) return
-  StatusBar.setStyle({ style: light ? Style.Dark : Style.Light }).catch(() => {})
+  const onPage = !belowStatusBar()
+  StatusBar.setStyle({ style: light && onPage ? Style.Dark : Style.Light }).catch(() => {})
 }
 
 // The launch screen stays until the first real screen is drawn.

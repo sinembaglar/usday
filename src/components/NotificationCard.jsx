@@ -28,9 +28,10 @@ export default function NotificationCard({ partnerName, onToast }) {
   const [state, setState] = useState(initialState)
   const [busy, setBusy] = useState(false)
 
-  // Keep this device's subscription fresh once permission was given; say so if it fails.
+  // Keep this device's subscription fresh once permission was given; say so if it fails. The phone app
+  // has no web push, so there is nothing to renew there.
   useEffect(() => {
-    if (state === 'granted') enablePush().catch(() => setState('failed'))
+    if (state === 'granted' && !isNative) enablePush().catch(() => setState('failed'))
   }, [state])
 
   async function turnOn() {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useBackButton } from '../lib/back'
 
 const CLOSE_AFTER = 110 // px pulled down
 
@@ -18,6 +19,11 @@ export default function Sheet({ onClose, locked = false, children }) {
 
   useEffect(() => {
     closeRef.current = onClose
+  })
+
+  // Android back button: closes the sheet like Escape does; a locked sheet stays.
+  useBackButton(true, () => {
+    if (!locked) closeRef.current()
   })
 
   useEffect(() => {

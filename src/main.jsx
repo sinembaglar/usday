@@ -8,6 +8,7 @@ import { registerServiceWorker } from './lib/push'
 import { applyTheme, watchSystemTheme } from './lib/theme'
 import { watchForUpdates } from './lib/updates'
 import { isNative } from './lib/native'
+import { installBackButton } from './lib/back'
 
 watchErrors()
 applyTheme()
@@ -17,6 +18,8 @@ watchSystemTheme()
 if (!isNative) {
   registerServiceWorker()
   watchForUpdates()
+} else {
+  installBackButton()
 }
 
 createRoot(document.getElementById('root')).render(

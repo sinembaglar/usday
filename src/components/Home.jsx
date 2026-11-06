@@ -17,6 +17,7 @@ import PaywallSheet from './PaywallSheet'
 import { supabase } from '../lib/supabase'
 import { reportError } from '../lib/errors'
 import { statusBarText } from '../lib/native'
+import { useBackButton } from '../lib/back'
 import { isDark } from '../lib/theme'
 import {
   addTemplate,
@@ -105,6 +106,11 @@ export default function Home({ userId }) {
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [selected, setSelected] = useState(() => new Date())
   const [sheet, setSheet] = useState(null)
+  // Android back button on the wishes tab, with nothing open: back to the calendar.
+  useBackButton(tab !== 'takvim', () => {
+    setTab('takvim')
+    window.scrollTo(0, 0)
+  }, 0)
   const [toast, setToast] = useState(null)
   const [unread, setUnread] = useState(0)
   const [admin, setAdmin] = useState(false)
