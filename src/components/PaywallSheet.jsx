@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { CalendarHeart, Gift, KeyRound, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import { siteUrl } from '../lib/native'
 
-const TRIAL_DAYS = 3
+const TRIAL_DAYS = 14
 const PLANS = [
-  { id: 'yearly', label: 'Yıllık', price: '799,90 TL', per: '/ yıl', note: 'Ayda 66,66 TL’ye gelir · 4 ay bedava', best: true },
-  { id: 'monthly', label: 'Aylık', price: '99,90 TL', per: '/ ay', note: 'İstediğin ay bırakabilirsin' },
+  { id: 'yearly', label: 'Yıllık', price: '399,90 TL', per: '/ yıl', note: 'Ayda 33,33 TL’ye gelir · 5 ay bedava', best: true },
+  { id: 'monthly', label: 'Aylık', price: '59,90 TL', per: '/ ay', note: 'İstediğin ay bırakabilirsin' },
 ]
 
 // UsDay+: one subscription opens the shared calendar for the subscriber and the people they are connected
@@ -14,8 +14,8 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
   const [plan, setPlan] = useState('yearly')
   const [asked, setAsked] = useState(false)
   const chosen = PLANS.find((p) => p.id === plan)
-  // 799,90 TL a year shared by up to max + 1 people, per month.
-  const perPerson = (799.9 / 12 / (max + 1)).toLocaleString('tr-TR', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
+  // 399,90 TL a year shared by up to max + 1 people, per month.
+  const perPerson = (399.9 / 12 / (max + 1)).toLocaleString('tr-TR', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
 
   const perks = [
     { Icon: Users, text: `Sen ve bağlandığın ${max} kişi`, small: `Onlar ayrıca ödemez; yıllık planda kişi başı ayda ${perPerson} TL` },

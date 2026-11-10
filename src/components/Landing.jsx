@@ -192,17 +192,17 @@ export default function Landing({ onStart, onLogin }) {
             <div className="landing-plans">
               <div>
                 <span>Yıllık</span>
-                <b>799,90 TL</b>
-                <small>Ayda 66,66 TL · 4 ay bedava</small>
+                <b>399,90 TL</b>
+                <small>Ayda 33,33 TL · 5 ay bedava</small>
               </div>
               <div>
                 <span>Aylık</span>
-                <b>99,90 TL</b>
+                <b>59,90 TL</b>
                 <small>İstediğin ay bırak</small>
               </div>
             </div>
             <ul>
-              <li>3 gün ücretsiz dene</li>
+              <li>14 gün ücretsiz dene</li>
               <li>Bir abonelik: sen ve bağlandığın 5 kişi</li>
               <li>Abonelik biterse hiçbir şey silinmez</li>
             </ul>

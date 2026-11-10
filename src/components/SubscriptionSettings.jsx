@@ -74,7 +74,7 @@ export default function SubscriptionSettings({ billing, me, connections, members
             </span>
             <span className="row-text">
               UsDay+’a geç
-              <small>3 gün ücretsiz · sen + {billing.max} kişi · aylık 99,90 TL</small>
+              <small>14 gün ücretsiz · sen + {billing.max} kişi · yıllık 399,90 TL</small>
             </span>
             <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
           </button>
