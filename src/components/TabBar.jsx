@@ -1,8 +1,9 @@
 import { CalendarDays, Gift, Plus } from 'lucide-react'
+import { t } from '../lib/i18n'
 
 const TABS = [
-  { id: 'takvim', label: 'Takvim', Icon: CalendarDays },
-  { id: 'dilekler', label: 'Dilekler', Icon: Gift },
+  { id: 'takvim', label: t('Takvim', 'Calendar'), Icon: CalendarDays },
+  { id: 'dilekler', label: t('Dilekler', 'Wishes'), Icon: Gift },
 ]
 
 // The two sections, with "add" in the middle (a plan on Takvim, a wish on Dilekler), so it never
@@ -22,7 +23,7 @@ export default function TabBar({ tab, onChange, onAdd, addLabel }) {
   )
 
   return (
-    <nav className="tabbar" aria-label="Bölümler">
+    <nav className="tabbar" aria-label={t('Bölümler', 'Sections')}>
       {item(calendar)}
       <button className="tabbar-add" onClick={onAdd} aria-label={addLabel}>
         <Plus size={26} strokeWidth={2.4} aria-hidden="true" />

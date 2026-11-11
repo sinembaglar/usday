@@ -5,7 +5,12 @@
 	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>tr</string>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>tr</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>UsDay</string>
 	<key>CFBundleExecutable</key>
@@ -27,11 +32,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Planlarına ve yorumlarına fotoğraf eklemek için kameranı kullanmak istiyoruz.</string>
+	<string>UsDay uses your camera to add photos to your plans and comments.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Paylaşım kartlarını galerine kaydedebilmen için.</string>
+	<string>So you can save share cards to your photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Planlarına, kapak fotoğrafına ve yorumlarına fotoğraf eklemek için galerine erişmek istiyoruz.</string>
+	<string>UsDay opens your photos so you can add them to your plans, cover and comments.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -5,9 +5,13 @@ import CommentForm from './CommentForm'
 import CommentBubble from './CommentBubble'
 import { seenLine, useSeen } from '../lib/seen'
 import { UNKNOWN_PERSON, initials } from '../lib/constants'
+import { t } from '../lib/i18n'
 
 // Quick words for someone else's plan: a joke, a wish to come along, or a little "bensiz mi?".
-const QUICK = ['Bensiz mi? 😤', 'Ben de gelebilir miyim? 🙋', 'İyi eğlenceler 🥳', 'Kıskandım 😏', 'Ne yapıyorsun bakalım? 👀']
+const QUICK = t(
+  ['Bensiz mi? 😤', 'Ben de gelebilir miyim? 🙋', 'İyi eğlenceler 🥳', 'Kıskandım 😏', 'Ne yapıyorsun bakalım? 👀'],
+  ['Without me? 😤', 'Can I come too? 🙋', 'Have fun 🥳', 'So jealous 😏', 'What are you up to? 👀'],
+)
 
 // Which comments a thread shows:
 //   "viewer"  I look at someone's shared calendar: everything I may read about this plan
@@ -69,14 +73,14 @@ export function ShareThread({ eventId, owner, viewer, seenAs = viewer, mode, me,
     try {
       await send(text)
     } catch {
-      onToast?.('Gönderilemedi, tekrar dener misin?')
+      onToast?.(t('Gönderilemedi, tekrar dener misin?', 'Couldn’t send. Try again?'))
     } finally {
       setSending(false)
     }
   }
 
   async function remove(c) {
-    if (!window.confirm('Bu yorum silinsin mi?')) return
+    if (!window.confirm(t('Bu yorum silinsin mi?', 'Delete this comment?'))) return
     await deleteShareComment(c)
     load()
   }
@@ -93,7 +97,7 @@ export function ShareThread({ eventId, owner, viewer, seenAs = viewer, mode, me,
     try {
       await setCommentReaction('share', comment.id, me, emoji)
     } catch {
-      onToast?.('Tepki kaydedilemedi, tekrar dener misin?')
+      onToast?.(t('Tepki kaydedilemedi, tekrar dener misin?', 'Couldn’t save your reaction. Try again?'))
       load()
     }
   }
@@ -141,7 +145,7 @@ export function ShareThread({ eventId, owner, viewer, seenAs = viewer, mode, me,
           ))}
         </div>
       )}
-      <CommentForm placeholder={placeholder ?? 'Cevap yaz…'} onSend={send} onError={onToast} />
+      <CommentForm placeholder={placeholder ?? t('Cevap yaz…', 'Write a reply…')} onSend={send} onError={onToast} />
     </section>
   )
 }
@@ -188,8 +192,11 @@ export function ThreadsOnMyPlan({ eventId, me, members, focusViewer, onToast }) 
           members={members}
           focus={focusViewer === 'open' || (focusViewer && !threads.private.includes(focusViewer))}
           onToast={onToast}
-          title="Takvimini görenler yazdı"
-          hint="Takvimini plan adlarıyla görenler okur; plandakiler görmez."
+          title={t('Takvimini görenler yazdı', 'People who see your calendar wrote')}
+          hint={t(
+            'Takvimini plan adlarıyla görenler okur; plandakiler görmez.',
+            'Everyone who sees your plan names can read this; the people on the plan can’t.',
+          )}
         />
       )}
       {threads.private.map((v) => (
@@ -203,8 +210,8 @@ export function ThreadsOnMyPlan({ eventId, me, members, focusViewer, onToast }) 
           members={members}
           focus={v === focusViewer}
           onToast={onToast}
-          title={`${(members[v] ?? UNKNOWN_PERSON).name} ile`}
-          hint="Sadece ikiniz görürsünüz."
+          title={t(`${(members[v] ?? UNKNOWN_PERSON).name} ile`, `With ${(members[v] ?? UNKNOWN_PERSON).name}`)}
+          hint={t('Sadece ikiniz görürsünüz.', 'Only the two of you can see this.')}
         />
       ))}
     </>

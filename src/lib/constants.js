@@ -1,71 +1,73 @@
+import { num, t, upper } from './i18n'
+
 export const TAGS = {
-  date: { label: 'Buluşma', emoji: '💕', color: '#B5677F' },
-  plan: { label: 'Plan', emoji: '📝', color: '#B88A4E' },
-  is: { label: 'İş', emoji: '💼', color: '#6E8B74' },
-  tatil: { label: 'Tatil', emoji: '✈️', color: '#6683A3' },
-  ozel: { label: 'Özel gün', emoji: '🎉', color: '#7E5A8C' },
+  date: { label: t('Buluşma', 'Date'), emoji: '💕', color: '#B5677F' },
+  plan: { label: t('Plan', 'Plan'), emoji: '📝', color: '#B88A4E' },
+  is: { label: t('İş', 'Work'), emoji: '💼', color: '#6E8B74' },
+  tatil: { label: t('Tatil', 'Trip'), emoji: '✈️', color: '#6683A3' },
+  ozel: { label: t('Özel gün', 'Special day'), emoji: '🎉', color: '#7E5A8C' },
 }
 
 // Ready-made plans per category: picking a category shows only its own ideas.
 export const TEMPLATES = {
   date: {
-    heading: 'Buluşma fikirleri',
+    heading: t('Buluşma fikirleri', 'Date ideas'),
     items: [
-      { title: '🍽️ Akşam yemeği', time: '20:00' },
-      { title: '🎬 Sinema', time: '21:00' },
-      { title: '🎶 Konser', time: '21:00' },
-      { title: '☕ Kahve buluşması', time: '11:00' },
+      { title: t('🍽️ Akşam yemeği', '🍽️ Dinner'), time: '20:00' },
+      { title: t('🎬 Sinema', '🎬 Movies'), time: '21:00' },
+      { title: t('🎶 Konser', '🎶 Concert'), time: '21:00' },
+      { title: t('☕ Kahve buluşması', '☕ Coffee date'), time: '11:00' },
       { title: '🥞 Brunch', time: '11:00' },
-      { title: '🧺 Piknik', time: '12:00' },
-      { title: '🎭 Tiyatro', time: '20:00' },
+      { title: t('🧺 Piknik', '🧺 Picnic'), time: '12:00' },
+      { title: t('🎭 Tiyatro', '🎭 Theatre'), time: '20:00' },
       { title: '🎳 Bowling', time: '19:00' },
-      { title: '🌅 Gün batımı yürüyüşü', time: '18:00' },
-      { title: '🍿 Evde film gecesi', time: '21:00' },
+      { title: t('🌅 Gün batımı yürüyüşü', '🌅 Sunset walk'), time: '18:00' },
+      { title: t('🍿 Evde film gecesi', '🍿 Movie night in'), time: '21:00' },
     ],
   },
   plan: {
-    heading: 'Günlük planlar',
+    heading: t('Günlük planlar', 'Everyday plans'),
     items: [
-      { title: '🛒 Market alışverişi', time: '18:30' },
-      { title: '🧹 Ev temizliği', time: '10:00' },
-      { title: '🏋️ Spor', time: '08:00', repeat: 'weekly' },
-      { title: '👨‍👩‍👧 Aile ziyareti', time: '13:00' },
-      { title: '🥂 Arkadaşlarla buluşma', time: '20:00' },
-      { title: '🩺 Doktor randevusu', time: '10:00' },
-      { title: '💇 Kuaför', time: '14:00' },
-      { title: '🧾 Fatura ödemesi', time: '' },
+      { title: t('🛒 Market alışverişi', '🛒 Grocery shopping'), time: '18:30' },
+      { title: t('🧹 Ev temizliği', '🧹 Cleaning day'), time: '10:00' },
+      { title: t('🏋️ Spor', '🏋️ Workout'), time: '08:00', repeat: 'weekly' },
+      { title: t('👨‍👩‍👧 Aile ziyareti', '👨‍👩‍👧 Family visit'), time: '13:00' },
+      { title: t('🥂 Arkadaşlarla buluşma', '🥂 Drinks with friends'), time: '20:00' },
+      { title: t('🩺 Doktor randevusu', '🩺 Doctor’s appointment'), time: '10:00' },
+      { title: t('💇 Kuaför', '💇 Hair appointment'), time: '14:00' },
+      { title: t('🧾 Fatura ödemesi', '🧾 Pay the bills'), time: '' },
     ],
   },
   is: {
-    heading: 'İş planları',
+    heading: t('İş planları', 'Work'),
     items: [
-      { title: '💼 Toplantı', time: '10:00' },
-      { title: '📊 Sunum', time: '14:00' },
-      { title: '🍱 İş yemeği', time: '12:30' },
-      { title: '🤝 Mülakat', time: '11:00' },
-      { title: '⏳ Teslim tarihi', time: '' },
-      { title: '🧳 İş seyahati', time: '' },
+      { title: t('💼 Toplantı', '💼 Meeting'), time: '10:00' },
+      { title: t('📊 Sunum', '📊 Presentation'), time: '14:00' },
+      { title: t('🍱 İş yemeği', '🍱 Business lunch'), time: '12:30' },
+      { title: t('🤝 Mülakat', '🤝 Interview'), time: '11:00' },
+      { title: t('⏳ Teslim tarihi', '⏳ Deadline'), time: '' },
+      { title: t('🧳 İş seyahati', '🧳 Business trip'), time: '' },
     ],
   },
   tatil: {
-    heading: 'Seyahat',
+    heading: t('Seyahat', 'Travel'),
     items: [
-      { title: '🏖️ Hafta sonu kaçamağı', time: '' },
-      { title: '✈️ Uçuş', time: '' },
-      { title: '🏨 Otel girişi', time: '14:00' },
-      { title: '🗺️ Şehir turu', time: '10:00' },
-      { title: '🎒 Bavul hazırlığı', time: '20:00' },
+      { title: t('🏖️ Hafta sonu kaçamağı', '🏖️ Weekend getaway'), time: '' },
+      { title: t('✈️ Uçuş', '✈️ Flight'), time: '' },
+      { title: t('🏨 Otel girişi', '🏨 Hotel check-in'), time: '14:00' },
+      { title: t('🗺️ Şehir turu', '🗺️ City tour'), time: '10:00' },
+      { title: t('🎒 Bavul hazırlığı', '🎒 Packing'), time: '20:00' },
     ],
   },
   ozel: {
-    heading: 'Özel günler',
+    heading: t('Özel günler', 'Special days'),
     items: [
-      { title: '🎂 Doğum günü', time: '', repeat: 'yearly' },
-      { title: '💍 Yıldönümü', time: '', repeat: 'yearly' },
-      { title: '💘 Sevgililer Günü', time: '', repeat: 'yearly' },
-      { title: '💒 Düğün', time: '19:00' },
-      { title: '🎓 Mezuniyet', time: '14:00' },
-      { title: '🌙 Bayram', time: '' },
+      { title: t('🎂 Doğum günü', '🎂 Birthday'), time: '', repeat: 'yearly' },
+      { title: t('💍 Yıldönümü', '💍 Anniversary'), time: '', repeat: 'yearly' },
+      { title: t('💘 Sevgililer Günü', '💘 Valentine’s Day'), time: '', repeat: 'yearly' },
+      { title: t('💒 Düğün', '💒 Wedding'), time: '19:00' },
+      { title: t('🎓 Mezuniyet', '🎓 Graduation'), time: '14:00' },
+      { title: t('🌙 Bayram', '🎊 Holiday'), time: '' },
     ],
   },
 }
@@ -73,60 +75,72 @@ export const TEMPLATES = {
 // Who a connection is with. Partners count days and have "date"s; friends count days too.
 export const RELATIONS = {
   partner: {
-    label: 'Sevgilim / Eşim',
+    label: t('Sevgilim / Eşim', 'Partner'),
     emoji: '💕',
-    invite: 'Sevgilini davet et',
-    dateLabel: 'Buluşma',
-    since: 'Birlikte olduğumuz gün',
-    counter: (n) => `${n}. günümüz`,
+    invite: t('Sevgilini davet et', 'Invite your partner'),
+    dateLabel: t('Buluşma', 'Date'),
+    since: t('Birlikte olduğumuz gün', 'The day we got together'),
+    counter: (n) => t(`${num(n)}. günümüz`, `Day ${num(n)}`),
   },
   friend: {
-    label: 'Arkadaşım',
+    label: t('Arkadaşım', 'Friend'),
     emoji: '👯',
-    invite: 'Arkadaşını davet et',
-    dateLabel: 'Buluşma',
-    since: 'Arkadaşlığımızın başladığı gün',
-    counter: (n) => `Arkadaşlığımızın ${n}. günü`,
+    invite: t('Arkadaşını davet et', 'Invite a friend'),
+    dateLabel: t('Buluşma', 'Meetup'),
+    since: t('Arkadaşlığımızın başladığı gün', 'The day our friendship began'),
+    counter: (n) => t(`Arkadaşlığımızın ${num(n)}. günü`, `Day ${num(n)} of our friendship`),
   },
-  sibling: { label: 'Kardeşim', emoji: '👭', invite: 'Kardeşini davet et', dateLabel: 'Buluşma', since: null },
-  family: { label: 'Ailem', emoji: '👨‍👩‍👧', invite: 'Aileden birini davet et', dateLabel: 'Buluşma', since: null },
+  sibling: {
+    label: t('Kardeşim', 'Sibling'),
+    emoji: '👭',
+    invite: t('Kardeşini davet et', 'Invite your sibling'),
+    dateLabel: t('Buluşma', 'Meetup'),
+    since: null,
+  },
+  family: {
+    label: t('Ailem', 'Family'),
+    emoji: '👨‍👩‍👧',
+    invite: t('Aileden birini davet et', 'Invite a family member'),
+    dateLabel: t('Buluşma', 'Meetup'),
+    since: null,
+  },
 }
 
 // The "date" category becomes "buluşma" outside couples, with fitting ideas.
 const MEETUPS = {
   friend: [
     { title: '🥞 Brunch', time: '11:00' },
-    { title: '☕ Kahve molası', time: '15:00' },
-    { title: '🛍️ Alışveriş', time: '14:00' },
-    { title: '🎬 Sinema', time: '21:00' },
-    { title: '🎶 Konser', time: '21:00' },
-    { title: '💅 Spa / kuaför günü', time: '13:00' },
-    { title: '🍷 Dostlar gecesi', time: '20:00' },
-    { title: '🚶 Yürüyüş', time: '18:00' },
+    { title: t('☕ Kahve molası', '☕ Coffee break'), time: '15:00' },
+    { title: t('🛍️ Alışveriş', '🛍️ Shopping'), time: '14:00' },
+    { title: t('🎬 Sinema', '🎬 Movies'), time: '21:00' },
+    { title: t('🎶 Konser', '🎶 Concert'), time: '21:00' },
+    { title: t('💅 Spa / kuaför günü', '💅 Spa day'), time: '13:00' },
+    { title: t('🍷 Dostlar gecesi', '🍷 Friends’ night'), time: '20:00' },
+    { title: t('🚶 Yürüyüş', '🚶 Walk'), time: '18:00' },
     { title: '🎳 Bowling', time: '19:00' },
-    { title: '🍿 Film gecesi', time: '21:00' },
+    { title: t('🍿 Film gecesi', '🍿 Movie night'), time: '21:00' },
   ],
   family: [
-    { title: '🍽️ Aile yemeği', time: '19:00' },
-    { title: '🥐 Pazar kahvaltısı', time: '10:00' },
-    { title: '☕ Kahve', time: '15:00' },
-    { title: '🛍️ Alışveriş', time: '14:00' },
-    { title: '🎬 Sinema', time: '21:00' },
-    { title: '🧺 Piknik', time: '12:00' },
-    { title: '📞 Görüntülü arama', time: '20:00' },
-    { title: '🌙 Bayram ziyareti', time: '' },
+    { title: t('🍽️ Aile yemeği', '🍽️ Family dinner'), time: '19:00' },
+    { title: t('🥐 Pazar kahvaltısı', '🥐 Sunday breakfast'), time: '10:00' },
+    { title: t('☕ Kahve', '☕ Coffee'), time: '15:00' },
+    { title: t('🛍️ Alışveriş', '🛍️ Shopping'), time: '14:00' },
+    { title: t('🎬 Sinema', '🎬 Movies'), time: '21:00' },
+    { title: t('🧺 Piknik', '🧺 Picnic'), time: '12:00' },
+    { title: t('📞 Görüntülü arama', '📞 Video call'), time: '20:00' },
+    { title: t('🌙 Bayram ziyareti', '🏡 Holiday visit'), time: '' },
   ],
 }
 
 export function templatesFor(tag, relation = 'partner') {
   if (tag === 'date' && relation !== 'partner') {
-    return { heading: 'Buluşma fikirleri', items: MEETUPS[relation === 'friend' ? 'friend' : 'family'] }
+    return { heading: t('Buluşma fikirleri', 'Meetup ideas'), items: MEETUPS[relation === 'friend' ? 'friend' : 'family'] }
   }
   return TEMPLATES[tag]
 }
 
 export const tagLabel = (tag, relation = 'partner') =>
-  tag === 'date' ? RELATIONS[relation]?.dateLabel ?? 'Buluşma' : TAGS[tag]?.label
+  tag === 'date' ? RELATIONS[relation]?.dateLabel ?? TAGS.date.label : TAGS[tag]?.label
 
 // A "date" between friends or family is a meetup: no hearts.
 export const tagEmoji = (tag, relation = 'partner') =>
@@ -134,21 +148,21 @@ export const tagEmoji = (tag, relation = 'partner') =>
 
 export const isTemplateTitle = (title) =>
   [...Object.values(TEMPLATES), { items: [...MEETUPS.friend, ...MEETUPS.family] }].some((c) =>
-    c.items.some((t) => t.title === title),
+    c.items.some((item) => item.title === title),
   )
 
 // Wish categories, and the plan category a wish becomes.
 export const WISH_CATEGORIES = {
-  gift: { label: 'Hediye', emoji: '🎁', planTag: 'ozel', placeholder: 'Örn. 👟 Beyaz sneaker' },
-  travel: { label: 'Gezi', emoji: '✈️', planTag: 'tatil', placeholder: 'Örn. 🎈 Kapadokya balon turu' },
-  experience: { label: 'Deneyim', emoji: '🍽️', planTag: 'date', placeholder: 'Örn. 🎶 Tarkan konseri' },
+  gift: { label: t('Hediye', 'Gift'), emoji: '🎁', planTag: 'ozel', placeholder: t('Örn. 👟 Beyaz sneaker', 'E.g. 👟 White sneakers') },
+  travel: { label: t('Gezi', 'Trip'), emoji: '✈️', planTag: 'tatil', placeholder: t('Örn. 🎈 Kapadokya balon turu', 'E.g. 🎈 Hot-air balloon ride') },
+  experience: { label: t('Deneyim', 'Experience'), emoji: '🍽️', planTag: 'date', placeholder: t('Örn. 🎶 Tarkan konseri', 'E.g. 🎶 A concert in the park') },
 }
 
 export const SURPRISE_COLOR = '#C49A45'
 
-export const DEFAULT_TEASER = 'O günü boş tut, sana bir sürprizim var 💌'
+export const DEFAULT_TEASER = t('O günü boş tut, sana bir sürprizim var 💌', 'Keep that day free, I have a surprise for you 💌')
 
-export const UNKNOWN_PERSON = { name: 'Biri', short: '?', color: '#9c8f96' }
+export const UNKNOWN_PERSON = { name: t('Biri', 'Someone'), short: '?', color: '#9c8f96' }
 
 // How a comment made you feel; a double tap on a comment is the first one.
 export const COMMENT_FEELINGS = ['😂', '😍', '😮', '😢', '😡', '👍']
@@ -157,6 +171,6 @@ export const initials = (name) =>
   name
     .split(/\s+/)
     .filter(Boolean)
-    .map((word) => word[0].toLocaleUpperCase('tr'))
+    .map((word) => upper(word[0]))
     .join('')
     .slice(0, 2)

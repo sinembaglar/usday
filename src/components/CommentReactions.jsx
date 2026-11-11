@@ -1,4 +1,4 @@
-import { COMMENT_FEELINGS as FEELINGS, initials } from '../lib/constants'
+import { COMMENT_FEELINGS as FEELINGS, UNKNOWN_PERSON, initials } from '../lib/constants'
 
 // The emojis left on one comment. Leaving one is done by pressing and holding the comment
 // (or a double tap for 😂); tapping one of these takes mine back or switches to it.
@@ -6,7 +6,7 @@ export default function CommentReactions({ comment, me, members, onReact }) {
   const reactions = comment.reactions ?? []
   const mine = reactions.find((r) => r.user_id === me)?.emoji
   const used = FEELINGS.map((emoji) => [emoji, reactions.filter((r) => r.emoji === emoji)]).filter(([, who]) => who.length)
-  const nameOf = (r) => members[r.user_id]?.name ?? r.user_name ?? 'Biri'
+  const nameOf = (r) => members[r.user_id]?.name ?? r.user_name ?? UNKNOWN_PERSON.name
   if (!used.length) return null
 
   return (

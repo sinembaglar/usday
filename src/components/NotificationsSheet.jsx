@@ -3,12 +3,13 @@ import { isToday, isYesterday } from 'date-fns'
 import { Bell } from 'lucide-react'
 import { NOTIFICATION_PAGE, clearNotifications, loadNotifications, markNotificationsRead } from '../lib/api'
 import { timeAgo } from '../lib/format'
+import { t } from '../lib/i18n'
 
 function groupOf(iso) {
   const d = new Date(iso)
-  if (isToday(d)) return 'Bugün'
-  if (isYesterday(d)) return 'Dün'
-  return 'Daha önce'
+  if (isToday(d)) return t('Bugün', 'Today')
+  if (isYesterday(d)) return t('Dün', 'Yesterday')
+  return t('Daha önce', 'Earlier')
 }
 
 // The in-app inbox: everything that was (or would have been) sent to the phone.
@@ -43,18 +44,18 @@ export default function NotificationsSheet({ onOpenLink, onRead, onClose, onToas
       setItems((list) => [...list, ...older])
       setHasMore(older.length === NOTIFICATION_PAGE)
     } catch {
-      onToast('Yüklenemedi, tekrar dener misin?')
+      onToast(t('Yüklenemedi, tekrar dener misin?', 'Couldn’t load. Try again?'))
     }
     setLoadingMore(false)
   }
 
   async function clearAll() {
-    if (!window.confirm('Tüm bildirimler silinsin mi?')) return
+    if (!window.confirm(t('Tüm bildirimler silinsin mi?', 'Delete all notifications?'))) return
     try {
       await clearNotifications()
       setItems([])
     } catch {
-      onToast('Silinemedi, tekrar dener misin?')
+      onToast(t('Silinemedi, tekrar dener misin?', 'Couldn’t delete. Try again?'))
     }
   }
 
@@ -68,19 +69,24 @@ export default function NotificationsSheet({ onOpenLink, onRead, onClose, onToas
   return (
     <div className="inbox">
       <div className="inbox-head">
-        <h3>Bildirimler</h3>
+        <h3>{t('Bildirimler', 'Notifications')}</h3>
         {items?.length > 0 && (
           <button className="link-btn" onClick={clearAll}>
-            Temizle
+            {t('Temizle', 'Clear')}
           </button>
         )}
       </div>
 
-      {items === null && <p className="hint">Yükleniyor…</p>}
+      {items === null && <p className="hint">{t('Yükleniyor…', 'Loading…')}</p>}
       {items?.length === 0 && (
         <div className="inbox-empty">
           <Bell size={36} strokeWidth={1.5} aria-hidden="true" />
-          <p>Henüz bildirim yok. Yeni planlar, yorumlar ve hatırlatmalar burada görünür.</p>
+          <p>
+            {t(
+              'Henüz bildirim yok. Yeni planlar, yorumlar ve hatırlatmalar burada görünür.',
+              'No notifications yet. New plans, comments and reminders show up here.',
+            )}
+          </p>
         </div>
       )}
 
@@ -109,13 +115,13 @@ export default function NotificationsSheet({ onOpenLink, onRead, onClose, onToas
 
       {hasMore && (
         <button className="btn btn-ghost bordered" onClick={showMore} disabled={loadingMore}>
-          {loadingMore ? 'Yükleniyor…' : 'Daha fazla göster'}
+          {loadingMore ? t('Yükleniyor…', 'Loading…') : t('Daha fazla göster', 'Show more')}
         </button>
       )}
 
       <div className="form-actions">
         <button className="btn btn-primary" onClick={onClose}>
-          Kapat
+          {t('Kapat', 'Close')}
         </button>
       </div>
     </div>

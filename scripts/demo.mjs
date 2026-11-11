@@ -1,14 +1,17 @@
 // The App Store / Google Play review account: Deniz (demo@usday.app) with a partner, a sister and a friend,
 // and a few weeks of plans around today. Safe to run again before each submission: it keeps the accounts and
-// connections, removes what the four of them added and adds it again with fresh dates.
+// connections, removes what the four of them added and adds it again with fresh dates. Pass "en" for the
+// plans and wishes in English (the review teams usually look at the app in English).
 //
-//   node --env-file=.env.local scripts/demo.mjs
+//   node --env-file=.env.local scripts/demo.mjs [en]
 import { createClient } from '@supabase/supabase-js'
 
 const URL = process.env.VITE_SUPABASE_URL
 const KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
 const PASS = process.env.DEMO_PASSWORD
 if (!URL || !KEY || !PASS) throw new Error('VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY and DEMO_PASSWORD are needed')
+const EN = process.argv[2] === 'en'
+const w = (tr, en) => (EN ? en : tr)
 
 const must = ({ data, error }) => {
   if (error) throw error
@@ -57,32 +60,64 @@ for (const p of [D, A, E, M]) {
 
 const plan = async (who, row) => must(await who.c.from('events').insert({ created_by: who.id, ...row }).select('id').single()).id
 
-const cinema = await plan(A, { couple_id: DA, title: '🎬 Sinema', event_date: day(2), event_time: '21:15', end_time: '23:30', location: 'Kadıköy', tag: 'date' })
-await plan(D, { couple_id: DA, title: '🍝 Akşam yemeği', event_date: day(6), event_time: '20:00', location: 'Karaköy', tag: 'date' })
-await plan(D, { couple_id: DA, title: '✈️ Kapadokya', event_date: day(26), tag: 'tatil' })
+const cinema = await plan(A, { couple_id: DA, title: w('🎬 Sinema', '🎬 Movie night'), event_date: day(2), event_time: '21:15', end_time: '23:30', location: w('Kadıköy', 'City Cinema'), tag: 'date' })
+await plan(D, { couple_id: DA, title: w('🍝 Akşam yemeği', '🍝 Dinner'), event_date: day(6), event_time: '20:00', location: w('Karaköy', 'Little Italy'), tag: 'date' })
+await plan(D, { couple_id: DA, title: w('✈️ Kapadokya', '✈️ Lisbon'), event_date: day(26), tag: 'tatil' })
 // A surprise Deniz is preparing for Arda: Deniz sees everything.
-await plan(D, { couple_id: DA, title: 'Yıldönümü sürprizi', event_date: day(12), event_time: '19:30', location: 'Bebek, sahil', tag: 'ozel', note: 'Masa ayırttım, pasta 19:00’da gelecek.', surprise: true, teaser: 'O akşamı boş tut, şık giyin 😉', reveal_on: day(12) })
+await plan(D, {
+  couple_id: DA,
+  title: w('Yıldönümü sürprizi', 'Anniversary surprise'),
+  event_date: day(12),
+  event_time: '19:30',
+  location: w('Bebek, sahil', 'The rooftop by the river'),
+  tag: 'ozel',
+  note: w('Masa ayırttım, pasta 19:00’da gelecek.', 'Table booked, the cake arrives at 7 pm.'),
+  surprise: true,
+  teaser: w('O akşamı boş tut, şık giyin 😉', 'Keep that evening free and dress up 😉'),
+  reveal_on: day(12),
+})
 // A surprise Arda is preparing for Deniz: Deniz only sees the teaser.
-await plan(A, { couple_id: DA, title: 'Hafta sonu kaçamağı', event_date: day(9), event_time: '10:00', location: 'Şile', tag: 'ozel', surprise: true, teaser: 'Cumartesi sabahı erken kalk, küçük bir çanta hazırla 🧳', reveal_on: day(9) })
-await plan(E, { couple_id: DE, title: '☕ Kahvaltı', event_date: day(3), event_time: '10:30', location: 'Moda', tag: 'plan' })
-await plan(M, { couple_id: DM, title: '🎾 Tenis', event_date: day(1), event_time: '19:00', tag: 'plan', status: 'proposed', awaiting: D.id })
+await plan(A, {
+  couple_id: DA,
+  title: w('Hafta sonu kaçamağı', 'Weekend getaway'),
+  event_date: day(9),
+  event_time: '10:00',
+  location: w('Şile', 'The coast'),
+  tag: 'ozel',
+  surprise: true,
+  teaser: w('Cumartesi sabahı erken kalk, küçük bir çanta hazırla 🧳', 'Get up early on Saturday and pack a small bag 🧳'),
+  reveal_on: day(9),
+})
+await plan(E, { couple_id: DE, title: w('☕ Kahvaltı', '☕ Breakfast'), event_date: day(3), event_time: '10:30', location: w('Moda', 'Corner Café'), tag: 'plan' })
+await plan(M, { couple_id: DM, title: w('🎾 Tenis', '🎾 Tennis'), event_date: day(1), event_time: '19:00', tag: 'plan', status: 'proposed', awaiting: D.id })
 
 // A group plan with everyone's replies.
-const party = await plan(D, { couple_id: null, title: '🎂 Elif’in doğum günü', event_date: day(17), event_time: '20:00', location: 'Cihangir', tag: 'ozel' })
+const party = await plan(D, { couple_id: null, title: w('🎂 Elif’in doğum günü', '🎂 Elif’s birthday'), event_date: day(17), event_time: '20:00', location: w('Cihangir', 'Bella Vista'), tag: 'ozel' })
 must(await D.c.from('event_participants').insert([A, E, M].map((p) => ({ event_id: party, user_id: p.id }))))
-must(await A.c.rpc('answer_invitation', { p_event: party, p_status: 'accepted', p_note: 'Pastayı ben alırım 🎂' }))
+must(await A.c.rpc('answer_invitation', { p_event: party, p_status: 'accepted', p_note: w('Pastayı ben alırım 🎂', 'I’ll bring the cake 🎂') }))
 must(await E.c.rpc('answer_invitation', { p_event: party, p_status: 'accepted' }))
-must(await M.c.rpc('answer_invitation', { p_event: party, p_status: 'maybe', p_note: 'İşten çıkabilirsem' }))
+must(await M.c.rpc('answer_invitation', { p_event: party, p_status: 'maybe', p_note: w('İşten çıkabilirsem', 'If I can leave work in time') }))
 
-const first = must(await A.c.from('event_comments').insert({ event_id: cinema, body: 'Biletleri aldım, orta sıra 🍿' }).select('id').single()).id
-must(await D.c.from('event_comments').insert({ event_id: cinema, body: 'Süpersin! Mısırı ben alırım' }))
+const first = must(await A.c.from('event_comments').insert({ event_id: cinema, body: w('Biletleri aldım, orta sıra 🍿', 'Got the tickets, middle row 🍿') }).select('id').single()).id
+must(await D.c.from('event_comments').insert({ event_id: cinema, body: w('Süpersin! Mısırı ben alırım', 'You’re the best! Popcorn is on me') }))
 must(await D.c.from('comment_reactions').insert({ comment_id: first, user_id: D.id, emoji: '😍' }))
 
-const headphones = must(await A.c.from('wishes').insert({ category: 'gift', title: 'Kablosuz kulaklık', price: '3.500 TL', note: 'Siyah olsun', loved: true }).select('id').single()).id
-must(await A.c.from('wishes').insert([{ category: 'experience', title: 'Seramik atölyesi', price: '1.200 TL' }, { category: 'gift', title: 'Kahve makinesi' }]))
-must(await E.c.from('wishes').insert({ category: 'gift', title: 'Fotoğraf makinesi askısı' }))
-must(await D.c.from('wishes').insert({ category: 'travel', title: 'Kapadokya balon turu', loved: true }))
+const headphones = must(
+  await A.c
+    .from('wishes')
+    .insert({ category: 'gift', title: w('Kablosuz kulaklık', 'Wireless headphones'), price: w('3.500 TL', '$120'), note: w('Siyah olsun', 'Black, please'), loved: true })
+    .select('id')
+    .single(),
+).id
+must(
+  await A.c.from('wishes').insert([
+    { category: 'experience', title: w('Seramik atölyesi', 'Pottery class'), price: w('1.200 TL', '$45') },
+    { category: 'gift', title: w('Kahve makinesi', 'Coffee machine') },
+  ]),
+)
+must(await E.c.from('wishes').insert({ category: 'gift', title: w('Fotoğraf makinesi askısı', 'Camera strap') }))
+must(await D.c.from('wishes').insert({ category: 'travel', title: w('Kapadokya balon turu', 'Hot-air balloon ride'), loved: true }))
 must(await D.c.from('wish_claims').upsert({ wish_id: headphones }))
 
-console.log('Demo hesabı hazır: demo@usday.app (şifre .env.local içinde DEMO_PASSWORD)')
+console.log(`Demo hesabı hazır (${EN ? 'İngilizce' : 'Türkçe'}): demo@usday.app (şifre .env.local içinde DEMO_PASSWORD)`)
 process.exit(0)

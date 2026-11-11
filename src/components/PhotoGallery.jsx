@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Lock } from 'lucide-react'
 import { useBackButton } from '../lib/back'
+import { t } from '../lib/i18n'
 
 export default function PhotoGallery({ photos }) {
   const [open, setOpen] = useState(null)
@@ -17,7 +18,7 @@ export default function PhotoGallery({ photos }) {
           ) : (
             <span key={photo.path} className="gallery-item is-locked">
               <span className="gallery-lock">
-                <Lock size={24} aria-label="Açılınca görünür" />
+                <Lock size={24} aria-label={t('Açılınca görünür', 'Shows when revealed')} />
               </span>
             </span>
           ),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isNative, shareImage } from '../lib/native'
 import { drawCard } from '../lib/shareCard'
+import { t } from '../lib/i18n'
 
 // Preview of a story card, then the phone's share menu (Instagram, WhatsApp…) or a download.
 export default function ShareCard({ card, onClose, onToast }) {
@@ -16,7 +17,7 @@ export default function ShareCard({ card, onClose, onToast }) {
         url = URL.createObjectURL(blob)
         setImage({ blob, url })
       })
-      .catch(() => active && onToast('Kart hazırlanamadı'))
+      .catch(() => active && onToast(t('Kart hazırlanamadı', 'Couldn’t make the card')))
     return () => {
       active = false
       if (url) URL.revokeObjectURL(url)
@@ -25,7 +26,7 @@ export default function ShareCard({ card, onClose, onToast }) {
 
   async function share() {
     if (isNative) {
-      await shareImage(image.blob, 'usday.png').catch(() => onToast('Kart paylaşılamadı'))
+      await shareImage(image.blob, 'usday.png').catch(() => onToast(t('Kart paylaşılamadı', 'Couldn’t share the card')))
       return
     }
     const file = new File([image.blob], 'usday.png', { type: 'image/png' })
@@ -41,29 +42,29 @@ export default function ShareCard({ card, onClose, onToast }) {
     a.href = image.url
     a.download = 'usday.png'
     a.click()
-    onToast('📥 Kart indirildi')
+    onToast(t('📥 Kart indirildi', '📥 Card downloaded'))
   }
 
   return (
     <div className="settings share-card">
-      <h3>Hikâyende paylaş</h3>
-      <div className="share-preview">{image ? <img src={image.url} alt="Paylaşılacak kart" /> : <span>Hazırlanıyor…</span>}</div>
+      <h3>{t('Hikâyende paylaş', 'Share to your story')}</h3>
+      <div className="share-preview">{image ? <img src={image.url} alt={t('Paylaşılacak kart', 'Card to share')} /> : <span>{t('Hazırlanıyor…', 'Getting it ready…')}</span>}</div>
       {card.photoUrl && (
         <div className="segmented">
           <button className={withPhoto ? 'is-active' : ''} onClick={() => setWithPhoto(true)}>
-            Fotoğraflı
+            {t('Fotoğraflı', 'With photo')}
           </button>
           <button className={withPhoto ? '' : 'is-active'} onClick={() => setWithPhoto(false)}>
-            Sade
+            {t('Sade', 'Plain')}
           </button>
         </div>
       )}
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onClose}>
-          Geri
+          {t('Geri', 'Back')}
         </button>
         <button className="btn btn-primary" onClick={share} disabled={!image}>
-          Paylaş
+          {t('Paylaş', 'Share')}
         </button>
       </div>
     </div>

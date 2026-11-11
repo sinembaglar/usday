@@ -3,6 +3,7 @@ import { ImagePlus, Plus, Search, SendHorizontal, X } from 'lucide-react'
 import { gifSearchOn } from '../lib/api'
 import { useBackButton } from '../lib/back'
 import GifPicker from './GifPicker'
+import { t } from '../lib/i18n'
 
 // The box under a conversation: text, and a picture or GIF from the phone (shown before sending).
 // onSend(text, file) resolves when it is saved; the form then empties itself.
@@ -42,7 +43,11 @@ export default function CommentForm({ placeholder, onSend, onError }) {
       setDraft('')
       setFile(null)
     } catch (err) {
-      onError?.(err.message === 'too_big' ? 'GIF en fazla 8 MB olabilir' : 'Gönderilemedi, tekrar dener misin?')
+      onError?.(
+        err.message === 'too_big'
+          ? t('GIF en fazla 8 MB olabilir', 'A GIF can be 8 MB at most')
+          : t('Gönderilemedi, tekrar dener misin?', 'Couldn’t send. Try again?'),
+      )
     } finally {
       setSending(false)
     }
@@ -62,8 +67,8 @@ export default function CommentForm({ placeholder, onSend, onError }) {
       )}
       {preview && (
         <div className="comment-preview">
-          <img src={preview} alt="Gönderilecek görsel" />
-          <button type="button" className="comment-preview-remove" onClick={() => setFile(null)} aria-label="Görseli kaldır">
+          <img src={preview} alt={t('Gönderilecek görsel', 'Picture to send')} />
+          <button type="button" className="comment-preview-remove" onClick={() => setFile(null)} aria-label={t('Görseli kaldır', 'Remove picture')}>
             <X size={14} aria-hidden="true" />
           </button>
         </div>
@@ -77,7 +82,7 @@ export default function CommentForm({ placeholder, onSend, onError }) {
               inputRef.current?.click()
             }}
           >
-            <ImagePlus size={18} aria-hidden="true" /> Fotoğraf
+            <ImagePlus size={18} aria-hidden="true" /> {t('Fotoğraf', 'Photo')}
           </button>
           {gifsOn !== false && (
             <button
@@ -88,7 +93,7 @@ export default function CommentForm({ placeholder, onSend, onError }) {
                 setFindingGif(true)
               }}
             >
-              <Search size={18} aria-hidden="true" /> GIF ara
+              <Search size={18} aria-hidden="true" /> {t('GIF ara', 'Find a GIF')}
             </button>
           )}
         </div>
@@ -98,7 +103,7 @@ export default function CommentForm({ placeholder, onSend, onError }) {
           type="button"
           className={`btn btn-secondary attach-btn ${attaching || findingGif ? 'is-active' : ''}`}
           onClick={() => (gifsOn === false ? inputRef.current?.click() : setAttaching((a) => !a))}
-          aria-label="Fotoğraf ya da GIF ekle"
+          aria-label={t('Fotoğraf ya da GIF ekle', 'Add a photo or GIF')}
           aria-expanded={gifsOn === false ? undefined : attaching}
           disabled={sending}
         >
@@ -111,7 +116,7 @@ export default function CommentForm({ placeholder, onSend, onError }) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <button className="btn btn-primary send-btn" disabled={(!draft.trim() && !file) || sending} aria-label="Gönder">
+        <button className="btn btn-primary send-btn" disabled={(!draft.trim() && !file) || sending} aria-label={t('Gönder', 'Send')}>
           {sending ? '…' : <SendHorizontal size={18} aria-hidden="true" />}
         </button>
         <input

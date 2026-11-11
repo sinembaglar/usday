@@ -4,6 +4,7 @@ import { DEFAULT_TEASER, TAGS, isTemplateTitle, tagLabel, templatesFor } from '.
 import { tagIcon } from '../lib/icons'
 import { REPEATS } from '../lib/recurrence'
 import { dative } from '../lib/format'
+import { t } from '../lib/i18n'
 import PhotoPicker from './PhotoPicker'
 import TemplateRow from './TemplateRow'
 
@@ -75,7 +76,7 @@ export default function EventForm({
   // A group of only partners is still worded as a date; anything mixed is a meetup.
   const relation = picked.every((c) => c.relation === 'partner') ? 'partner' : 'friend'
   const partnerName = connection?.partnerName
-  const ownTemplates = group ? [] : templates.filter((t) => t.coupleId === connection?.id)
+  const ownTemplates = group ? [] : templates.filter((template) => template.coupleId === connection?.id)
   const linked = connections.filter((c) => c.partnerName)
   // Editing a two-person plan keeps it with the same person; a group plan can change its guests.
   const canChoose = (!initial || initial.guests) && connections.length > 1
@@ -110,7 +111,7 @@ export default function EventForm({
 
   // Switching category drops a ready-made title from the previous one; typed titles stay.
   function chooseCategory(tag) {
-    const fromTemplate = (title) => isTemplateTitle(title) || templates.some((t) => t.title === title)
+    const fromTemplate = (title) => isTemplateTitle(title) || templates.some((template) => template.title === title)
     setForm((f) =>
       fromTemplate(f.title) && f.tag !== tag ? { ...f, tag, title: '', time: '', repeat: 'none' } : { ...f, tag },
     )
@@ -130,7 +131,7 @@ export default function EventForm({
     e.preventDefault()
     if (!form.title.trim() || !form.date || saving) return
     if (group && form.surprise && !form.hiddenFrom.length) {
-      setError('Sürprizin kimden gizleneceğini seç.')
+      setError(t('Sürprizin kimden gizleneceğini seç.', 'Choose who the surprise is for.'))
       return
     }
     setSaving(true)
@@ -145,7 +146,7 @@ export default function EventForm({
         blurPhotos: form.surprise && form.blurPhotos,
       })
     } catch {
-      setError('Kaydedilemedi. İnternet bağlantını kontrol edip tekrar dener misin?')
+      setError(t('Kaydedilemedi. İnternet bağlantını kontrol edip tekrar dener misin?', 'Couldn’t save. Check your connection and try again?'))
       setSaving(false)
     }
   }
@@ -155,9 +156,9 @@ export default function EventForm({
 
   return (
     <form className="event-form" onSubmit={handleSubmit}>
-      <h3>{initial ? 'Planı düzenle' : 'Yeni plan'}</h3>
+      <h3>{initial ? t('Planı düzenle', 'Edit plan') : t('Yeni plan', 'New plan')}</h3>
 
-      <input className="input title-input" placeholder="Ne yapıyoruz?" value={form.title} onChange={set('title')} />
+      <input className="input title-input" placeholder={t('Ne yapıyoruz?', 'What are we doing?')} value={form.title} onChange={set('title')} />
 
       {!initial && category && (
         <TemplateRow
@@ -166,28 +167,34 @@ export default function EventForm({
           custom={ownTemplates}
           selectedTitle={form.title}
           draft={form}
-          onPick={(t) =>
-            setForm((f) => ({ ...f, title: t.title, time: t.time, endTime: '', repeat: f.surprise ? 'none' : (t.repeat ?? 'none') }))
+          onPick={(template) =>
+            setForm((f) => ({
+              ...f,
+              title: template.title,
+              time: template.time,
+              endTime: '',
+              repeat: f.surprise ? 'none' : (template.repeat ?? 'none'),
+            }))
           }
-          onAdd={(t) => onAddTemplate({ ...t, coupleId: connection?.id })}
+          onAdd={(template) => onAddTemplate({ ...template, coupleId: connection?.id })}
           onDelete={onDeleteTemplate}
         />
       )}
 
       <div className="row">
         <label className="field">
-          <span>{repeating ? 'İlk gün' : 'Tarih'}</span>
+          <span>{repeating ? t('İlk gün', 'First day') : t('Tarih', 'Date')}</span>
           <input className="input" type="date" value={form.date} onChange={set('date')} required />
         </label>
       </div>
 
       <div className="row">
         <label className="field">
-          <span>Başlangıç</span>
+          <span>{t('Başlangıç', 'Starts')}</span>
           <input className="input" type="time" value={form.time} onChange={set('time')} />
         </label>
         <label className="field">
-          <span>Bitiş</span>
+          <span>{t('Bitiş', 'Ends')}</span>
           <input
             className="input"
             type="time"
@@ -200,7 +207,7 @@ export default function EventForm({
       </div>
       {!form.time && (
         <small id="end-hint" className="hint form-hint">
-          Saat yoksa gün boyu sürer.
+          {t('Saat yoksa gün boyu sürer.', 'No time means all day.')}
         </small>
       )}
       {conflicts.length > 0 && (
@@ -210,15 +217,15 @@ export default function EventForm({
               <TriangleAlert size={14} aria-hidden="true" /> {c}
             </span>
           ))}
-          {conflicts.length > 4 && <span>… ve {conflicts.length - 4} plan daha</span>}
-          <small>Yine de kaydedebilirsin.</small>
+          {conflicts.length > 4 && <span>{t(`… ve ${conflicts.length - 4} plan daha`, `… and ${conflicts.length - 4} more`)}</span>}
+          <small>{t('Yine de kaydedebilirsin.', 'You can still save it.')}</small>
         </div>
       )}
 
       {canChoose && (
         <div className="field guest-picker">
           <div className="guest-picker-head">
-            <span>{group ? `Kiminle · ${picked.length} kişi (grup planı)` : 'Kiminle'}</span>
+            <span>{group ? t(`Kiminle · ${picked.length} kişi (grup planı)`, `With · ${picked.length} people (group plan)`) : t('Kiminle', 'With')}</span>
             {linked.length > 1 && (
               <button
                 type="button"
@@ -229,11 +236,11 @@ export default function EventForm({
                     : setForm((f) => ({ ...f, coupleIds: linked.map((c) => c.id), propose: false }))
                 }
               >
-                {allPicked ? 'Temizle' : 'Tümünü seç'}
+                {allPicked ? t('Temizle', 'Clear') : t('Tümünü seç', 'Select all')}
               </button>
             )}
           </div>
-          <div className="person-picks" role="group" aria-label="Kiminle">
+          <div className="person-picks" role="group" aria-label={t('Kiminle', 'With')}>
             {choices.map((c) => {
               const on = form.coupleIds.includes(c.id)
               return (
@@ -247,18 +254,22 @@ export default function EventForm({
                   <span className="person-avatar" style={{ background: c.color ?? 'var(--blush)' }}>
                     {on ? <Check size={15} strokeWidth={3} aria-hidden="true" /> : c.partnerName ? c.short : <Hourglass size={14} aria-hidden="true" />}
                   </span>
-                  {c.partnerName ?? 'Davet bekleyen'}
+                  {c.partnerName ?? t('Davet bekleyen', 'Invite pending')}
                 </button>
               )
             })}
           </div>
-          {group && <small className="hint">Herkes katılıp katılmayacağını söyler; davetliler birbirini görür.</small>}
+          {group && (
+            <small className="hint">
+              {t('Herkes katılıp katılmayacağını söyler; davetliler birbirini görür.', 'Everyone says whether they’re coming; guests can see each other.')}
+            </small>
+          )}
         </div>
       )}
 
       <div className="field">
-        <span>Kategori</span>
-        <div className="chips" role="radiogroup" aria-label="Kategori">
+        <span>{t('Kategori', 'Category')}</span>
+        <div className="chips" role="radiogroup" aria-label={t('Kategori', 'Category')}>
           {Object.entries(TAGS).map(([key, tag]) => {
             const Icon = tagIcon(key, relation)
             return (
@@ -280,10 +291,10 @@ export default function EventForm({
       </div>
 
       <label className="field">
-        <span>Konum</span>
+        <span>{t('Konum', 'Place')}</span>
         <input
           className="input"
-          placeholder="Nerede? (örn. Zorlu PSM)"
+          placeholder={t('Nerede? (örn. Zorlu PSM)', 'Where? (e.g. the Odeon on Main St)')}
           maxLength={200}
           value={form.location}
           onChange={set('location')}
@@ -292,8 +303,8 @@ export default function EventForm({
 
       {!form.surprise && (
         <div className="field">
-          <span>Tekrar</span>
-          <div className="chips" role="radiogroup" aria-label="Tekrar">
+          <span>{t('Tekrar', 'Repeat')}</span>
+          <div className="chips" role="radiogroup" aria-label={t('Tekrar', 'Repeat')}>
             {Object.entries(REPEATS).map(([key, label]) => (
               <button
                 type="button"
@@ -311,7 +322,7 @@ export default function EventForm({
           </div>
           {repeating && (
             <label className="field repeat-until">
-              <span>Ne zamana kadar? (boş bırakırsan hep tekrarlanır)</span>
+              <span>{t('Ne zamana kadar? (boş bırakırsan hep tekrarlanır)', 'Until when? (leave empty to repeat forever)')}</span>
               <input
                 className="input"
                 type="date"
@@ -324,7 +335,7 @@ export default function EventForm({
         </div>
       )}
 
-      <textarea className="input" rows={2} placeholder="Not ekle…" value={form.note} onChange={set('note')} />
+      <textarea className="input" rows={2} placeholder={t('Not ekle…', 'Add a note…')} value={form.note} onChange={set('note')} />
 
       <PhotoPicker photos={form.photos} onChange={(photos) => setForm((f) => ({ ...f, photos }))} />
 
@@ -333,10 +344,10 @@ export default function EventForm({
           <input type="checkbox" checked={form.propose} onChange={set('propose')} />
           <span className="switch" />
           <span>
-            <strong>Önce {dative(partnerName)} sor</strong>
+            <strong>{t(`Önce ${dative(partnerName)} sor`, `Ask ${partnerName} first`)}</strong>
             <small>
-              “Uygunum” derse kesinleşir; başka zaman da önerebilir.
-              {form.surprise && ' Sürpriz olduğu için sadece ipucu ve zaman gider.'}
+              {t('“Uygunum” derse kesinleşir; başka zaman da önerebilir.', 'It’s on once they say “I’m free”; they can also suggest another time.')}
+              {form.surprise && t(' Sürpriz olduğu için sadece ipucu ve zaman gider.', ' Since it’s a surprise, only the hint and the time are sent.')}
             </small>
           </span>
         </label>
@@ -346,11 +357,14 @@ export default function EventForm({
         <input type="checkbox" checked={form.surprise} onChange={toggleSurprise} />
         <span className="switch" />
         <span>
-          <strong><Gift size={15} aria-hidden="true" /> Sürpriz modu</strong>
+          <strong><Gift size={15} aria-hidden="true" /> {t('Sürpriz modu', 'Surprise mode')}</strong>
           <small>
             {group
-              ? 'Seçtiklerin sadece ipucunu görür; diğerleri seninle hazırlar.'
-              : `${partnerName ?? 'Diğer kişi'} açılış gününe kadar sadece ipucunu görür`}
+              ? t('Seçtiklerin sadece ipucunu görür; diğerleri seninle hazırlar.', 'The people you pick only see the hint; the others plan it with you.')
+              : t(
+                  `${partnerName ?? 'Diğer kişi'} açılış gününe kadar sadece ipucunu görür`,
+                  `${partnerName ?? 'The other person'} only sees the hint until the reveal day`,
+                )}
           </small>
         </span>
       </label>
@@ -359,8 +373,8 @@ export default function EventForm({
         <div className="surprise-fields">
           {group && (
             <div className="field">
-              <span>Kimden gizli?</span>
-              <div className="chips" role="group" aria-label="Kimden gizli">
+              <span>{t('Kimden gizli?', 'Who is it a surprise for?')}</span>
+              <div className="chips" role="group" aria-label={t('Kimden gizli', 'Who is it a surprise for')}>
                 {picked.map((c) => (
                   <button
                     type="button"
@@ -386,47 +400,56 @@ export default function EventForm({
                   ? (() => {
                       const insiders = picked.filter((c) => !form.hiddenFrom.includes(c.partnerId)).map((c) => c.partnerName)
                       return insiders.length
-                        ? `Sen ve ${insiders.join(', ')} biliyorsunuz; hazırlık sohbeti aranızda kalır.`
-                        : 'Sürprizi sadece sen biliyorsun.'
+                        ? t(
+                            `Sen ve ${insiders.join(', ')} biliyorsunuz; hazırlık sohbeti aranızda kalır.`,
+                            `You and ${insiders.join(', ')} are in on it; the planning chat stays between you.`,
+                          )
+                        : t('Sürprizi sadece sen biliyorsun.', 'Only you know about the surprise.')
                     })()
-                  : 'Sürprizin kime olduğunu seç.'}
+                  : t('Sürprizin kime olduğunu seç.', 'Choose who the surprise is for.')}
               </small>
             </div>
           )}
           <label className="field">
-            <span>{group ? 'Sürpriz olanlara gidecek ipucu' : `${partnerName ? dative(partnerName) : 'Eşine'} gidecek ipucu`}</span>
+            <span>
+              {group
+                ? t('Sürpriz olanlara gidecek ipucu', 'The hint they’ll see')
+                : t(`${partnerName ? dative(partnerName) : 'Eşine'} gidecek ipucu`, `The hint ${partnerName ?? 'they'} will see`)}
+            </span>
             <input className="input" placeholder={DEFAULT_TEASER} value={form.teaser} onChange={set('teaser')} />
           </label>
           <label className="field">
-            <span>Ne zaman açılsın?</span>
+            <span>{t('Ne zaman açılsın?', 'When should it be revealed?')}</span>
             <input className="input" type="date" value={form.revealOn || form.date} max={form.date} onChange={set('revealOn')} />
           </label>
           {form.photos.length > 0 && (
             <label className="check">
               <input type="checkbox" checked={form.blurPhotos} onChange={set('blurPhotos')} />
-              Biletleri ve fotoğrafları açılana kadar bulanık göster
+              {t('Biletleri ve fotoğrafları açılana kadar bulanık göster', 'Blur tickets and photos until it’s revealed')}
             </label>
           )}
         </div>
       )}
 
       {wasRepeating && (
-        <small className="hint form-hint">Bu plan tekrarlanıyor; değişiklik tüm tekrarlara uygulanır.</small>
+        <small className="hint form-hint">
+          {t('Bu plan tekrarlanıyor; değişiklik tüm tekrarlara uygulanır.', 'This plan repeats; changes apply to every time it happens.')}
+        </small>
       )}
 
       {error && <p className="form-error">{error}</p>}
 
       {confirmingDelete ? (
         <div className="delete-choice">
-          <strong>Tekrarlanan planı sil</strong>
+          <strong>{t('Tekrarlanan planı sil', 'Delete a repeating plan')}</strong>
           <button type="button" className="btn btn-ghost bordered" onClick={() => onDelete('one')}>
-            Sadece bu günü sil
+            {t('Sadece bu günü sil', 'Delete only this day')}
           </button>
           <button type="button" className="btn btn-ghost bordered danger" onClick={() => onDelete('all')}>
-            Tüm tekrarları sil
+            {t('Tüm tekrarları sil', 'Delete every time')}
           </button>
           <button type="button" className="link-btn" onClick={() => setConfirmingDelete(false)}>
-            Vazgeç
+            {t('Vazgeç', 'Cancel')}
           </button>
         </div>
       ) : (
@@ -437,14 +460,22 @@ export default function EventForm({
               className="btn btn-ghost danger"
               onClick={() => (wasRepeating ? setConfirmingDelete(true) : onDelete('all'))}
             >
-              Sil
+              {t('Sil', 'Delete')}
             </button>
           )}
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            Vazgeç
+            {t('Vazgeç', 'Cancel')}
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Kaydediliyor…' : form.propose ? <><Send size={16} aria-hidden="true" /> Sor</> : 'Kaydet'}
+            {saving ? (
+              t('Kaydediliyor…', 'Saving…')
+            ) : form.propose ? (
+              <>
+                <Send size={16} aria-hidden="true" /> {t('Sor', 'Ask')}
+              </>
+            ) : (
+              t('Kaydet', 'Save')
+            )}
           </button>
         </div>
       )}

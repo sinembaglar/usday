@@ -1,7 +1,7 @@
 // GIF search for comments, through KLIPY. The key stays here, and KLIPY never sees who searches:
 // it gets a stand-in id per person, not their account or address.
 //   { status: true }          is GIF search switched on?
-//   { q?, page? }             search (or what is popular when q is empty)
+//   { q?, page?, lang? }      search (or what is popular when q is empty), in the app's language
 //   { url }                   the chosen GIF itself, so the app can attach it like a photo
 import { admin } from '../_shared/push.ts'
 
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     page: String(page),
     per_page: '24',
     customer_id: await standIn(userId),
-    locale: 'tr',
+    locale: body.lang === 'en' ? 'en' : 'tr',
     content_filter: 'medium',
   })
   if (q) params.set('q', q)

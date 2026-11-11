@@ -1,0 +1,4 @@
+/* UsDay kameraya ve fotoğraflara erişim isterken gösterilir. */
+"NSCameraUsageDescription" = "Planlarına ve yorumlarına fotoğraf eklemek için kameranı kullanmak istiyoruz.";
+"NSPhotoLibraryAddUsageDescription" = "Paylaşım kartlarını galerine kaydedebilmen için.";
+"NSPhotoLibraryUsageDescription" = "Planlarına, kapak fotoğrafına ve yorumlarına fotoğraf eklemek için galerine erişmek istiyoruz.";

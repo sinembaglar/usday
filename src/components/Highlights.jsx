@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { differenceInCalendarDays, format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { Pin } from 'lucide-react'
 import { timeSpan } from '../lib/format'
+import { dateText, t } from '../lib/i18n'
 
 const STORAGE_KEY = 'usday:highlight'
 const ROTATE_MS = 6000
@@ -17,9 +17,9 @@ function savedKind() {
 
 function countdownLabel(date) {
   const days = differenceInCalendarDays(parseISO(date), new Date())
-  if (days === 0) return 'Bugün'
-  if (days === 1) return 'Yarın'
-  return `${days} gün sonra`
+  if (days === 0) return t('Bugün', 'Today')
+  if (days === 1) return t('Yarın', 'Tomorrow')
+  return t(`${days} gün sonra`, `In ${days} days`)
 }
 
 // Swipeable cards on the cover: next date, surprise, special day, trip, plan.
@@ -73,8 +73,8 @@ export default function Highlights({ items, onOpen }) {
     return (
       <div className="highlights">
         <div className="countdown">
-          <small>Sıradaki buluşma</small>
-          <span>Henüz plan yok, bir tane ekleyelim mi? 💕</span>
+          <small>{t('Sıradaki buluşma', 'Coming up')}</small>
+          <span>{t('Henüz plan yok, bir tane ekleyelim mi? 💕', 'No plans yet. Shall we add one? 💕')}</span>
         </div>
       </div>
     )
@@ -97,7 +97,7 @@ export default function Highlights({ items, onOpen }) {
               <span>
                 {item.text}
                 {' · '}
-                {format(parseISO(item.event.date), 'd MMMM', { locale: tr })}
+                {dateText(item.event.date, 'd MMMM', 'MMMM d')}
                 {timeSpan(item.event) && ` · ${timeSpan(item.event)}`}
               </span>
             </button>
@@ -105,13 +105,13 @@ export default function Highlights({ items, onOpen }) {
         ))}
       </div>
       {items.length > 1 && (
-        <div className="highlight-dots" role="tablist" aria-label="Öne çıkanlar">
+        <div className="highlight-dots" role="tablist" aria-label={t('Öne çıkanlar', 'Highlights')}>
           {items.map((item, i) => (
             <button
               key={item.kind}
               role="tab"
               aria-selected={i === index}
-              aria-label={pinned && i === index ? `${item.label} (sabitlendi)` : item.label}
+              aria-label={pinned && i === index ? `${item.label} (${t('sabitlendi', 'pinned')})` : item.label}
               className={i === index ? 'is-active' : ''}
               onClick={() => goTo(i)}
             />

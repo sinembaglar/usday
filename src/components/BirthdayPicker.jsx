@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MONTHS, daysInMonth } from '../lib/birthdays'
+import { isEn, t } from '../lib/i18n'
 
 // Day and month only. Reports "MM-DD" once both are chosen, '' until then.
 export default function BirthdayPicker({ value, onChange, id = 'birthday' }) {
@@ -13,38 +14,44 @@ export default function BirthdayPicker({ value, onChange, id = 'birthday' }) {
     onChange(d && nextMonth ? `${String(nextMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '')
   }
 
-  return (
-    <div className="birthday-picker">
-      <select
-        id={`${id}-day`}
-        className="input"
-        aria-label="Gün"
-        value={day || ''}
-        onChange={(e) => choose(Number(e.target.value), month)}
-        required
-      >
-        <option value="">Gün</option>
-        {Array.from({ length: month ? daysInMonth(month) : 31 }, (_, i) => i + 1).map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </select>
-      <select
-        id={`${id}-month`}
-        className="input"
-        aria-label="Ay"
-        value={month || ''}
-        onChange={(e) => choose(day, Number(e.target.value))}
-        required
-      >
-        <option value="">Ay</option>
-        {MONTHS.map((m, i) => (
-          <option key={m} value={i + 1}>
-            {m}
-          </option>
-        ))}
-      </select>
-    </div>
+  const daySelect = (
+    <select
+      key="day"
+      id={`${id}-day`}
+      className="input"
+      aria-label={t('Gün', 'Day')}
+      value={day || ''}
+      onChange={(e) => choose(Number(e.target.value), month)}
+      required
+    >
+      <option value="">{t('Gün', 'Day')}</option>
+      {Array.from({ length: month ? daysInMonth(month) : 31 }, (_, i) => i + 1).map((d) => (
+        <option key={d} value={d}>
+          {d}
+        </option>
+      ))}
+    </select>
   )
+
+  const monthSelect = (
+    <select
+      key="month"
+      id={`${id}-month`}
+      className="input"
+      aria-label={t('Ay', 'Month')}
+      value={month || ''}
+      onChange={(e) => choose(day, Number(e.target.value))}
+      required
+    >
+      <option value="">{t('Ay', 'Month')}</option>
+      {MONTHS.map((m, i) => (
+        <option key={m} value={i + 1}>
+          {m}
+        </option>
+      ))}
+    </select>
+  )
+
+  // "21 Mayıs" in Turkish, "May 21" in English.
+  return <div className="birthday-picker">{isEn ? [monthSelect, daySelect] : [daySelect, monthSelect]}</div>
 }

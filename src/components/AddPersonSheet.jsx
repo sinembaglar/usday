@@ -4,10 +4,11 @@ import { createConnection, joinCouple } from '../lib/api'
 import { RELATIONS } from '../lib/constants'
 import { RELATION_ICONS } from '../lib/icons'
 import { shareInvite } from '../lib/invite'
+import { t } from '../lib/i18n'
 
 const JOIN_ERRORS = {
-  invalid_invite: 'Bu kod geçersiz ya da kullanılmış.',
-  already_connected: 'Bu kişiyle zaten bağlısınız.',
+  invalid_invite: t('Bu kod geçersiz ya da kullanılmış.', 'This code is invalid or already used.'),
+  already_connected: t('Bu kişiyle zaten bağlısınız.', 'You’re already connected with this person.'),
 }
 
 // Add someone: open a new invitation (choosing who they are to you) or join theirs with a code.
@@ -25,7 +26,7 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
     try {
       onCreated(await createConnection(relation))
     } catch {
-      setError('Oluşturulamadı, tekrar dener misin?')
+      setError(t('Oluşturulamadı, tekrar dener misin?', 'Couldn’t create it. Try again?'))
       setBusy(false)
     }
   }
@@ -38,18 +39,18 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
       onJoined(await joinCouple(code.trim().toUpperCase()))
     } catch (err) {
       const key = Object.keys(JOIN_ERRORS).find((k) => err.message?.includes(k))
-      setError(JOIN_ERRORS[key] ?? 'Bir şeyler ters gitti, tekrar dener misin?')
+      setError(JOIN_ERRORS[key] ?? t('Bir şeyler ters gitti, tekrar dener misin?', 'Something went wrong. Try again?'))
       setBusy(false)
     }
   }
 
   return (
     <div className="settings">
-      <h3>Kişi ekle</h3>
+      <h3>{t('Kişi ekle', 'Add person')}</h3>
 
       {invites.length > 0 && (
         <section className="settings-group">
-          <h4>Bekleyen davetlerin</h4>
+          <h4>{t('Bekleyen davetlerin', 'Your open invitations')}</h4>
           <div className="list-card">
             {invites.map((c) => {
               const Icon = RELATION_ICONS[c.relation] ?? RELATION_ICONS.partner
@@ -63,7 +64,7 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
                     <small className="code-text">{c.inviteCode}</small>
                   </span>
                   <button className="btn btn-secondary btn-small" onClick={() => shareInvite(c.inviteCode, onToast)}>
-                    <Send size={16} aria-hidden="true" /> Gönder
+                    <Send size={16} aria-hidden="true" /> {t('Gönder', 'Send')}
                   </button>
                 </div>
               )
@@ -74,17 +75,17 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
 
       <div className="segmented">
         <button className={mode === 'invite' ? 'is-active' : ''} onClick={() => setMode('invite')}>
-          Ben davet edeyim
+          {t('Ben davet edeyim', 'I’ll invite')}
         </button>
         <button className={mode === 'join' ? 'is-active' : ''} onClick={() => setMode('join')}>
-          Kodum var
+          {t('Kodum var', 'I have a code')}
         </button>
       </div>
 
       {mode === 'invite' ? (
         <section className="settings-group">
-          <h4>Kimi davet ediyorsun?</h4>
-          <div className="categories relations" role="radiogroup" aria-label="İlişki">
+          <h4>{t('Kimi davet ediyorsun?', 'Who are you inviting?')}</h4>
+          <div className="categories relations" role="radiogroup" aria-label={t('İlişki', 'Relationship')}>
             {Object.entries(RELATIONS).map(([key, r]) => {
               const Icon = RELATION_ICONS[key]
               return (
@@ -103,17 +104,22 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
               )
             })}
           </div>
-          <p className="hint">Her kişiyle ayrı bir ortak takvimin olur; biri diğerinin planlarını görmez.</p>
+          <p className="hint">
+            {t(
+              'Her kişiyle ayrı bir ortak takvimin olur; biri diğerinin planlarını görmez.',
+              'You get a separate shared calendar with each person; nobody sees the others’ plans.',
+            )}
+          </p>
           <button className="btn btn-primary" disabled={busy} onClick={create}>
-            {busy ? 'Bir saniye…' : 'Davet kodu oluştur'}
+            {busy ? t('Bir saniye…', 'One moment…') : t('Davet kodu oluştur', 'Create an invite code')}
           </button>
         </section>
       ) : (
         <form className="settings-group" onSubmit={join}>
-          <h4>Sana gönderilen davet kodu</h4>
+          <h4>{t('Sana gönderilen davet kodu', 'The invite code you got')}</h4>
           <input
             className="input code-input"
-            placeholder="Örn. K7MP2X"
+            placeholder={t('Örn. K7MP2X', 'E.g. K7MP2X')}
             maxLength={6}
             autoCapitalize="characters"
             value={code}
@@ -121,7 +127,7 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
             autoFocus
           />
           <button className="btn btn-primary" disabled={busy || code.trim().length !== 6}>
-            {busy ? 'Bir saniye…' : 'Bağlan'}
+            {busy ? t('Bir saniye…', 'One moment…') : t('Bağlan', 'Connect')}
           </button>
         </form>
       )}
@@ -130,7 +136,7 @@ export default function AddPersonSheet({ invites = [], initialMode = 'invite', o
 
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onClose}>
-          Kapat
+          {t('Kapat', 'Close')}
         </button>
       </div>
     </div>

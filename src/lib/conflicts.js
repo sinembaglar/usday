@@ -1,6 +1,7 @@
 import { expandEvents } from './recurrence'
 import { genitive } from './format'
 import { UNKNOWN_PERSON } from './constants'
+import { t } from './i18n'
 
 const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
 
@@ -19,7 +20,7 @@ function span(e) {
  * when: { date, time, endTime }; inviteeIds: the people on the new plan; editingId: the plan being
  * edited (not a clash with itself); events: everything I see (with coupleId / guests / createdBy);
  * sharedPlans: plans from calendars shared with me (owner, busy); partnerOf: coupleId → person id.
- * Returns short Turkish sentences, without repeats.
+ * Returns short sentences in the app's language, without repeats.
  */
 export function findConflicts({ when, inviteeIds, editingId, events, sharedPlans, partnerOf, members, me }) {
   if (!when.date) return []
@@ -40,23 +41,31 @@ export function findConflicts({ when, inviteeIds, editingId, events, sharedPlans
   const sameDay = expandEvents([...events, ...sharedPlans], when.date, when.date).filter(
     (e) => e.seriesId !== editingId && e.status !== 'declined' && overlaps(e),
   )
-  const label = (e) => (e.locked ? '🎁 bir sürpriz' : e.busy ? null : `“${e.title}”`)
-  const at = (e) => (e.time ? ` (${e.time}${e.endTime ? `–${e.endTime}` : ''})` : ' (gün boyu)')
-  const when_ = (e) => (allDay || !e.time ? 'o gün' : 'o saatte')
+  const label = (e) => (e.locked ? t('🎁 bir sürpriz', 'a 🎁 surprise') : e.busy ? null : `“${e.title}”`)
+  const at = (e) => (e.time ? ` (${e.time}${e.endTime ? `–${e.endTime}` : ''})` : t(' (gün boyu)', ' (all day)'))
+  const sameDayOnly = (e) => allDay || !e.time
 
   const out = []
   for (const e of sameDay) {
     if (!e.shared && involves(e, me)) {
       const what = label(e)
-      const text = `${what ?? 'başka bir'} planın var${at(e)}`
-      out.push(`${when_(e) === 'o gün' ? 'O gün' : 'O saatte'} ${text}`)
+      out.push(
+        sameDayOnly(e)
+          ? t(`O gün ${what ?? 'başka bir'} planın var${at(e)}`, `You already have ${what ?? 'another plan'} that day${at(e)}`)
+          : t(`O saatte ${what ?? 'başka bir'} planın var${at(e)}`, `You already have ${what ?? 'another plan'} at that time${at(e)}`),
+      )
       continue
     }
     for (const id of inviteeIds) {
       if (id === me || !involves(e, id)) continue
       const name = (members[id] ?? UNKNOWN_PERSON).name
       const what = label(e)
-      out.push(what ? `${genitive(name)} ${when_(e)} ${what} planı var${at(e)}` : `${name} ${when_(e)} dolu${at(e)}`)
+      const when = sameDayOnly(e) ? t('o gün', 'that day') : t('o saatte', 'at that time')
+      out.push(
+        what
+          ? t(`${genitive(name)} ${when} ${what} planı var${at(e)}`, `${name} has ${what} ${when}${at(e)}`)
+          : t(`${name} ${when} dolu${at(e)}`, `${name} is busy ${when}${at(e)}`),
+      )
     }
   }
   return [...new Set(out)]

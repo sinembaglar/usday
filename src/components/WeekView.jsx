@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { addDays, format, isSameDay, isToday, startOfWeek } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { SURPRISE_COLOR, TAGS } from '../lib/constants'
+import { dateText, t } from '../lib/i18n'
 
 const HOUR = 44 // px per hour
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
@@ -50,7 +50,7 @@ export default function WeekView({ selected, onSelect, events, onOpen, onCreate 
     scrollRef.current.scrollTop = Math.max(0, (firstMinute / 60 - 0.5) * HOUR)
   }, [weekKey, firstMinute])
 
-  const title = `${format(days[0], 'd MMM', { locale: tr })} – ${format(days[6], 'd MMM yyyy', { locale: tr })}`
+  const title = `${dateText(days[0], 'd MMM', 'MMM d')} – ${dateText(days[6], 'd MMM yyyy', 'MMM d, yyyy')}`
 
   function createAt(e, key) {
     if (e.target !== e.currentTarget) return
@@ -61,11 +61,11 @@ export default function WeekView({ selected, onSelect, events, onOpen, onCreate 
   return (
     <section className="card week">
       <div className="calendar-head">
-        <button className="icon-btn" onClick={() => onSelect(addDays(selected, -7))} aria-label="Önceki hafta">
+        <button className="icon-btn" onClick={() => onSelect(addDays(selected, -7))} aria-label={t('Önceki hafta', 'Previous week')}>
           ‹
         </button>
         <h2 className="week-title">{title}</h2>
-        <button className="icon-btn" onClick={() => onSelect(addDays(selected, 7))} aria-label="Sonraki hafta">
+        <button className="icon-btn" onClick={() => onSelect(addDays(selected, 7))} aria-label={t('Sonraki hafta', 'Next week')}>
           ›
         </button>
       </div>
@@ -78,14 +78,14 @@ export default function WeekView({ selected, onSelect, events, onOpen, onCreate 
             className={`week-day ${isToday(d) ? 'is-today' : ''} ${isSameDay(d, selected) ? 'is-selected' : ''}`}
             onClick={() => onSelect(d)}
           >
-            <small>{format(d, 'EEEEEE', { locale: tr })}</small>
+            <small>{dateText(d, 'EEEEEE', 'EEEEEE')}</small>
             <span>{format(d, 'd')}</span>
           </button>
         ))}
       </div>
 
       <div className="week-row week-allday">
-        <small>gün</small>
+        <small>{t('gün', 'all day')}</small>
         {keys.map((key) => (
           <div key={key} className="allday-cell">
             {events
@@ -125,7 +125,7 @@ export default function WeekView({ selected, onSelect, events, onOpen, onCreate 
                   onClick={() => onOpen(event)}
                 >
                   <b>{event.time}</b>
-                  <span>{event.locked ? '🎁 Sürpriz' : event.title}</span>
+                  <span>{event.locked ? t('🎁 Sürpriz', '🎁 Surprise') : event.title}</span>
                 </button>
               ))}
             </div>

@@ -4,6 +4,7 @@ import CommentReactions from './CommentReactions'
 import { COMMENT_FEELINGS } from '../lib/constants'
 import { timeAgo } from '../lib/format'
 import { useBackButton } from '../lib/back'
+import { t } from '../lib/i18n'
 
 const DOUBLE_TAP = 300
 const LONG_PRESS = 450
@@ -111,14 +112,14 @@ export default function CommentBubble({ comment: c, author, showName, me, member
         {timeAgo(c.created_at)}
         {own && (
           <button type="button" className="link-btn" onClick={() => onRemove(c)}>
-            sil
+            {t('sil', 'delete')}
           </button>
         )}
       </small>
       {menu && (
         <>
           <div className="feeling-menu-backdrop" onClick={() => setMenu(null)} />
-          <div className="feeling-menu" role="group" aria-label="Tepki seç" style={menu}>
+          <div className="feeling-menu" role="group" aria-label={t('Tepki seç', 'Pick a reaction')} style={menu}>
             {COMMENT_FEELINGS.map((emoji) => (
               <button type="button" key={emoji} className={mine === emoji ? 'is-mine' : ''} onClick={() => choose(emoji)}>
                 {emoji}

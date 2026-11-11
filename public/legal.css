@@ -56,6 +56,13 @@ header a {
   font: 600 22px 'Newsreader', Georgia, serif;
 }
 
+/* The same page in the other language. */
+header .lang-link {
+  margin-left: auto;
+  font: 600 14px 'Inter', system-ui, sans-serif;
+  color: var(--accent);
+}
+
 h1,
 h2 {
   font-family: 'Newsreader', Georgia, serif;

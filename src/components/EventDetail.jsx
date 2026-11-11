@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { Clock, Gift, Lock, MapPin, Pencil, Repeat, Share2, Users, X } from 'lucide-react'
 import { TAGS, UNKNOWN_PERSON, tagEmoji, tagLabel } from '../lib/constants'
 import { RELATION_ICONS } from '../lib/icons'
-import { genitive, mapsUrl, repeatLabel, timeSpan } from '../lib/format'
+import { genitive, mapsUrl, possessive, repeatLabel, timeSpan } from '../lib/format'
+import { dateText, ordinal, t, upper } from '../lib/i18n'
 import { ShareThread, ThreadsOnMyPlan } from './ShareThread'
 import PhotoGallery from './PhotoGallery'
 import Conversation from './Conversation'
@@ -19,29 +19,34 @@ const names = (list) =>
 function guestSummary(event) {
   const coming = event.guests.filter((g) => g.status === 'accepted').length + 1 // the maker counts
   const maybes = event.guests.filter((g) => g.status === 'maybe').length
-  return [`${coming}/${event.guests.length + 1} geliyor`, maybes && `${maybes} belki`].filter(Boolean).join(' · ')
+  return [
+    t(`${coming}/${event.guests.length + 1} geliyor`, `${coming}/${event.guests.length + 1} going`),
+    maybes && t(`${maybes} belki`, `${maybes} maybe`),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 // What the story card says about this plan, from my side of it.
 function cardFor(event, me, members, partner) {
   const name = (id) => (members[id] ?? UNKNOWN_PERSON).name
-  const when = format(parseISO(event.date), 'd MMMM yyyy', { locale: tr })
+  const when = dateText(event.date, 'd MMMM yyyy', 'MMMM d, yyyy')
   const photoUrl = event.photos?.find((p) => p.url)?.url ?? null
 
   if (event.milestone) {
-    const friends = event.title.includes('Arkadaşlığımızın')
+    const friends = event.relation === 'friend'
     return {
       emoji: event.title.split(' ')[0],
-      label: names([name(me), partner?.name].filter(Boolean)).toLocaleUpperCase('tr'),
-      big: `${(event.count ?? '').toLocaleString('tr-TR')}.`,
+      label: upper(names([name(me), partner?.name].filter(Boolean))),
+      big: ordinal(event.count ?? 0),
       title:
         event.milestone === 'anniversary'
           ? friends
-            ? 'arkadaşlık yılımız'
-            : 'yıldönümümüz'
+            ? t('arkadaşlık yılımız', 'year of friendship')
+            : t('yıldönümümüz', 'anniversary')
           : friends
-            ? 'arkadaşlık günümüz'
-            : 'günümüz',
+            ? t('arkadaşlık günümüz', 'day of friendship')
+            : t('günümüz', 'day together'),
       when,
     }
   }
@@ -54,16 +59,19 @@ function cardFor(event, me, members, partner) {
   if (event.surprise) {
     const targets = event.guests ? (event.hiddenFrom ?? []) : [event.partnerId ?? partner?.id].filter((id) => id !== event.createdBy)
     const forMe = event.guests ? targets.includes(me) : event.createdBy !== me
+    const forWhom = names(targets.map(name))
     const headline = forMe
-      ? `${name(event.createdBy)} bana sürpriz hazırladı`
-      : `${names(targets.map(name))} için sürpriz ${event.createdBy === me ? 'hazırladım' : 'hazırladık'}`
-    return { ...base, emoji: '🎁', label: 'SÜRPRİZ', headline }
+      ? t(`${name(event.createdBy)} bana sürpriz hazırladı`, `${name(event.createdBy)} made me a surprise`)
+      : event.createdBy === me
+        ? t(`${forWhom} için sürpriz hazırladım`, `I made a surprise for ${forWhom}`)
+        : t(`${forWhom} için sürpriz hazırladık`, `We made a surprise for ${forWhom}`)
+    return { ...base, emoji: '🎁', label: t('SÜRPRİZ', 'SURPRISE'), headline }
   }
 
   return {
     ...base,
     emoji: tagEmoji(event.tag, event.relation),
-    label: tagLabel(event.tag, event.relation).toLocaleUpperCase('tr'),
+    label: upper(tagLabel(event.tag, event.relation)),
     headline: names(people.map(name)),
   }
 }
@@ -74,7 +82,7 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     if (event.awaiting === me) {
       return (
         <div className="status-box is-asking">
-          <strong>Bu plan senin yanıtını bekliyor</strong>
+          <strong>{t('Bu plan senin yanıtını bekliyor', 'This plan is waiting for your answer')}</strong>
           {event.responseNote && <em>“{event.responseNote}”</em>}
           <ProposalActions event={event} onAnswered={onAnswered} onToast={onToast} />
         </div>
@@ -82,7 +90,10 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     }
     return (
       <div className="status-box">
-        {(members[event.awaiting] ?? UNKNOWN_PERSON).name} henüz yanıt vermedi.
+        {t(
+          `${(members[event.awaiting] ?? UNKNOWN_PERSON).name} henüz yanıt vermedi.`,
+          `${(members[event.awaiting] ?? UNKNOWN_PERSON).name} hasn’t answered yet.`,
+        )}
         {event.responseNote && <em> “{event.responseNote}”</em>}
       </div>
     )
@@ -93,9 +104,10 @@ function ProposalStatus({ event, me, members, onAnswered, onToast }) {
     return (
       <div className="status-box is-declined">
         <span>
-          {by.name} o zaman uygun değil.{event.responseNote && <em> “{event.responseNote}”</em>}
+          {t(`${by.name} o zaman uygun değil.`, `${by.name} isn’t free then.`)}
+          {event.responseNote && <em> “{event.responseNote}”</em>}
         </span>
-        {event.createdBy === me && <small>Düzenleyip başka bir zaman sorabilirsin.</small>}
+        {event.createdBy === me && <small>{t('Düzenleyip başka bir zaman sorabilirsin.', 'You can edit it and ask about another time.')}</small>}
       </div>
     )
   }
@@ -124,16 +136,16 @@ function DetailHead({ label, color, Icon, onShare, onEdit, onClose }) {
       </span>
       <span className="detail-actions">
         {onShare && (
-          <button className="icon-btn" onClick={onShare} aria-label="Hikâyende paylaş">
+          <button className="icon-btn" onClick={onShare} aria-label={t('Hikâyende paylaş', 'Share to your story')}>
             <Share2 size={17} aria-hidden="true" />
           </button>
         )}
         {onEdit && (
-          <button className="icon-btn" onClick={onEdit} aria-label="Düzenle">
+          <button className="icon-btn" onClick={onEdit} aria-label={t('Düzenle', 'Edit')}>
             <Pencil size={17} aria-hidden="true" />
           </button>
         )}
-        <button className="icon-btn" onClick={onClose} aria-label="Kapat">
+        <button className="icon-btn" onClick={onClose} aria-label={t('Kapat', 'Close')}>
           <X size={18} aria-hidden="true" />
         </button>
       </span>
@@ -158,7 +170,7 @@ export default function EventDetail({
 }) {
   const [sharing, setSharing] = useState(null)
   const status = <ProposalStatus event={event} me={me} members={members} onAnswered={onAnswered} onToast={onToast} />
-  const when = [format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr }), timeSpan(event)]
+  const when = [dateText(event.date, 'd MMMM yyyy, EEEE', 'EEEE, MMMM d, yyyy'), timeSpan(event)]
     .filter(Boolean)
     .join(' · ')
   const author = members[event.createdBy] ?? UNKNOWN_PERSON
@@ -173,15 +185,19 @@ export default function EventDetail({
     const owner = members[event.owner] ?? UNKNOWN_PERSON
     return (
       <div className="detail">
-        <DetailHead label={`${genitive(owner.name)} takvimi`} color="var(--muted)" Icon={Lock} onClose={onClose} />
-        <h3>{event.busy ? `${owner.name} dolu` : event.title}</h3>
+        <DetailHead label={`${possessive(owner.name)} ${t('takvimi', 'calendar')}`} color="var(--muted)" Icon={Lock} onClose={onClose} />
+        <h3>{event.busy ? t(`${owner.name} dolu`, `${owner.name} is busy`) : event.title}</h3>
         <ul className="info-rows">
           <li>
             <Clock size={17} aria-hidden="true" />
             <span>{when}</span>
           </li>
         </ul>
-        <p className="hint">{event.busy ? 'Sadece dolu olduğu görünür.' : 'Sadece plan adı ve saati görünür.'}</p>
+        <p className="hint">
+          {event.busy
+            ? t('Sadece dolu olduğu görünür.', 'You only see that they’re busy.')
+            : t('Sadece plan adı ve saati görünür.', 'You only see the plan’s name and time.')}
+        </p>
         <ShareThread
           eventId={event.eventId}
           owner={event.owner}
@@ -194,14 +210,14 @@ export default function EventDetail({
           onToast={onToast}
           {...(event.busy
             ? {
-                title: `${genitive(owner.name)} ile`,
-                hint: `Sadece ${owner.name} okur.`,
-                placeholder: `${owner.name} için yaz…`,
+                title: t(`${genitive(owner.name)} ile`, `With ${owner.name}`),
+                hint: t(`Sadece ${owner.name} okur.`, `Only ${owner.name} can read this.`),
+                placeholder: t(`${owner.name} için yaz…`, `Write to ${owner.name}…`),
               }
             : {
-                title: 'Bu plan hakkında',
-                hint: `${owner.name} ve takvimini görenler okur.`,
-                placeholder: 'Bir şey yaz…',
+                title: t('Bu plan hakkında', 'About this plan'),
+                hint: t(`${owner.name} ve takvimini görenler okur.`, `${owner.name} and the people who see their calendar can read this.`),
+                placeholder: t('Bir şey yaz…', 'Write something…'),
               })}
         />
       </div>
@@ -214,12 +230,17 @@ export default function EventDetail({
         <div className="gift">{event.milestone === 'anniversary' ? '💍' : '💜'}</div>
         <h3>{event.title.replace(/^\S+\s/, '')}</h3>
         <p className="when">{when}</p>
-        <p className="reveal">Birlikte olduğunuz günden hesaplandı. Ayarlar’dan değiştirebilirsin.</p>
+        <p className="reveal">
+          {t(
+            'Birlikte olduğunuz günden hesaplandı. Ayarlar’dan değiştirebilirsin.',
+            'Counted from the day you got together. You can change it in Settings.',
+          )}
+        </p>
         <button className="btn btn-primary" onClick={onClose}>
-          Nice nicelerine
+          {t('Nice nicelerine', 'Here’s to many more')}
         </button>
         <button className="btn btn-secondary" onClick={share}>
-          <Share2 size={16} aria-hidden="true" /> Hikâyende paylaş
+          <Share2 size={16} aria-hidden="true" /> {t('Hikâyende paylaş', 'Share to your story')}
         </button>
       </div>
     )
@@ -233,28 +254,32 @@ export default function EventDetail({
     return (
       <div className="detail detail-surprise">
         <div className="gift">🎂</div>
-        <h3>{mine ? 'Doğum günün' : `${genitive(person.name)} doğum günü`}</h3>
-        <p className="when">{format(parseISO(event.date), 'd MMMM yyyy, EEEE', { locale: tr })}</p>
+        <h3>{mine ? t('Doğum günün', 'Your birthday') : `${possessive(person.name)} ${t('doğum günü', 'birthday')}`}</h3>
+        <p className="when">{dateText(event.date, 'd MMMM yyyy, EEEE', 'EEEE, MMMM d, yyyy')}</p>
         <p className="reveal">
-          {days === 0 ? 'Bugün!' : days > 0 ? `${days} gün kaldı.` : 'Geçti.'}
-          {!mine && ' Sana bir ay önceden hatırlatırız, ona söylemeyiz.'}
+          {days === 0
+            ? t('Bugün!', 'Today!')
+            : days > 0
+              ? t(`${days} gün kaldı.`, days === 1 ? '1 day to go.' : `${days} days to go.`)
+              : t('Geçti.', 'It’s passed.')}
+          {!mine && t(' Sana bir ay önceden hatırlatırız, ona söylemeyiz.', ' We’ll remind you a month before and never tell them.')}
         </p>
         {mine ? (
           <button className="btn btn-primary" onClick={() => onShowWishes(me)}>
-            Dilek listeni güncelle
+            {t('Dilek listeni güncelle', 'Update your wish list')}
           </button>
         ) : (
           <>
             <button className="btn btn-primary" onClick={() => onPlanBirthday(person.id, event.date)}>
-              <Gift size={17} aria-hidden="true" /> Sürpriz planla
+              <Gift size={17} aria-hidden="true" /> {t('Sürpriz planla', 'Plan a surprise')}
             </button>
             <button className="btn btn-secondary" onClick={() => onShowWishes(person.id)}>
-              Dileklerine bak
+              {t('Dileklerine bak', 'See their wishes')}
             </button>
           </>
         )}
         <button className="link-btn" onClick={onClose}>
-          Kapat
+          {t('Kapat', 'Close')}
         </button>
       </div>
     )
@@ -265,22 +290,29 @@ export default function EventDetail({
     return (
       <div className="detail detail-surprise">
         <div className="gift">🎁</div>
-        <h3>Sürpriz!</h3>
+        <h3>{t('Sürpriz!', 'Surprise!')}</h3>
         <p className="teaser">“{event.teaser}”</p>
         <p className="when">{when}</p>
         {status}
         {event.photos.length > 0 && <PhotoGallery photos={event.photos} />}
         <p className="reveal">
-          {author.name} bir şeyler hazırlıyor… Açılmasına <strong>{days} gün</strong> var.
+          {t(
+            <>
+              {author.name} bir şeyler hazırlıyor… Açılmasına <strong>{days} gün</strong> var.
+            </>,
+            <>
+              {author.name} is up to something… It opens in <strong>{days === 1 ? '1 day' : `${days} days`}</strong>.
+            </>,
+          )}
         </p>
         {event.guests && (
           <div className="status-box">
-            <strong>O gün boş musun?</strong>
+            <strong>{t('O gün boş musun?', 'Are you free that day?')}</strong>
             <InvitationActions event={event} me={me} onAnswered={onAnswered} onToast={onToast} />
           </div>
         )}
         <button className="btn btn-primary" onClick={onClose}>
-          Sabırsızlanıyorum
+          {t('Sabırsızlanıyorum', 'Can’t wait!')}
         </button>
       </div>
     )
@@ -309,14 +341,14 @@ export default function EventDetail({
         {!event.guests && partner && (
           <li>
             <WithIcon size={17} aria-hidden="true" />
-            <span>{partner.name} ile</span>
+            <span>{t(`${partner.name} ile`, `With ${partner.name}`)}</span>
           </li>
         )}
         {event.location && (
           <li>
             <MapPin size={17} aria-hidden="true" />
             <a className="place" href={mapsUrl(event.location)} target="_blank" rel="noreferrer">
-              {event.location} <span>Haritada aç</span>
+              {event.location} <span>{t('Haritada aç', 'Open in Maps')}</span>
             </a>
           </li>
         )}
@@ -327,12 +359,12 @@ export default function EventDetail({
           </li>
         )}
       </ul>
-      {!event.guests && <p className="author">{author.name} ekledi</p>}
+      {!event.guests && <p className="author">{t(`${author.name} ekledi`, `Added by ${author.name}`)}</p>}
       {status}
       {event.guests && (
         <div className="status-box guests-box">
           <div className="box-head">
-            <strong>Davetliler</strong>
+            <strong>{t('Davetliler', 'Guests')}</strong>
             <span>{guestSummary(event)}</span>
           </div>
           <GuestList event={event} members={members} me={me} onMoved={onAnswered} onToast={onToast} />
@@ -344,16 +376,19 @@ export default function EventDetail({
 
       {event.surprise && event.guests && event.hiddenFrom?.length > 0 && (
         <div className="surprise-info">
-          {event.hiddenFrom.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} için sürpriz. Şimdilik sadece
-          “{event.teaser}” ipucunu görüyorlar; bu sohbeti göremezler. Detaylar{' '}
-          {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.
+          {t(
+            `${event.hiddenFrom.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} için sürpriz. Şimdilik sadece “${event.teaser}” ipucunu görüyorlar; bu sohbeti göremezler. Detaylar ${dateText(event.revealOn || event.date, 'd MMMM', 'MMMM d')} günü açılacak.`,
+            `A surprise for ${event.hiddenFrom.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')}. For now they only see the hint “${event.teaser}” and can’t see this conversation. The details open on ${dateText(event.revealOn || event.date, 'd MMMM', 'MMMM d')}.`,
+          )}
         </div>
       )}
 
       {event.surprise && !event.guests && event.createdBy === me && (
         <div className="surprise-info">
-          Bu bir sürpriz. {(partner ?? UNKNOWN_PERSON).name} şimdilik sadece “{event.teaser}” ipucunu görüyor. Detaylar{' '}
-          {format(parseISO(event.revealOn || event.date), 'd MMMM', { locale: tr })} günü açılacak.
+          {t(
+            `Bu bir sürpriz. ${(partner ?? UNKNOWN_PERSON).name} şimdilik sadece “${event.teaser}” ipucunu görüyor. Detaylar ${dateText(event.revealOn || event.date, 'd MMMM', 'MMMM d')} günü açılacak.`,
+            `This is a surprise. For now ${(partner ?? UNKNOWN_PERSON).name} only sees the hint “${event.teaser}”. The details open on ${dateText(event.revealOn || event.date, 'd MMMM', 'MMMM d')}.`,
+          )}
         </div>
       )}
 

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { format, parseISO, startOfMonth } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { Bell, Cake, Lock, Settings } from 'lucide-react'
 import Cover from './Cover'
 import MonthCalendar from './MonthCalendar'
@@ -54,7 +53,8 @@ import FeedbackSheet from './FeedbackSheet'
 import ReportSheet from './ReportSheet'
 import RemoveConnectionSheet from './RemoveConnectionSheet'
 import AdminPanel from './AdminPanel'
-import { dative, genitive } from '../lib/format'
+import { dative, genitive, possessive } from '../lib/format'
+import { dateText, listNames, t } from '../lib/i18n'
 import { findConflicts } from '../lib/conflicts'
 import { forgetLink, rememberLink, startLink } from '../lib/updates'
 import NotificationCard from './NotificationCard'
@@ -62,9 +62,6 @@ import { notifyPartner, notifyWish } from '../lib/push'
 
 const tabFromUrl = (url) =>
   new URL(url, window.location.origin).searchParams.get('tab') === 'dilekler' ? 'dilekler' : null
-
-// "Ece", "Ece ve Can", "Ece, Can ve Ali"
-const listNames = (names) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} ve ${names.at(-1)}` : names[0])
 
 const byDateTime = (a, b) => `${a.date}${a.time || ''}`.localeCompare(`${b.date}${b.time || ''}`)
 
@@ -151,7 +148,7 @@ export default function Home({ userId }) {
         }
       } catch (err) {
         reportError('load', err)
-        setToast('Bağlantı sorunu, birazdan tekrar deneyeceğim')
+        setToast(t('Bağlantı sorunu, birazdan tekrar deneyeceğim', 'Connection problem, trying again in a moment'))
       }
     },
     [userId],
@@ -330,7 +327,7 @@ export default function Home({ userId }) {
         seriesId: null,
         birthday: pid,
         coupleId: Object.values(byId).find((c) => c.partnerId === pid)?.id ?? null,
-        title: pid === userId ? '🎂 Doğum günün' : `🎂 ${genitive(person.name)} doğum günü`,
+        title: pid === userId ? t('🎂 Doğum günün', '🎂 Your birthday') : `🎂 ${possessive(person.name)} ${t('doğum günü', 'birthday')}`,
         date,
         time: '',
         tag: 'ozel',
@@ -347,7 +344,7 @@ export default function Home({ userId }) {
     if (!pendingOpen || !connections) return
     const raw = events.find((e) => e.id === pendingOpen)
     if (!raw) {
-      setToast('Bu plan artık yok')
+      setToast(t('Bu plan artık yok', 'This plan no longer exists'))
       setPendingOpen(null)
       return
     }
@@ -387,7 +384,7 @@ export default function Home({ userId }) {
       setTab('dilekler')
       setSheet({ type: 'wishDetail', wish })
     } else {
-      setToast('Bu dilek artık yok')
+      setToast(t('Bu dilek artık yok', 'This wish no longer exists'))
     }
     setPendingWish(null)
   }, [pendingWish, wishes, connections])
@@ -399,7 +396,7 @@ export default function Home({ userId }) {
     const c = connections.find((x) => x.partnerId === owner)
     const plan = sharedPlans.find((p) => p.owner === owner && p.eventId === eventId)
     if (!c || !plan) {
-      setToast('Bu plan artık paylaşılmıyor')
+      setToast(t('Bu plan artık paylaşılmıyor', 'This plan is no longer shared'))
       setPendingShared(null)
       return
     }
@@ -443,9 +440,10 @@ export default function Home({ userId }) {
         const first = parseISO(theirs[0].date)
         setSelected(first)
         setMonth(startOfMonth(first))
-        setToast(`📅 ${genitive(name)} takvimi açıldı: ilk plan ${format(first, 'd MMMM', { locale: tr })}`)
+        const day = dateText(first, 'd MMMM', 'MMMM d')
+        setToast(t(`📅 ${genitive(name)} takvimi açıldı: ilk plan ${day}`, `📅 Showing ${name}’s calendar: first plan on ${day}`))
       } else {
-        setToast(`📅 ${genitive(name)} takviminde şimdilik yaklaşan plan yok`)
+        setToast(t(`📅 ${genitive(name)} takviminde şimdilik yaklaşan plan yok`, `📅 Nothing coming up on ${name}’s calendar yet`))
       }
     }
     setPendingPerson(null)
@@ -539,19 +537,20 @@ export default function Home({ userId }) {
     (e.date > todayKey || (e.date === todayKey && (!e.time || (e.endTime || e.time) > nowHM)))
   const ahead = sorted.filter(stillAhead)
   const firstOf = (test) => ahead.find(test)
+  const nextDate = firstOf((e) => e.tag === 'date' && !e.surprise)
   const highlights = [
     {
       kind: 'date',
-      label: 'Sıradaki buluşma',
-      event: firstOf((e) => e.tag === 'date' && !e.surprise),
+      label: t('Sıradaki buluşma', nextDate?.relation === 'partner' ? 'Next date' : 'Next meetup'),
+      event: nextDate,
     },
-    { kind: 'surprise', label: 'Sıradaki sürpriz', event: firstOf((e) => e.surprise) },
-    { kind: 'special', label: 'Sıradaki özel gün', event: firstOf((e) => e.tag === 'ozel' || e.milestone) },
-    { kind: 'trip', label: 'Sıradaki tatil', event: firstOf((e) => e.tag === 'tatil') },
-    { kind: 'any', label: 'Sıradaki plan', event: ahead[0] },
+    { kind: 'surprise', label: t('Sıradaki sürpriz', 'Next surprise'), event: firstOf((e) => e.surprise) },
+    { kind: 'special', label: t('Sıradaki özel gün', 'Next special day'), event: firstOf((e) => e.tag === 'ozel' || e.milestone) },
+    { kind: 'trip', label: t('Sıradaki tatil', 'Next trip'), event: firstOf((e) => e.tag === 'tatil') },
+    { kind: 'any', label: t('Sıradaki plan', 'Next plan'), event: ahead[0] },
   ]
     .filter((h) => h.event)
-    .map((h) => ({ ...h, text: h.event.locked ? '🎁 Bir sürpriz yaklaşıyor' : h.event.title }))
+    .map((h) => ({ ...h, text: h.event.locked ? t('🎁 Bir sürpriz yaklaşıyor', '🎁 A surprise is coming') : h.event.title }))
 
   // Questions waiting for me, from the people selected in the people bar (everyone under "Tümü").
   const selectedPeople = new Set(selection.map((id) => byId[id]?.partnerId).filter(Boolean))
@@ -569,12 +568,12 @@ export default function Home({ userId }) {
   const pending = linked.length ? [] : openInvites.slice(0, 1)
   const counter =
     single?.partnerId && single.togetherSince && relationOf(single).counter
-      ? relationOf(single).counter(dayNumber(single.togetherSince, todayKey).toLocaleString('tr-TR'))
+      ? relationOf(single).counter(dayNumber(single.togetherSince, todayKey))
       : null
   const isNew = (e) => Boolean(seenAt) && e.createdBy !== userId && new Date(e.createdAt) > new Date(seenAt)
   // With plans of several people on screen, each says who it is with.
   const withWhom = (e) => {
-    if (e.shared) return `${genitive((members[e.owner] ?? UNKNOWN_PERSON).name)} takvimi`
+    if (e.shared) return `${possessive((members[e.owner] ?? UNKNOWN_PERSON).name)} ${t('takvimi', 'calendar')}`
     if (e.guests) {
       const others = [e.createdBy, ...e.guests.map((g) => g.id)].filter((id) => id !== userId)
       return others.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')
@@ -633,15 +632,26 @@ export default function Home({ userId }) {
   function showPaywall(coupleId = null) {
     if (billing?.subscribed) {
       setSheet({ type: 'settings' })
-      setToast(`Aboneliğin en fazla ${billing.max} kişiyi kapsar; kimleri kapsayacağını buradan seç`)
+      setToast(
+        t(
+          `Aboneliğin en fazla ${billing.max} kişiyi kapsar; kimleri kapsayacağını buradan seç`,
+          `Your subscription covers up to ${billing.max} people; choose who here`,
+        ),
+      )
       return
     }
     const person = personOf(byId[coupleId])
     setSheet({
       type: 'paywall',
       reason: person
-        ? `${person.name} ile takviminiz salt okunur. Biriniz UsDay+’a geçince ikiniz de devam edersiniz; planlarınız yerinde duruyor.`
-        : 'Yeni plan eklemek için UsDay+’a geç. Bağlandığın biri abone olursa sen ayrıca ödemezsin.',
+        ? t(
+            `${person.name} ile takviminiz salt okunur. Biriniz UsDay+’a geçince ikiniz de devam edersiniz; planlarınız yerinde duruyor.`,
+            `Your calendar with ${person.name} is read-only. Once one of you gets UsDay+, you can both carry on; your plans are all still there.`,
+          )
+        : t(
+            'Yeni plan eklemek için UsDay+’a geç. Bağlandığın biri abone olursa sen ayrıca ödemezsin.',
+            'Get UsDay+ to add new plans. If someone you’re connected with subscribes, you don’t pay separately.',
+          ),
     })
   }
 
@@ -676,7 +686,12 @@ export default function Home({ userId }) {
       if (!sheet.event) {
         notifyPartner(id)
         const targets = hiddenFrom.map((pid) => (members[pid] ?? UNKNOWN_PERSON).name).join(', ')
-        setToast(hiddenFrom.length ? `🎁 Grup sürprizi hazır, ${targets} sadece ipucunu görecek` : `👥 ${guestIds.length} kişiye davet gitti`)
+        const n = guestIds.length
+        setToast(
+          hiddenFrom.length
+            ? t(`🎁 Grup sürprizi hazır, ${targets} sadece ipucunu görecek`, `🎁 Group surprise ready, ${targets} will only see the hint`)
+            : t(`👥 ${n} kişiye davet gitti`, `👥 Invitation sent to ${n} ${n === 1 ? 'person' : 'people'}`),
+        )
       }
       reload()
       return
@@ -701,10 +716,13 @@ export default function Home({ userId }) {
       if (partner) notifyPartner(id)
       setToast(
         asking
-          ? `📨 ${dative(partner.name)} soruldu, yanıtını bildireceğiz`
+          ? t(`📨 ${dative(partner.name)} soruldu, yanıtını bildireceğiz`, `📨 Asked ${partner.name}, we’ll let you know the answer`)
           : form.surprise
-            ? `🎁 Sürpriz eklendi, ${partner?.name ?? 'o'} sadece ipucunu görecek`
-            : '✨ Ortak takvime eklendi',
+            ? t(
+                `🎁 Sürpriz eklendi, ${partner?.name ?? 'o'} sadece ipucunu görecek`,
+                `🎁 Surprise added, ${partner?.name ?? 'they'} will only see the hint`,
+              )
+            : t('✨ Ortak takvime eklendi', '✨ Added to your shared calendar'),
       )
     }
     reload()
@@ -715,14 +733,14 @@ export default function Home({ userId }) {
     try {
       if (scope === 'one') {
         await skipOccurrence(sheet.occurrence)
-        setToast('🗓️ Sadece o gün silindi')
+        setToast(t('🗓️ Sadece o gün silindi', '🗓️ Only that day was deleted'))
       } else {
         await deleteEvent(sheet.event)
       }
       setSheet(null)
       reload()
     } catch {
-      setToast('Silinemedi, tekrar dener misin?')
+      setToast(t('Silinemedi, tekrar dener misin?', 'Couldn’t delete. Try again?'))
     }
   }
 
@@ -731,7 +749,7 @@ export default function Home({ userId }) {
       await setCover(single, dataUrl)
       reload()
     } catch {
-      setToast('Fotoğraf yüklenemedi')
+      setToast(t('Fotoğraf yüklenemedi', 'Couldn’t upload the photo'))
     }
   }
 
@@ -741,26 +759,26 @@ export default function Home({ userId }) {
         await setRelation(c.id, relation)
         reload()
       } catch {
-        setToast('Kaydedilemedi, tekrar dener misin?')
+        setToast(t('Kaydedilemedi, tekrar dener misin?', 'Couldn’t save. Try again?'))
       }
     },
     onSince: async (c, date) => {
       try {
         await setTogetherSince(c.id, date)
-        setToast(date ? '💜 Tarih kaydedildi' : 'Tarih kaldırıldı')
+        setToast(date ? t('💜 Tarih kaydedildi', '💜 Date saved') : t('Tarih kaldırıldı', 'Date removed'))
         reload()
       } catch {
-        setToast('Kaydedilemedi, tekrar dener misin?')
+        setToast(t('Kaydedilemedi, tekrar dener misin?', 'Couldn’t save. Try again?'))
       }
     },
     onCancel: async (c) => {
-      if (!window.confirm('Bu davet iptal edilsin mi? Kod artık çalışmayacak.')) return
+      if (!window.confirm(t('Bu davet iptal edilsin mi? Kod artık çalışmayacak.', 'Cancel this invitation? The code will stop working.'))) return
       try {
         await cancelConnection(c.id)
-        setToast('Davet iptal edildi')
+        setToast(t('Davet iptal edildi', 'Invitation cancelled'))
         reload()
       } catch {
-        setToast('İptal edilemedi. Bu bağlantıda plan varsa önce onları sil.')
+        setToast(t('İptal edilemedi. Bu bağlantıda plan varsa önce onları sil.', 'Couldn’t cancel. If this connection has plans, delete them first.'))
       }
     },
     onReport: (connection, person) => setSheet({ type: 'report', connection, person }),
@@ -774,7 +792,7 @@ export default function Home({ userId }) {
   function planBirthday(personId, date) {
     const person = members[personId] ?? UNKNOWN_PERSON
     openForm({
-      title: `🎂 ${genitive(person.name)} doğum günü`,
+      title: `🎂 ${possessive(person.name)} ${t('doğum günü', 'birthday')}`,
       date,
       tag: 'ozel',
       surprise: true,
@@ -794,7 +812,7 @@ export default function Home({ userId }) {
   async function saveBirthday(mmdd) {
     await setBirthday(userId, mmdd)
     setSheet((s) => (s?.type === 'birthday' ? null : s))
-    setToast('🎂 Doğum günün kaydedildi')
+    setToast(t('🎂 Doğum günün kaydedildi', '🎂 Your birthday is saved'))
     reload()
   }
 
@@ -822,18 +840,18 @@ export default function Home({ userId }) {
     const id = await saveWish(form, userId, sheet.wish)
     setSheet(null)
     if (!sheet.wish && linked.length) notifyWish(id)
-    setToast(sheet.wish ? 'Dilek güncellendi' : '✨ Dilek listene eklendi')
+    setToast(sheet.wish ? t('Dilek güncellendi', 'Wish updated') : t('✨ Dilek listene eklendi', '✨ Added to your wish list'))
     reload()
   }
 
   async function handleWishDelete() {
-    if (!window.confirm('Bu dilek silinsin mi?')) return
+    if (!window.confirm(t('Bu dilek silinsin mi?', 'Delete this wish?'))) return
     try {
       await deleteWish(sheet.wish)
       setSheet(null)
       reload()
     } catch {
-      setToast('Silinemedi, tekrar dener misin?')
+      setToast(t('Silinemedi, tekrar dener misin?', 'Couldn’t delete. Try again?'))
     }
   }
 
@@ -854,12 +872,12 @@ export default function Home({ userId }) {
       <button
         className="cover-photo-btn cover-icon bell"
         onClick={() => setSheet({ type: 'inbox' })}
-        aria-label={unread ? `Bildirimler, ${unread} okunmamış` : 'Bildirimler'}
+        aria-label={unread ? t(`Bildirimler, ${unread} okunmamış`, `Notifications, ${unread} unread`) : t('Bildirimler', 'Notifications')}
       >
         <Bell size={18} aria-hidden="true" />
         {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
-      <button className="cover-photo-btn cover-icon" onClick={() => setSheet({ type: 'settings' })} aria-label="Ayarlar">
+      <button className="cover-photo-btn cover-icon" onClick={() => setSheet({ type: 'settings' })} aria-label={t('Ayarlar', 'Settings')}>
         <Settings size={18} aria-hidden="true" />
       </button>
     </span>
@@ -913,23 +931,33 @@ export default function Home({ userId }) {
 
   // First steps while nobody has joined: the calendar is ready when they arrive.
   const startSteps = [
-    { id: 'birthday', title: 'Doğum gününü ekle', hint: 'Sevdiklerine bir ay önceden hatırlatılır.', done: Boolean(me?.birthday) },
-    { id: 'invite', title: 'Davet linkini gönder', hint: 'Sevgilin, ailen, kardeşin ya da arkadaşın.', done: inviteSent },
+    {
+      id: 'birthday',
+      title: t('Doğum gününü ekle', 'Add your birthday'),
+      hint: t('Sevdiklerine bir ay önceden hatırlatılır.', 'Your people get a reminder a month before.'),
+      done: Boolean(me?.birthday),
+    },
+    {
+      id: 'invite',
+      title: t('Davet linkini gönder', 'Send your invite link'),
+      hint: t('Sevgilin, ailen, kardeşin ya da arkadaşın.', 'To your partner, family, sibling or a friend.'),
+      done: inviteSent,
+    },
     {
       id: 'plan',
-      title: 'İlk planını ekle',
-      hint: 'Katıldığında takvimde hazır bulur.',
+      title: t('İlk planını ekle', 'Add your first plan'),
+      hint: t('Katıldığında takvimde hazır bulur.', 'It’ll be waiting in the calendar when they join.'),
       done: events.some((e) => e.createdBy === userId),
       action: () => openForm(),
-      actionLabel: 'Plan ekle',
+      actionLabel: t('Plan ekle', 'Add plan'),
     },
     {
       id: 'wish',
-      title: 'Dilek listene bir şey ekle',
-      hint: 'Sana hediye düşünenlere ipucu olur.',
+      title: t('Dilek listene bir şey ekle', 'Add something to your wish list'),
+      hint: t('Sana hediye düşünenlere ipucu olur.', 'A hint for anyone thinking of a gift for you.'),
       done: wishes.some((w) => w.owner === userId),
       action: () => setSheet({ type: 'wishForm' }),
-      actionLabel: 'Dilek ekle',
+      actionLabel: t('Dilek ekle', 'Add wish'),
     },
   ]
 
@@ -946,7 +974,7 @@ export default function Home({ userId }) {
           onAdd={() => setSheet({ type: 'wishForm' })}
           header={
             <header className="page-head">
-              <h1>Dilekler</h1>
+              <h1>{t('Dilekler', 'Wishes')}</h1>
               {headerButtons}
             </header>
           }
@@ -975,20 +1003,26 @@ export default function Home({ userId }) {
                 <span>
                   <strong>
                     {lockedHere.length > 3
-                      ? `${lockedHere.length} kişiyle takvimin salt okunur`
-                      : `${listNames(lockedHere.map((id) => personOf(byId[id]).name))} ile takviminiz salt okunur`}
+                      ? t(`${lockedHere.length} kişiyle takvimin salt okunur`, `Your calendar with ${lockedHere.length} people is read-only`)
+                      : t(
+                          `${listNames(lockedHere.map((id) => personOf(byId[id]).name))} ile takviminiz salt okunur`,
+                          `Your calendar with ${listNames(lockedHere.map((id) => personOf(byId[id]).name))} is read-only`,
+                        )}
                   </strong>
                   <small>
                     {billing.subscribed
-                      ? 'Aboneliğine eklersen yeniden plan ekleyebilirsiniz.'
-                      : 'Planlarınız yerinde duruyor. Biriniz UsDay+’a geçince yeni plan ve yorum ekleyebilirsiniz.'}
+                      ? t('Aboneliğine eklersen yeniden plan ekleyebilirsiniz.', 'Add them to your subscription to plan together again.')
+                      : t(
+                          'Planlarınız yerinde duruyor. Biriniz UsDay+’a geçince yeni plan ve yorum ekleyebilirsiniz.',
+                          'Your plans are still there. Once one of you gets UsDay+, you can add plans and comments again.',
+                        )}
                   </small>
                   <span className="birthday-actions">
                     <button
                       className="btn btn-primary btn-small"
                       onClick={() => showPaywall(lockedHere.length === 1 ? lockedHere[0] : null)}
                     >
-                      {billing.subscribed ? 'Aboneliğime ekle' : 'UsDay+’a bak'}
+                      {billing.subscribed ? t('Aboneliğime ekle', 'Add to my subscription') : t('UsDay+’a bak', 'See UsDay+')}
                     </button>
                   </span>
                 </span>
@@ -999,7 +1033,7 @@ export default function Home({ userId }) {
 
             {waiting > 0 && (
               <section className="waiting">
-                <h2 className="section-title">Seni bekleyenler</h2>
+                <h2 className="section-title">{t('Seni bekleyenler', 'Waiting for you')}</h2>
                 {invitedMe.map((e) => (
                   <InvitationCard
                     key={e.id}
@@ -1036,7 +1070,7 @@ export default function Home({ userId }) {
                     }}
                     showJoin={all.length === 1}
                     onToast={setToast}
-                    onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
+                    onJoined={(id) => connectionReady(id, t('💜 Ortak takviminiz açıldı!', '💜 Your shared calendar is ready!'))}
                   />
                 ))}
 
@@ -1046,24 +1080,26 @@ export default function Home({ userId }) {
 
             {birthdaysSoon.length > 0 && (
               <section className="waiting">
-                <h2 className="section-title">Yaklaşan doğum günleri</h2>
+                <h2 className="section-title">{t('Yaklaşan doğum günleri', 'Upcoming birthdays')}</h2>
                 {birthdaysSoon.map(({ person, date, days }) => (
                   <section key={person.id} className="notice card birthday-card">
                     <span className="notice-icon">
                       <Cake size={20} aria-hidden="true" />
                     </span>
                     <span>
-                      <strong>{genitive(person.name)} doğum günü</strong>
+                      <strong>
+                        {possessive(person.name)} {t('doğum günü', 'birthday')}
+                      </strong>
                       <small>
-                        {days === 0 ? 'Bugün' : days === 1 ? 'Yarın' : `${days} gün sonra`} ·{' '}
-                        {format(parseISO(date), 'd MMMM EEEE', { locale: tr })}
+                        {days === 0 ? t('Bugün', 'Today') : days === 1 ? t('Yarın', 'Tomorrow') : t(`${days} gün sonra`, `In ${days} days`)} ·{' '}
+                        {dateText(date, 'd MMMM EEEE', 'EEEE, MMMM d')}
                       </small>
                       <span className="birthday-actions">
                         <button className="btn btn-primary btn-small" onClick={() => planBirthday(person.id, date)}>
-                          Sürpriz planla
+                          {t('Sürpriz planla', 'Plan a surprise')}
                         </button>
                         <button className="btn btn-secondary btn-small" onClick={() => showWishes(person.id)}>
-                          Dileklerine bak
+                          {t('Dileklerine bak', 'See their wishes')}
                         </button>
                       </span>
                     </span>
@@ -1074,12 +1110,12 @@ export default function Home({ userId }) {
 
             {linked.length > 0 && shown.filter((e) => !e.milestone && !e.birthday).length === 0 && (
               <section className="welcome card">
-                <strong>UsDay’e hoş geldin</strong>
-                <small>İlk planı ekle; bir fikre dokunman yeterli.</small>
+                <strong>{t('UsDay’e hoş geldin', 'Welcome to UsDay')}</strong>
+                <small>{t('İlk planı ekle; bir fikre dokunman yeterli.', 'Add your first plan: just tap an idea.')}</small>
                 <div className="templates">
-                  {welcomeIdeas.map((t) => (
-                    <button key={t.title} className="chip" onClick={() => openForm({ ...t, tag: 'date' })}>
-                      {t.title}
+                  {welcomeIdeas.map((idea) => (
+                    <button key={idea.title} className="chip" onClick={() => openForm({ ...idea, tag: 'date' })}>
+                      {idea.title}
                     </button>
                   ))}
                 </div>
@@ -1089,7 +1125,7 @@ export default function Home({ userId }) {
             {todayEvents.length > 0 && (
               <section className="agenda">
                 <h2 className="section-title">
-                  Bugün <small>{format(new Date(), 'd MMMM EEEE', { locale: tr })}</small>
+                  {t('Bugün', 'Today')} <small>{dateText(new Date(), 'd MMMM EEEE', 'EEEE, MMMM d')}</small>
                 </h2>
                 <div className="event-list">{todayEvents.map((e) => card(e, false))}</div>
               </section>
@@ -1097,17 +1133,17 @@ export default function Home({ userId }) {
 
             {upcoming.length > 0 && (
               <section className="agenda">
-                <h2 className="section-title">Yaklaşanlar</h2>
+                <h2 className="section-title">{t('Yaklaşanlar', 'Coming up')}</h2>
                 <div className="event-list">{upcoming.map((e) => card(e, true))}</div>
               </section>
             )}
 
-            <div className="segmented view-switch" role="group" aria-label="Takvim görünümü">
+            <div className="segmented view-switch" role="group" aria-label={t('Takvim görünümü', 'Calendar view')}>
               <button className={view === 'month' ? 'is-active' : ''} aria-pressed={view === 'month'} onClick={() => changeView('month')}>
-                Ay
+                {t('Ay', 'Month')}
               </button>
               <button className={view === 'week' ? 'is-active' : ''} aria-pressed={view === 'week'} onClick={() => changeView('week')}>
-                Hafta
+                {t('Hafta', 'Week')}
               </button>
             </div>
 
@@ -1126,13 +1162,13 @@ export default function Home({ userId }) {
             {(selectedKey !== todayKey || !todayEvents.length) && (
               <section className="agenda">
                 <h2 className="section-title">
-                  {selectedKey === todayKey ? 'Bugün' : format(selected, 'd MMMM, EEEE', { locale: tr })}
+                  {selectedKey === todayKey ? t('Bugün', 'Today') : dateText(selected, 'd MMMM, EEEE', 'EEEE, MMMM d')}
                 </h2>
                 {dayEvents.length ? (
                   <div className="event-list">{dayEvents.map((e) => card(e, false))}</div>
                 ) : (
                   <button className="empty" onClick={() => openForm()}>
-                    Bu gün boş. Plan ekle
+                    {t('Bu gün boş. Plan ekle', 'Nothing on this day. Add a plan')}
                   </button>
                 )}
               </section>
@@ -1142,8 +1178,11 @@ export default function Home({ userId }) {
               <section className="agenda">
                 <h2 className="section-title">
                   {sharedOwners.length === 1
-                    ? `${genitive((members[sharedOwners[0]] ?? UNKNOWN_PERSON).name)} takviminden`
-                    : 'Paylaşılan takvimlerden'}
+                    ? t(
+                        `${genitive((members[sharedOwners[0]] ?? UNKNOWN_PERSON).name)} takviminden`,
+                        `From ${(members[sharedOwners[0]] ?? UNKNOWN_PERSON).name}’s calendar`,
+                      )
+                    : t('Paylaşılan takvimlerden', 'From shared calendars')}
                 </h2>
                 <div className="event-list">
                   {sharedUpcoming.map((e) => (
@@ -1171,7 +1210,7 @@ export default function Home({ userId }) {
           window.scrollTo(0, 0)
         }}
         onAdd={() => (tab === 'dilekler' ? setSheet({ type: 'wishForm' }) : openForm())}
-        addLabel={tab === 'dilekler' ? 'Dilek ekle' : 'Plan ekle'}
+        addLabel={tab === 'dilekler' ? t('Dilek ekle', 'Add wish') : t('Plan ekle', 'Add plan')}
       />
 
       {sheet && (
@@ -1181,8 +1220,8 @@ export default function Home({ userId }) {
               invites={openInvites}
               initialMode={sheet.mode}
               onToast={setToast}
-              onCreated={(id) => connectionReady(id, '💌 Davet kodun hazır, gönderebilirsin')}
-              onJoined={(id) => connectionReady(id, '💜 Ortak takviminiz açıldı!')}
+              onCreated={(id) => connectionReady(id, t('💌 Davet kodun hazır, gönderebilirsin', '💌 Your invite code is ready to send'))}
+              onJoined={(id) => connectionReady(id, t('💜 Ortak takviminiz açıldı!', '💜 Your shared calendar is ready!'))}
               onClose={() => setSheet(null)}
             />
           ) : sheet.type === 'wishForm' ? (
@@ -1287,9 +1326,9 @@ export default function Home({ userId }) {
               defaultCoupleIds={chosenGuests}
               findConflicts={conflictsFor}
               defaultCoupleId={defaultCoupleId}
-              onAddTemplate={async (t) => {
-                await addTemplate(t)
-                setToast('✨ Şablon eklendi')
+              onAddTemplate={async (template) => {
+                await addTemplate(template)
+                setToast(t('✨ Şablon eklendi', '✨ Template added'))
                 reload()
               }}
               onDeleteTemplate={async (id) => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff, Smartphone, TriangleAlert } from 'lucide-react'
 import { enablePush, isIos, isStandalone, pushSupported } from '../lib/push'
 import { isNative } from '../lib/native'
+import { t } from '../lib/i18n'
 
 function initialState() {
   if (isNative) return 'granted' // phone app: notifications come with the store version's push setup
@@ -39,9 +40,9 @@ export default function NotificationCard({ partnerName, onToast }) {
     try {
       const result = await enablePush()
       setState(result)
-      if (result === 'granted') onToast('🔔 Bildirimler açık')
+      if (result === 'granted') onToast(t('🔔 Bildirimler açık', '🔔 Notifications are on'))
     } catch {
-      onToast('Bildirimler açılamadı, tekrar dener misin?')
+      onToast(t('Bildirimler açılamadı, tekrar dener misin?', 'Couldn’t turn on notifications. Try again?'))
     }
     setBusy(false)
   }
@@ -52,17 +53,21 @@ export default function NotificationCard({ partnerName, onToast }) {
     return (
       <Notice
         Icon={BellOff}
-        title="Bu tarayıcıda bildirim yok"
-        text="UsDay’i Safari ya da Chrome’dan açıp ana ekrana ekle."
+        title={t('Bu tarayıcıda bildirim yok', 'No notifications in this browser')}
+        text={t('UsDay’i Safari ya da Chrome’dan açıp ana ekrana ekle.', 'Open UsDay in Safari or Chrome and add it to your home screen.')}
       />
     )
   }
 
   if (state === 'failed') {
     return (
-      <Notice Icon={TriangleAlert} title="Bildirimler kaydedilemedi" text="İnternetin varken tekrar dene.">
+      <Notice
+        Icon={TriangleAlert}
+        title={t('Bildirimler kaydedilemedi', 'Couldn’t set up notifications')}
+        text={t('İnternetin varken tekrar dene.', 'Try again when you’re online.')}
+      >
         <button className="btn btn-primary btn-small" onClick={turnOn} disabled={busy}>
-          {busy ? '…' : 'Tekrar'}
+          {busy ? '…' : t('Tekrar', 'Retry')}
         </button>
       </Notice>
     )
@@ -70,22 +75,36 @@ export default function NotificationCard({ partnerName, onToast }) {
 
   if (state === 'install') {
     return (
-      <Notice Icon={Smartphone} title="Bildirim için ana ekrana ekle" text="Safari’de Paylaş → Ana Ekrana Ekle, sonra ikondan aç." />
+      <Notice
+        Icon={Smartphone}
+        title={t('Bildirim için ana ekrana ekle', 'Add to your home screen for notifications')}
+        text={t('Safari’de Paylaş → Ana Ekrana Ekle, sonra ikondan aç.', 'In Safari: Share → Add to Home Screen, then open it from the icon.')}
+      />
     )
   }
 
   if (state === 'denied') {
-    return <Notice Icon={BellOff} title="Bildirimler kapalı" text="iPhone Ayarlar → Bildirimler → UsDay’den açabilirsin." />
+    return (
+      <Notice
+        Icon={BellOff}
+        title={t('Bildirimler kapalı', 'Notifications are off')}
+        text={t('iPhone Ayarlar → Bildirimler → UsDay’den açabilirsin.', 'Turn them on in Settings → Notifications → UsDay.')}
+      />
+    )
   }
 
   return (
     <Notice
       Icon={Bell}
-      title="Bildirimleri aç"
-      text={partnerName ? `${partnerName} plan ekleyince ya da yazınca haberin olsun.` : 'Yeni plan ve yorumlardan haberin olsun.'}
+      title={t('Bildirimleri aç', 'Turn on notifications')}
+      text={
+        partnerName
+          ? t(`${partnerName} plan ekleyince ya da yazınca haberin olsun.`, `Know when ${partnerName} adds a plan or writes.`)
+          : t('Yeni plan ve yorumlardan haberin olsun.', 'Hear about new plans and comments.')
+      }
     >
       <button className="btn btn-primary btn-small" onClick={turnOn} disabled={busy}>
-        {busy ? '…' : 'Aç'}
+        {busy ? '…' : t('Aç', 'Turn on')}
       </button>
     </Notice>
   )

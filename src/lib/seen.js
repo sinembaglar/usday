@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { loadConversationSeen as loadSeen, markConversationSeen as markSeen } from './api'
+import { t } from './i18n'
 
 // Who has seen a conversation, kept live; and I have seen it whenever a new comment is on screen.
 export function useSeen({ eventId, me, owner = null, viewer = null, comments }) {
@@ -41,6 +42,6 @@ export function seenLine(comments, seen, me, members) {
   if (mine?.author !== me) return null
   const by = seen
     .filter((s) => s.user_id !== me && new Date(s.seen_at) >= new Date(mine.created_at))
-    .map((s) => members[s.user_id]?.name ?? s.user_name ?? 'Biri')
-  return { text: by.length ? `✓✓ Görüldü · ${by.join(', ')}` : '✓ Gönderildi' }
+    .map((s) => members[s.user_id]?.name ?? s.user_name ?? t('Biri', 'Someone'))
+  return { text: by.length ? `✓✓ ${t('Görüldü', 'Seen')} · ${by.join(', ')}` : t('✓ Gönderildi', '✓ Sent') }
 }

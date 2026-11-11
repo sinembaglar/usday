@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, Flag, Hourglass, UserMinus } from 'lucide-react'
 import { RELATIONS, UNKNOWN_PERSON } from '../lib/constants'
 import { RELATION_ICONS } from '../lib/icons'
+import { t } from '../lib/i18n'
 
 // One connection in settings: a row; tapping it opens who they are to me, since when, and the
 // rarer actions (withdraw an invitation, remove, report).
@@ -17,10 +18,10 @@ function ConnectionRow({ connection, members, open, onToggle, onRelation, onSinc
           {person ? person.short : <Hourglass size={14} aria-hidden="true" />}
         </span>
         <span className="row-text">
-          {person ? person.name : 'Davet bekliyor'}
+          {person ? person.name : t('Davet bekliyor', 'Invite pending')}
           <small>
             {relation.label}
-            {!person && ` · kod ${connection.inviteCode}`}
+            {!person && ` · ${t('kod', 'code')} ${connection.inviteCode}`}
           </small>
         </span>
         <ChevronDown size={18} className="row-chevron" aria-hidden="true" />
@@ -28,7 +29,7 @@ function ConnectionRow({ connection, members, open, onToggle, onRelation, onSinc
 
       {open && (
         <div className="list-detail">
-          <div className="chips" role="radiogroup" aria-label="İlişki">
+          <div className="chips" role="radiogroup" aria-label={t('İlişki', 'Relationship')}>
             {Object.entries(RELATIONS).map(([key, r]) => {
               const Icon = RELATION_ICONS[key]
               return (
@@ -48,7 +49,9 @@ function ConnectionRow({ connection, members, open, onToggle, onRelation, onSinc
           </div>
           {relation.since && (
             <label className="field">
-              <span>{relation.since} · gün sayacı ve yıldönümü için</span>
+              <span>
+                {relation.since} · {t('gün sayacı ve yıldönümü için', 'for the day count and anniversaries')}
+              </span>
               <div className="inline-form">
                 <input
                   className="input"
@@ -58,23 +61,23 @@ function ConnectionRow({ connection, members, open, onToggle, onRelation, onSinc
                   onChange={(e) => setSince(e.target.value)}
                 />
                 <button className="btn btn-primary" disabled={since === connection.togetherSince} onClick={() => onSince(connection, since)}>
-                  Kaydet
+                  {t('Kaydet', 'Save')}
                 </button>
               </div>
             </label>
           )}
           {!person && (
             <button className="link-btn danger-link" onClick={() => onCancel(connection)}>
-              Bu daveti iptal et
+              {t('Bu daveti iptal et', 'Cancel this invitation')}
             </button>
           )}
           {person && (
             <div className="connection-links">
               <button className="link-btn danger-link" onClick={() => onRemove(connection, person)}>
-                <UserMinus size={15} aria-hidden="true" /> Kaldır / engelle
+                <UserMinus size={15} aria-hidden="true" /> {t('Kaldır / engelle', 'Remove / block')}
               </button>
               <button className="link-btn danger-link" onClick={() => onReport(connection, person)}>
-                <Flag size={15} aria-hidden="true" /> Şikayet et
+                <Flag size={15} aria-hidden="true" /> {t('Şikayet et', 'Report')}
               </button>
             </div>
           )}
@@ -89,7 +92,7 @@ export default function ConnectionSettings({ connections, members, onRelation, o
 
   return (
     <section className="settings-group">
-      <h4>Kişiler</h4>
+      <h4>{t('Kişiler', 'People')}</h4>
       <div className="list-card">
         {/* People first; invitations nobody has joined yet at the end. */}
         {[...connections].sort((a, b) => Number(!a.partnerId) - Number(!b.partnerId)).map((c) => (

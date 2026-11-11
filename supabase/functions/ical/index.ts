@@ -1,20 +1,17 @@
 // Read-only calendar feed for Apple / Google Calendar: /cal/<token>.ics on usday.app.
 // Shows what the token owner may see: a partner's hidden surprise appears only as its teaser.
-import { admin, hiddenFrom, istanbulToday, peopleIn, type EventRow, type Person } from '../_shared/push.ts'
+// Times are the plan's own clock time ("floating"), shown as they are in the owner's time zone, like in the app.
+import { admin, hiddenFrom, peopleIn, type EventRow, type Person } from '../_shared/push.ts'
 import { addDaysKey, milestones } from '../_shared/recurrence.ts'
+import { asLang, clockIn, say, zoneOf, type Lang } from '../_shared/i18n.ts'
 
-const UTC_OFFSET_HOURS = 3 // Europe/Istanbul, no daylight saving since 2016
 const FREQ = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' } as const
 
 const escape = (text: string) => text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
 
 const compactDate = (date: string) => date.replaceAll('-', '')
 
-function utcStamp(date: string, time: string) {
-  const d = new Date(`${date}T${time.slice(0, 5)}:00Z`)
-  d.setUTCHours(d.getUTCHours() - UTC_OFFSET_HOURS)
-  return d.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z'
-}
+const localStamp = (date: string, time: string) => `${compactDate(date)}T${time.slice(0, 2)}${time.slice(3, 5)}00`
 
 function plusHour(time: string) {
   const h = (Number(time.slice(0, 2)) + 1) % 24
@@ -53,21 +50,21 @@ function timing(e: EventRow) {
   const end = e.end_time?.slice(0, 5) || plusHour(start)
   const endDate = end > start ? e.event_date : addDaysKey(e.event_date, 1) // past midnight
   return {
-    lines: [`DTSTART:${utcStamp(e.event_date, start)}`, `DTEND:${utcStamp(endDate, end)}`],
-    at: (date: string) => `:${utcStamp(date, start)}`,
-    until: (date: string) => utcStamp(date, '23:59').replace(/00Z$/, '59Z'),
+    lines: [`DTSTART:${localStamp(e.event_date, start)}`, `DTEND:${localStamp(endDate, end)}`],
+    at: (date: string) => `:${localStamp(date, start)}`,
+    until: (date: string) => localStamp(date, '23:59').replace(/00$/, '59'),
   }
 }
 
-function vevent(e: EventRow & { created_at: string }, viewer: string, people: Person[], today: string, suffix = '') {
+function vevent(e: EventRow & { created_at: string }, viewer: string, people: Person[], today: string, lang: Lang, suffix = '') {
   if (e.status === 'declined') return []
   const hidden = hiddenFrom(e, viewer, today)
   const author = people.find((p) => p.id === e.created_by)?.name ?? ''
   const tentative = e.status === 'proposed'
-  const summary = (tentative ? '❓ ' : '') + (hidden ? '🎁 Sürpriz!' : e.title) + suffix
+  const summary = (tentative ? '❓ ' : '') + (hidden ? say(lang, '🎁 Sürpriz!', '🎁 Surprise!') : e.title) + suffix
   const description = hidden
-    ? `${author} bir sürpriz hazırlıyor: “${e.teaser ?? ''}”`
-    : [e.note, author && `${author} ekledi`].filter(Boolean).join('\n')
+    ? say(lang, `${author} bir sürpriz hazırlıyor: “${e.teaser ?? ''}”`, `${author} is planning a surprise: “${e.teaser ?? ''}”`)
+    : [e.note, author && say(lang, `${author} ekledi`, `Added by ${author}`)].filter(Boolean).join('\n')
   const t = timing(e)
 
   const repeat =
@@ -94,8 +91,8 @@ function vevent(e: EventRow & { created_at: string }, viewer: string, people: Pe
 }
 
 // Anniversaries and day-count milestones for the next few years, as all-day events.
-function milestoneEvents(couple: { id: string; together_since: string; relation: string }, today: string, suffix: string) {
-  return milestones(couple.together_since, addDaysKey(today, -365), addDaysKey(today, 5 * 365), couple.relation).flatMap((m) => [
+function milestoneEvents(couple: { id: string; together_since: string; relation: string }, today: string, lang: Lang, suffix: string) {
+  return milestones(couple.together_since, addDaysKey(today, -365), addDaysKey(today, 5 * 365), couple.relation, lang).flatMap((m) => [
     'BEGIN:VEVENT',
     `UID:${m.kind}-${m.count}-${couple.id}@usday.app`,
     `DTSTAMP:${compactDate(today)}T000000Z`,
@@ -112,6 +109,10 @@ Deno.serve(async (req) => {
 
   const { data: owner } = await admin.from('calendar_tokens').select('user_id').eq('token', token).maybeSingle()
   if (!owner) return new Response('not found', { status: 404 })
+
+  const { data: profile } = await admin.from('profiles').select('lang, time_zone').eq('id', owner.user_id).maybeSingle()
+  const lang = asLang(profile?.lang)
+  const zone = zoneOf(profile?.time_zone)
 
   // Every connection of the owner goes into one calendar.
   const { data: memberships } = await admin.from('couple_members').select('couple_id').eq('user_id', owner.user_id)
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
     return many && other ? ` · ${other.name}` : ''
   }
 
-  const today = istanbulToday()
+  const today = clockIn(zone).today
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -144,11 +145,11 @@ Deno.serve(async (req) => {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:UsDay 💜',
-    'X-WR-TIMEZONE:Europe/Istanbul',
+    `X-WR-TIMEZONE:${zone}`,
     'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
     'X-PUBLISHED-TTL:PT1H',
-    ...(events ?? []).flatMap((e) => vevent(e, owner.user_id, people, today, withWhom(e.couple_id))),
-    ...(couples ?? []).filter((c) => c.together_since).flatMap((c) => milestoneEvents(c, today, withWhom(c.id))),
+    ...(events ?? []).flatMap((e) => vevent(e, owner.user_id, people, today, lang, withWhom(e.couple_id))),
+    ...(couples ?? []).filter((c) => c.together_since).flatMap((c) => milestoneEvents(c, today, lang, withWhom(c.id))),
     'END:VCALENDAR',
   ]
 

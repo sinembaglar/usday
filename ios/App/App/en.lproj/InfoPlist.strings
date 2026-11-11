@@ -1,0 +1,4 @@
+/* Shown when UsDay asks for access to the camera and photos. */
+"NSCameraUsageDescription" = "UsDay uses your camera to add photos to your plans and comments.";
+"NSPhotoLibraryAddUsageDescription" = "So you can save share cards to your photos.";
+"NSPhotoLibraryUsageDescription" = "UsDay opens your photos so you can add them to your plans, cover and comments.";

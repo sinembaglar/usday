@@ -7,6 +7,7 @@ import CommentBubble from './CommentBubble'
 import { notifyReaction } from '../lib/push'
 import { seenLine, useSeen } from '../lib/seen'
 import { UNKNOWN_PERSON } from '../lib/constants'
+import { t } from '../lib/i18n'
 
 const EMOJIS = ['😍', '🥳', '👍', '😂', '🙈']
 
@@ -91,7 +92,7 @@ export default function Conversation({
   }
 
   async function remove(comment) {
-    if (!window.confirm('Bu yorum silinsin mi?')) return
+    if (!window.confirm(t('Bu yorum silinsin mi?', 'Delete this comment?'))) return
     await deleteComment(comment)
     load()
   }
@@ -108,7 +109,7 @@ export default function Conversation({
     try {
       await setCommentReaction('event', comment.id, me, emoji)
     } catch {
-      onToast?.('Tepki kaydedilemedi, tekrar dener misin?')
+      onToast?.(t('Tepki kaydedilemedi, tekrar dener misin?', 'Couldn’t save your reaction. Try again?'))
       load()
     }
   }
@@ -116,10 +117,10 @@ export default function Conversation({
   return (
     <section className="conversation" ref={sectionRef}>
       <div className="conv-head">
-        <h4>Sohbet</h4>
-        {comments.length > 0 && <small>Yoruma basılı tut: emoji bırak</small>}
+        <h4>{t('Sohbet', 'Chat')}</h4>
+        {comments.length > 0 && <small>{t('Yoruma basılı tut: emoji bırak', 'Press and hold a comment to react')}</small>}
       </div>
-      <div className="reactions" role="group" aria-label="Plana tepki ver">
+      <div className="reactions" role="group" aria-label={t('Plana tepki ver', 'React to the plan')}>
         {EMOJIS.map((emoji) => {
           const who = reactions.filter((r) => r.emoji === emoji)
           return (
@@ -158,15 +159,22 @@ export default function Conversation({
       {readOnly ? (
         <button className="readonly-line" onClick={onPaywall}>
           <Lock size={14} aria-hidden="true" />
-          Salt okunur · yorum için biriniz UsDay+’a geçmeli
+          {t('Salt okunur · yorum için biriniz UsDay+’a geçmeli', 'Read-only · one of you needs UsDay+ to comment')}
         </button>
       ) : (
-        <CommentForm placeholder={comments.length ? 'Yanıt yaz…' : 'Bir şey yaz…'} onSend={send} onError={onToast} />
+        <CommentForm
+          placeholder={comments.length ? t('Yanıt yaz…', 'Write a reply…') : t('Bir şey yaz…', 'Write something…')}
+          onSend={send}
+          onError={onToast}
+        />
       )}
       {!readOnly && silent.length > 0 && (
         <p className="hint silent-hint">
           <BellOff size={13} aria-hidden="true" />
-          {silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirim almıyor, açınca görecek.
+          {t(
+            `${silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} bildirim almıyor, açınca görecek.`,
+            `${silent.map((id) => (members[id] ?? UNKNOWN_PERSON).name).join(', ')} won’t get a notification but will see it in the app.`,
+          )}
         </p>
       )}
     </section>

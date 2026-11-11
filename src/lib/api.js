@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { initials } from './constants'
 import { resizeImage } from './image'
+import { lang, timeZone } from './i18n'
 
 const BUCKET = 'photos'
 const URL_TTL = 60 * 60 * 24
@@ -516,6 +517,17 @@ export async function markConversationSeen(eventId, userId, owner = null, viewer
 }
 
 // My birthday, as "MM-DD" (stored with the year 2000; the real year is never asked).
+// The language and time zone of this phone, for notifications, reminders, the calendar feed and the
+// e-mails UsDay sends (those read them from the account). Written only when they change.
+export async function syncLanguage(user) {
+  const zone = timeZone()
+  const known = user.user_metadata ?? {}
+  if (known.lang === lang && known.time_zone === zone) return
+  const { error } = await supabase.from('profiles').update({ lang, time_zone: zone }).eq('id', user.id)
+  if (error) throw error
+  await supabase.auth.updateUser({ data: { lang, time_zone: zone } })
+}
+
 export async function setBirthday(userId, mmdd) {
   const { error } = await supabase.from('profiles').update({ birthday: `2000-${mmdd}` }).eq('id', userId)
   if (error) throw error
@@ -556,7 +568,7 @@ export function gifSearchOn() {
 }
 
 export async function searchGifs(q, page = 1) {
-  const { data, error } = await supabase.functions.invoke('gifs', { body: { q, page } })
+  const { data, error } = await supabase.functions.invoke('gifs', { body: { q, page, lang } })
   if (error) throw error
   return data
 }

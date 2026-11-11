@@ -1,12 +1,13 @@
 // Shared rules for repeating plans and couple milestones.
 // The server keeps an identical copy in supabase/functions/_shared/recurrence.ts.
+import { num, ordinal, t } from './i18n'
 
 export const REPEATS = {
-  none: 'Tekrarlanmaz',
-  daily: 'Her gün',
-  weekly: 'Her hafta',
-  monthly: 'Her ay',
-  yearly: 'Her yıl',
+  none: t('Tekrarlanmaz', 'Does not repeat'),
+  daily: t('Her gün', 'Every day'),
+  weekly: t('Her hafta', 'Every week'),
+  monthly: t('Her ay', 'Every month'),
+  yearly: t('Her yıl', 'Every year'),
 }
 
 const MS_DAY = 86_400_000
@@ -67,12 +68,12 @@ for (let n = 1000; n <= 20000; n += 500) DAY_MILESTONES.push(n)
 // How a connection's anniversaries and day counts are worded.
 export const MILESTONE_WORDS = {
   partner: {
-    year: (n) => `💍 ${n}. yıldönümümüz`,
-    day: (n) => `💜 Birlikte ${n.toLocaleString('tr-TR')}. günümüz`,
+    year: (n) => t(`💍 ${n}. yıldönümümüz`, `💍 Our ${ordinal(n)} anniversary`),
+    day: (n) => t(`💜 Birlikte ${num(n)}. günümüz`, `💜 Our ${ordinal(n)} day together`),
   },
   friend: {
-    year: (n) => `🥂 Arkadaşlığımızın ${n}. yılı`,
-    day: (n) => `💛 Arkadaşlığımızın ${n.toLocaleString('tr-TR')}. günü`,
+    year: (n) => t(`🥂 Arkadaşlığımızın ${n}. yılı`, `🥂 ${ordinal(n)} year of friendship`),
+    day: (n) => t(`💛 Arkadaşlığımızın ${num(n)}. günü`, `💛 Day ${num(n)} of our friendship`),
   },
 }
 

@@ -1,6 +1,8 @@
 // @ts-nocheck -- plain JS shared with the app
 // Shared rules for repeating plans and couple milestones.
-// Copy of src/lib/recurrence.js for the edge functions; keep the two in sync.
+// Copy of src/lib/recurrence.js for the edge functions; keep the two in sync. Here the wording takes the
+// person's language as a parameter (the app knows its own).
+import { num, ordinal } from './i18n.ts'
 
 export const REPEATS = {
   none: 'Tekrarlanmaz',
@@ -67,20 +69,32 @@ for (let n = 1000; n <= 20000; n += 500) DAY_MILESTONES.push(n)
 
 // How a connection's anniversaries and day counts are worded.
 export const MILESTONE_WORDS = {
-  partner: {
-    year: (n) => `💍 ${n}. yıldönümümüz`,
-    day: (n) => `💜 Birlikte ${n.toLocaleString('tr-TR')}. günümüz`,
+  tr: {
+    partner: {
+      year: (n) => `💍 ${n}. yıldönümümüz`,
+      day: (n) => `💜 Birlikte ${num('tr', n)}. günümüz`,
+    },
+    friend: {
+      year: (n) => `🥂 Arkadaşlığımızın ${n}. yılı`,
+      day: (n) => `💛 Arkadaşlığımızın ${num('tr', n)}. günü`,
+    },
   },
-  friend: {
-    year: (n) => `🥂 Arkadaşlığımızın ${n}. yılı`,
-    day: (n) => `💛 Arkadaşlığımızın ${n.toLocaleString('tr-TR')}. günü`,
+  en: {
+    partner: {
+      year: (n) => `💍 Our ${ordinal('en', n)} anniversary`,
+      day: (n) => `💜 Our ${ordinal('en', n)} day together`,
+    },
+    friend: {
+      year: (n) => `🥂 ${ordinal('en', n)} year of friendship`,
+      day: (n) => `💛 Day ${num('en', n)} of our friendship`,
+    },
   },
 }
 
 // "Together since" turns into anniversaries and day-count milestones (day 1 is the first day).
 // Only partners and friends count days; siblings and family do not.
-export function milestones(since, from, to, relation = 'partner') {
-  const words = MILESTONE_WORDS[relation]
+export function milestones(since, from, to, relation = 'partner', lang = 'tr') {
+  const words = MILESTONE_WORDS[lang === 'en' ? 'en' : 'tr'][relation]
   if (!since || !words) return []
   const list = []
   for (let years = 1; years <= 80; years++) {

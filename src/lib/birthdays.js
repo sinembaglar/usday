@@ -1,4 +1,5 @@
 // Birthdays are kept as day and month ("MM-DD"); the year is never stored.
+import { isEn, t } from './i18n'
 
 const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
 
@@ -26,9 +27,17 @@ export function birthdaysBetween(mmdd, from, to) {
   return list
 }
 
-export const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+export const MONTHS = t(
+  ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
+  ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+)
 
 // 29 February is allowed (it exists in 2000, the year birthdays are stored with).
 export const daysInMonth = (month) => [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
 
-export const formatBirthday = (mmdd) => `${Number(mmdd.slice(3))} ${MONTHS[Number(mmdd.slice(0, 2)) - 1]}`
+// "21 Mayıs" / "May 21"
+export function formatBirthday(mmdd) {
+  const day = Number(mmdd.slice(3))
+  const month = MONTHS[Number(mmdd.slice(0, 2)) - 1]
+  return isEn ? `${month} ${day}` : `${day} ${month}`
+}

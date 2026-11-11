@@ -1,5 +1,6 @@
 import { Lock, Plus, Users } from 'lucide-react'
 import { UNKNOWN_PERSON } from '../lib/constants'
+import { t } from '../lib/i18n'
 
 // The people strip: pick one or several connections; calendar and cover follow the choice.
 // An invitation nobody has joined yet is not a person: it waits behind "Kişi ekle".
@@ -14,7 +15,7 @@ export default function PeopleBar({ connections, members, selected, locked, onCh
   }
 
   return (
-    <div className="people-bar" role="group" aria-label="Kişiler">
+    <div className="people-bar" role="group" aria-label={t('Kişiler', 'People')}>
       {joined.length > 1 && (
         <button
           className={`person-chip ${all ? 'is-active' : ''}`}
@@ -24,7 +25,7 @@ export default function PeopleBar({ connections, members, selected, locked, onCh
           <span className="person-avatar all">
             <Users size={15} aria-hidden="true" />
           </span>
-          Tümü
+          {t('Tümü', 'All')}
         </button>
       )}
       {joined.map((c) => {
@@ -40,7 +41,7 @@ export default function PeopleBar({ connections, members, selected, locked, onCh
             <span className="person-avatar" style={{ background: person.color }}>
               {person.short}
               {locked?.has(c.id) && (
-                <span className="person-lock" aria-label="salt okunur">
+                <span className="person-lock" aria-label={t('salt okunur', 'read-only')}>
                   <Lock size={9} strokeWidth={2.6} aria-hidden="true" />
                 </span>
               )}
@@ -53,7 +54,7 @@ export default function PeopleBar({ connections, members, selected, locked, onCh
         <span className="person-avatar add">
           <Plus size={16} aria-hidden="true" />
         </span>
-        Kişi ekle
+        {t('Kişi ekle', 'Add person')}
       </button>
     </div>
   )

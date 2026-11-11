@@ -1,23 +1,26 @@
-import { format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { MessageCircle, Repeat, Gift } from 'lucide-react'
 import { SURPRISE_COLOR, TAGS, UNKNOWN_PERSON } from '../lib/constants'
 import { SPECIAL_ICONS, tagIcon } from '../lib/icons'
 import { timeSpan } from '../lib/format'
+import { dateText, t } from '../lib/i18n'
 
-const US = { name: 'İkiniz', short: '♥', color: 'var(--primary)' }
+const US = { name: t('İkiniz', 'You two'), short: '♥', color: 'var(--primary)' }
 
 // What a group plan says about me and the group.
 function groupLine(event, me) {
   const mine = event.guests.find((g) => g.id === me)
   const coming = event.guests.filter((g) => g.status === 'accepted').length + 1 // the maker counts
-  if (mine?.status === 'pending') return 'yanıtını bekliyor'
-  if (mine?.status === 'declined') return 'katılmıyorsun'
-  if (mine?.status === 'maybe') return `belki dedin · ${coming} kişi geliyor`
-  if (mine?.status === 'suggested') return 'başka zaman önerdin'
+  if (mine?.status === 'pending') return t('yanıtını bekliyor', 'waiting for your answer')
+  if (mine?.status === 'declined') return t('katılmıyorsun', 'you’re not going')
+  if (mine?.status === 'maybe') return t(`belki dedin · ${coming} kişi geliyor`, `you said maybe · ${coming} going`)
+  if (mine?.status === 'suggested') return t('başka zaman önerdin', 'you suggested another time')
   const maybes = event.guests.filter((g) => g.status === 'maybe').length
   const ideas = event.guests.filter((g) => g.status === 'suggested').length
-  return [`${coming}/${event.guests.length + 1} geliyor`, maybes && `${maybes} belki`, ideas && `${ideas} öneri`]
+  return [
+    t(`${coming}/${event.guests.length + 1} geliyor`, `${coming}/${event.guests.length + 1} going`),
+    maybes && t(`${maybes} belki`, `${maybes} maybe`),
+    ideas && t(`${ideas} öneri`, ideas === 1 ? '1 new time' : `${ideas} new times`),
+  ]
     .filter(Boolean)
     .join(' · ')
 }
@@ -47,16 +50,16 @@ export default function EventCard({ event, members, onClick, showDate, isNew, wi
   const status = event.guests
     ? groupLine(event, me)
     : event.status === 'proposed'
-      ? 'yanıt bekleniyor'
+      ? t('yanıt bekleniyor', 'waiting for an answer')
       : event.status === 'declined'
-        ? 'uygun değil'
+        ? t('uygun değil', 'not available')
         : null
   const iDeclined = event.guests?.some((g) => g.id === me && g.status === 'declined')
   const pendingForMe = event.guests?.some((g) => g.id === me && g.status === 'pending')
-  const when = [showDate && format(parseISO(event.date), 'd MMMM EEE', { locale: tr }), timeSpan(event)]
+  const when = [showDate && dateText(event.date, 'd MMMM EEE', 'EEE, MMMM d'), timeSpan(event)]
     .filter(Boolean)
     .join(' · ')
-  const about = [withWhom, status, !hidden && event.location, hidden && 'detaylar gizli'].filter(Boolean).join(' · ')
+  const about = [withWhom, status, !hidden && event.location, hidden && t('detaylar gizli', 'details hidden')].filter(Boolean).join(' · ')
 
   return (
     <button
@@ -71,8 +74,8 @@ export default function EventCard({ event, members, onClick, showDate, isNew, wi
       </span>
       <span className="event-body">
         <strong>
-          {hidden ? 'Sürpriz!' : event.title}
-          {isNew && <span className="new-pill">yeni</span>}
+          {hidden ? t('Sürpriz!', 'Surprise!') : event.title}
+          {isNew && <span className="new-pill">{t('yeni', 'new')}</span>}
         </strong>
         {when && <small className="event-when">{when}</small>}
         {about && <small>{about}</small>}
@@ -81,10 +84,10 @@ export default function EventCard({ event, members, onClick, showDate, isNew, wi
         <span className={`card-thumb ${thumb.url ? '' : 'is-locked'}`}>{thumb.url && <img src={thumb.url} alt="" />}</span>
       )}
       <span className="card-badges">
-        {event.repeat && event.repeat !== 'none' && <Repeat size={14} aria-label="Tekrarlanıyor" />}
-        {event.surprise && !hidden && <Gift size={14} aria-label="Sürpriz" />}
+        {event.repeat && event.repeat !== 'none' && <Repeat size={14} aria-label={t('Tekrarlanıyor', 'Repeats')} />}
+        {event.surprise && !hidden && <Gift size={14} aria-label={t('Sürpriz', 'Surprise')} />}
         {event.commentCount > 0 && (
-          <span className="comment-count" aria-label={`${event.commentCount} yorum`}>
+          <span className="comment-count" aria-label={t(`${event.commentCount} yorum`, event.commentCount === 1 ? '1 comment' : `${event.commentCount} comments`)}>
             <MessageCircle size={14} aria-hidden="true" /> {event.commentCount}
           </span>
         )}

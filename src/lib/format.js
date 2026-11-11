@@ -1,6 +1,5 @@
 import { REPEATS } from './recurrence'
-import { format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
+import { dateText, isEn, t } from './i18n'
 
 // Turkish dative: "Serhat Han’a", "Sinem’e", "Ayşe’ye".
 export function dative(name) {
@@ -20,11 +19,15 @@ export function genitive(name) {
   return `${name}’${endsWithVowel ? 'n' : ''}${vowel}n`
 }
 
+// "Ece’nin" / "Ece’s": the word order is the same in both languages ("Ece’nin doğum günü", "Ece’s birthday").
+export const possessive = (name) => (isEn ? `${name}’s` : genitive(name))
+
 export const timeSpan = (e) =>(e.time ? (e.endTime ? `${e.time}–${e.endTime}` : e.time) : '')
 
 export function repeatLabel(e) {
   if (!e.repeat || e.repeat === 'none') return ''
-  const until = e.repeatUntil ? ` · ${format(parseISO(e.repeatUntil), 'd MMMM yyyy', { locale: tr })}’e kadar` : ''
+  const day = e.repeatUntil && dateText(e.repeatUntil, 'd MMMM yyyy', 'MMMM d, yyyy')
+  const until = day ? ` · ${t(`${day}’e kadar`, `until ${day}`)}` : ''
   return `${REPEATS[e.repeat]}${until}`
 }
 
@@ -38,9 +41,9 @@ export function mapsUrl(place) {
 
 export function timeAgo(iso) {
   const minutes = Math.round((Date.now() - new Date(iso)) / 60_000)
-  if (minutes < 1) return 'şimdi'
-  if (minutes < 60) return `${minutes} dk`
+  if (minutes < 1) return t('şimdi', 'now')
+  if (minutes < 60) return t(`${minutes} dk`, `${minutes}m`)
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} sa`
-  return format(new Date(iso), 'd MMM', { locale: tr })
+  if (hours < 24) return t(`${hours} sa`, `${hours}h`)
+  return dateText(new Date(iso), 'd MMM', 'MMM d')
 }

@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
 import { ChevronRight, ExternalLink, Sparkles } from 'lucide-react'
 import { setCovered } from '../lib/api'
 import { UNKNOWN_PERSON } from '../lib/constants'
 import { genitive } from '../lib/format'
+import { dateText, t } from '../lib/i18n'
+import { PRICE, TRIAL_DAYS } from '../lib/prices'
 
 const MANAGE = {
   app_store: 'https://apps.apple.com/account/subscriptions',
@@ -17,18 +17,22 @@ export default function SubscriptionSettings({ billing, me, connections, members
   const sub = billing.subscription
   const state = Object.fromEntries(billing.connections.map((c) => [c.couple_id, c]))
   const people = connections.filter((c) => c.partnerId && state[c.id])
-  const until = sub?.expires_at ? format(parseISO(sub.expires_at), 'd MMMM yyyy', { locale: tr }) : null
+  const until = sub?.expires_at ? dateText(sub.expires_at, 'd MMMM yyyy', 'MMMM d, yyyy') : null
 
-  const plan = sub?.product === 'yearly' ? 'Yıllık' : 'Aylık'
+  const yearly = sub?.product === 'yearly'
+  const plan = yearly ? t('Yıllık', 'Yearly') : t('Aylık', 'Monthly')
   const status = !billing.subscribed
     ? null
     : sub?.trial && sub?.status === 'active'
-      ? `Ücretsiz deneme · ${until} tarihinde ${plan.toLocaleLowerCase('tr')} abonelik başlar`
+      ? t(
+          `Ücretsiz deneme · ${until} tarihinde ${yearly ? 'yıllık' : 'aylık'} abonelik başlar`,
+          `Free trial · your ${yearly ? 'yearly' : 'monthly'} plan starts on ${until}`,
+        )
       : sub?.status === 'cancelled'
-      ? `İptal edildi · ${until} tarihine kadar açık`
+      ? t(`İptal edildi · ${until} tarihine kadar açık`, `Cancelled · open until ${until}`)
       : sub?.status === 'grace'
-        ? 'Ödeme alınamadı · mağaza hesabını kontrol et'
-        : [plan, until && `yenilenme ${until}`].filter(Boolean).join(' · ')
+        ? t('Ödeme alınamadı · mağaza hesabını kontrol et', 'Payment failed · check your store account')
+        : [plan, until && t(`yenilenme ${until}`, `renews ${until}`)].filter(Boolean).join(' · ')
 
   async function toggle(c, on) {
     setBusy(c.id)
@@ -36,21 +40,25 @@ export default function SubscriptionSettings({ billing, me, connections, members
       await setCovered(me.id, c.id, on)
       await onChanged()
     } catch (err) {
-      onToast(err.message === 'no_slot' ? `${billing.max} kişilik yerin dolu; önce birini çıkar` : 'Kaydedilemedi, tekrar dener misin?')
+      onToast(
+        err.message === 'no_slot'
+          ? t(`${billing.max} kişilik yerin dolu; önce birini çıkar`, `All ${billing.max} places are taken; remove someone first`)
+          : t('Kaydedilemedi, tekrar dener misin?', 'Couldn’t save. Try again?'),
+      )
     }
     setBusy(null)
   }
 
   function label(c, person) {
     const s = state[c.id]
-    if (!s.open) return 'Salt okunur'
-    if (!billing.subscribed) return `${genitive(person.name)} aboneliğinde`
-    return s.other_pays ? 'Kendi aboneliği var' : 'Senin aboneliğinde'
+    if (!s.open) return t('Salt okunur', 'Read-only')
+    if (!billing.subscribed) return t(`${genitive(person.name)} aboneliğinde`, `On ${person.name}’s subscription`)
+    return s.other_pays ? t('Kendi aboneliği var', 'Has their own subscription') : t('Senin aboneliğinde', 'On your subscription')
   }
 
   return (
     <section className="settings-group">
-      <h4>Abonelik</h4>
+      <h4>{t('Abonelik', 'Subscription')}</h4>
       <div className="list-card">
         {billing.subscribed ? (
           <div className="list-row">
@@ -63,7 +71,7 @@ export default function SubscriptionSettings({ billing, me, connections, members
             </span>
             {MANAGE[sub?.store] && (
               <a className="link-btn" href={MANAGE[sub.store]} target="_blank" rel="noreferrer">
-                Yönet <ExternalLink size={13} aria-hidden="true" />
+                {t('Yönet', 'Manage')} <ExternalLink size={13} aria-hidden="true" />
               </a>
             )}
           </div>
@@ -73,8 +81,13 @@ export default function SubscriptionSettings({ billing, me, connections, members
               <Sparkles size={18} aria-hidden="true" />
             </span>
             <span className="row-text">
-              UsDay+’a geç
-              <small>14 gün ücretsiz · sen + {billing.max} kişi · yıllık 399,90 TL</small>
+              {t('UsDay+’a geç', 'Get UsDay+')}
+              <small>
+                {t(
+                  `${TRIAL_DAYS} gün ücretsiz · sen + ${billing.max} kişi · yıllık ${PRICE.yearly}`,
+                  `${TRIAL_DAYS} days free · you + ${billing.max} people · ${PRICE.yearly} a year`,
+                )}
+              </small>
             </span>
             <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
           </button>
@@ -85,8 +98,11 @@ export default function SubscriptionSettings({ billing, me, connections, members
         <>
           <p className="hint cover-hint">
             {billing.subscribed
-              ? `Aboneliğin ${billing.max} kişiyi kapsar · ${billing.used}/${billing.max} dolu. Kendi aboneliği olanlar yer kaplamaz.`
-              : 'Bağlantılarından biri abone olunca ortak takviminiz açılır.'}
+              ? t(
+                  `Aboneliğin ${billing.max} kişiyi kapsar · ${billing.used}/${billing.max} dolu. Kendi aboneliği olanlar yer kaplamaz.`,
+                  `Your subscription covers ${billing.max} people · ${billing.used}/${billing.max} used. People with their own subscription don’t take a place.`,
+                )
+              : t('Bağlantılarından biri abone olunca ortak takviminiz açılır.', 'Your shared calendar opens when one of your connections subscribes.')}
           </p>
           <div className="list-card">
             {people.map((c) => {

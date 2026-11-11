@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { respondToPlan } from '../lib/api'
 import { notifyAnswer } from '../lib/push'
+import { t } from '../lib/i18n'
 
 // The asked person's answer: yes, no (with an optional note), or another time.
 export default function ProposalActions({ event, onAnswered, onToast }) {
@@ -16,10 +17,16 @@ export default function ProposalActions({ event, onAnswered, onToast }) {
     try {
       await respondToPlan(event.seriesId ?? event.id, kind, { date, time, note: note.trim() || null })
       notifyAnswer(event.seriesId ?? event.id)
-      onToast(kind === 'accept' ? '✅ Plan kesinleşti' : kind === 'decline' ? '❌ Yanıtın iletildi' : '🕐 Yeni zaman önerildi')
+      onToast(
+        kind === 'accept'
+          ? t('✅ Plan kesinleşti', '✅ It’s on!')
+          : kind === 'decline'
+            ? t('❌ Yanıtın iletildi', '❌ Your answer was sent')
+            : t('🕐 Yeni zaman önerildi', '🕐 New time suggested'),
+      )
       onAnswered()
     } catch {
-      onToast('Yanıt gönderilemedi, tekrar dener misin?')
+      onToast(t('Yanıt gönderilemedi, tekrar dener misin?', 'Couldn’t send your answer. Try again?'))
       setBusy(false)
     }
   }
@@ -29,13 +36,13 @@ export default function ProposalActions({ event, onAnswered, onToast }) {
       {mode === null && (
         <div className="proposal-buttons">
           <button className="btn btn-primary" disabled={busy} onClick={() => answer('accept')}>
-            <Check size={16} aria-hidden="true" /> Uygunum
+            <Check size={16} aria-hidden="true" /> {t('Uygunum', 'I’m free')}
           </button>
           <button className="btn btn-secondary" disabled={busy} onClick={() => setMode('decline')}>
-            Değilim
+            {t('Değilim', 'Can’t')}
           </button>
           <button className="btn btn-secondary" disabled={busy} onClick={() => setMode('counter')}>
-            Başka zaman
+            {t('Başka zaman', 'Another time')}
           </button>
         </div>
       )}
@@ -43,11 +50,11 @@ export default function ProposalActions({ event, onAnswered, onToast }) {
       {mode === 'counter' && (
         <div className="row">
           <label className="field">
-            <span>Gün</span>
+            <span>{t('Gün', 'Day')}</span>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="field">
-            <span>Saat</span>
+            <span>{t('Saat', 'Time')}</span>
             <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </label>
         </div>
@@ -57,21 +64,25 @@ export default function ProposalActions({ event, onAnswered, onToast }) {
         <>
           <input
             className="input"
-            placeholder={mode === 'decline' ? 'Kısa bir not (isteğe bağlı) — örn. o akşam toplantım var' : 'Not (isteğe bağlı)'}
+            placeholder={
+              mode === 'decline'
+                ? t('Kısa bir not (isteğe bağlı) — örn. o akşam toplantım var', 'A short note (optional), e.g. I have a meeting that evening')
+                : t('Not (isteğe bağlı)', 'Note (optional)')
+            }
             maxLength={300}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
           <div className="proposal-buttons">
             <button className="btn btn-ghost" onClick={() => setMode(null)} disabled={busy}>
-              Geri
+              {t('Geri', 'Back')}
             </button>
             <button
               className="btn btn-primary"
               disabled={busy || (mode === 'counter' && !date)}
               onClick={() => answer(mode)}
             >
-              {mode === 'decline' ? 'Gönder' : 'Bu zamanı öner'}
+              {mode === 'decline' ? t('Gönder', 'Send') : t('Bu zamanı öner', 'Suggest this time')}
             </button>
           </div>
         </>

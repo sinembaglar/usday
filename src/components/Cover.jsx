@@ -4,6 +4,7 @@ import { resizeImage } from '../lib/image'
 import ImageCropper from './ImageCropper'
 import Highlights from './Highlights'
 import Sheet from './Sheet'
+import { t } from '../lib/i18n'
 
 export const COVER_ASPECT = 5 / 4
 
@@ -44,7 +45,7 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
               className="cover-photo-btn cover-icon"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              aria-label={photo ? 'Kapak fotoğrafını değiştir' : 'Kapak fotoğrafı ekle'}
+              aria-label={photo ? t('Kapak fotoğrafını değiştir', 'Change cover photo') : t('Kapak fotoğrafı ekle', 'Add a cover photo')}
             >
               <Camera size={18} aria-hidden="true" />
             </button>
@@ -52,12 +53,12 @@ export default function Cover({ photo, onPhoto, highlights, onOpen, onSettings, 
           <button
             className="cover-photo-btn cover-icon bell"
             onClick={onInbox}
-            aria-label={unread ? `Bildirimler, ${unread} okunmamış` : 'Bildirimler'}
+            aria-label={unread ? t(`Bildirimler, ${unread} okunmamış`, `Notifications, ${unread} unread`) : t('Bildirimler', 'Notifications')}
           >
             <Bell size={18} aria-hidden="true" />
             {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
           </button>
-          <button className="cover-photo-btn cover-icon" onClick={onSettings} aria-label="Ayarlar">
+          <button className="cover-photo-btn cover-icon" onClick={onSettings} aria-label={t('Ayarlar', 'Settings')}>
             <Settings size={18} aria-hidden="true" />
           </button>
         </span>

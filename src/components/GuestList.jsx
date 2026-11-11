@@ -1,23 +1,23 @@
 import { useState } from 'react'
-import { format, parseISO } from 'date-fns'
-import { tr } from 'date-fns/locale'
+import { format } from 'date-fns'
 import { Check, CircleHelp, Clock, X } from 'lucide-react'
 import { UNKNOWN_PERSON } from '../lib/constants'
 import { answerInvitation, moveGroupPlan } from '../lib/api'
 import { notifyAnswer } from '../lib/push'
+import { dateText, t } from '../lib/i18n'
 
 // Each answer as a word in its own colour (not an emoji): who is coming is readable at a glance.
 const STATUS = {
-  maker: { word: 'Planlayan', tone: 'maker' },
-  pending: { word: 'Bekleniyor', tone: 'wait' },
-  accepted: { word: 'Geliyor', tone: 'ok' },
-  maybe: { word: 'Belki', tone: 'maybe' },
-  suggested: { word: 'Başka zaman', tone: 'maybe' },
-  declined: { word: 'Gelemiyor', tone: 'no' },
+  maker: { word: t('Planlayan', 'Host'), tone: 'maker' },
+  pending: { word: t('Bekleniyor', 'Waiting'), tone: 'wait' },
+  accepted: { word: t('Geliyor', 'Going'), tone: 'ok' },
+  maybe: { word: t('Belki', 'Maybe'), tone: 'maybe' },
+  suggested: { word: t('Başka zaman', 'Another time'), tone: 'maybe' },
+  declined: { word: t('Gelemiyor', 'Can’t go'), tone: 'no' },
 }
 
 const whenOf = ({ date, time }) =>
-  [format(parseISO(date), 'd MMMM EEEE', { locale: tr }), time].filter(Boolean).join(' · ')
+  [dateText(date, 'd MMMM EEEE', 'EEEE, MMMM d'), time].filter(Boolean).join(' · ')
 
 // Who is on a group plan and what they said. The maker can move the plan to a suggested time.
 export function GuestList({ event, members, me, onMoved, onToast }) {
@@ -27,14 +27,19 @@ export function GuestList({ event, members, me, onMoved, onToast }) {
 
   async function move(guest) {
     const name = (members[guest.id] ?? UNKNOWN_PERSON).name
-    if (!window.confirm(`Plan ${whenOf(guest.suggested)} zamanına taşınsın mı? Herkese yeniden sorulur, ${name} katılıyor sayılır.`)) return
+    const when = whenOf(guest.suggested)
+    const question = t(
+      `Plan ${when} zamanına taşınsın mı? Herkese yeniden sorulur, ${name} katılıyor sayılır.`,
+      `Move the plan to ${when}? Everyone is asked again, and ${name} counts as going.`,
+    )
+    if (!window.confirm(question)) return
     setMoving(guest.id)
     try {
       await moveGroupPlan(event.seriesId ?? event.id, guest.suggested.date, guest.suggested.time, guest.id)
-      onToast('🕐 Plan taşındı, herkese yeniden soruldu')
+      onToast(t('🕐 Plan taşındı, herkese yeniden soruldu', '🕐 Plan moved; everyone was asked again'))
       onMoved()
     } catch {
-      onToast('Taşınamadı, tekrar dener misin?')
+      onToast(t('Taşınamadı, tekrar dener misin?', 'Couldn’t move it. Try again?'))
       setMoving(null)
     }
   }
@@ -50,14 +55,14 @@ export function GuestList({ event, members, me, onMoved, onToast }) {
             </span>
             <span className="guest-name">
               {person.name}
-              {event.hiddenFrom?.includes(g.id) && <small> · sürpriz onun için</small>}
+              {event.hiddenFrom?.includes(g.id) && <small> · {t('sürpriz onun için', 'the surprise is for them')}</small>}
               {g.note && <small className="guest-note">“{g.note}”</small>}
               {g.suggested && (
                 <span className="guest-suggestion">
-                  {whenOf(g.suggested)} olur mu?
+                  {t(`${whenOf(g.suggested)} olur mu?`, `How about ${whenOf(g.suggested)}?`)}
                   {isMaker && (
                     <button className="link-btn" disabled={moving === g.id} onClick={() => move(g)}>
-                      Bu zamana taşı
+                      {t('Bu zamana taşı', 'Move to this time')}
                     </button>
                   )}
                 </span>
@@ -72,24 +77,24 @@ export function GuestList({ event, members, me, onMoved, onToast }) {
 }
 
 const CHOICES = [
-  { status: 'accepted', label: 'Katılıyorum', Icon: Check },
-  { status: 'maybe', label: 'Belki', Icon: CircleHelp },
-  { status: 'suggested', label: 'Başka zaman', Icon: Clock },
-  { status: 'declined', label: 'Katılamıyorum', Icon: X },
+  { status: 'accepted', label: t('Katılıyorum', 'I’m going'), Icon: Check },
+  { status: 'maybe', label: t('Belki', 'Maybe'), Icon: CircleHelp },
+  { status: 'suggested', label: t('Başka zaman', 'Another time'), Icon: Clock },
+  { status: 'declined', label: t('Katılamıyorum', 'Can’t go'), Icon: X },
 ]
 
 const PLACEHOLDER = {
-  accepted: 'Not ekle (örn. biraz geç gelirim)',
-  maybe: 'Not ekle (örn. işten çıkabilirsem)',
-  suggested: 'Not ekle (örn. hafta sonu daha rahatım)',
-  declined: 'Not ekle (örn. o gün şehir dışındayım)',
+  accepted: t('Not ekle (örn. biraz geç gelirim)', 'Add a note (e.g. I’ll be a bit late)'),
+  maybe: t('Not ekle (örn. işten çıkabilirsem)', 'Add a note (e.g. if I can leave work in time)'),
+  suggested: t('Not ekle (örn. hafta sonu daha rahatım)', 'Add a note (e.g. weekends are easier for me)'),
+  declined: t('Not ekle (örn. o gün şehir dışındayım)', 'Add a note (e.g. I’m out of town that day)'),
 }
 
 const TOAST = {
-  accepted: '✅ Katılıyorsun, haber verdik',
-  maybe: '🤔 “Belki” dedin, haber verdik',
-  suggested: '🕐 Önerin planlayana iletildi',
-  declined: '❌ Yanıtın iletildi',
+  accepted: t('✅ Katılıyorsun, haber verdik', '✅ You’re going. We let them know'),
+  maybe: t('🤔 “Belki” dedin, haber verdik', '🤔 You said “maybe”. We let them know'),
+  suggested: t('🕐 Önerin planlayana iletildi', '🕐 Your suggestion went to the host'),
+  declined: t('❌ Yanıtın iletildi', '❌ Your answer was sent'),
 }
 
 // My answer to a group plan; it can be changed later. "Katılıyorum" goes in one tap; the others
@@ -115,7 +120,7 @@ export function InvitationActions({ event, me, onAnswered, onToast }) {
       onToast(TOAST[status])
       onAnswered()
     } catch {
-      onToast('Yanıt gönderilemedi, tekrar dener misin?')
+      onToast(t('Yanıt gönderilemedi, tekrar dener misin?', 'Couldn’t send your answer. Try again?'))
       setBusy(false)
     }
   }
@@ -152,10 +157,10 @@ export function InvitationActions({ event, me, onAnswered, onToast }) {
         />
         <div className="proposal-buttons">
           <button className="btn btn-ghost" disabled={busy} onClick={() => setChoice(null)}>
-            Geri
+            {t('Geri', 'Back')}
           </button>
           <button className="btn btn-primary" disabled={busy || !suggested.date || unchanged} onClick={() => answer(choice)}>
-            Gönder
+            {t('Gönder', 'Send')}
           </button>
         </div>
       </div>
@@ -176,7 +181,7 @@ export function InvitationActions({ event, me, onAnswered, onToast }) {
       ))}
       {mine.status === 'accepted' && (
         <button className="link-btn answer-note" onClick={() => setChoice('accepted')}>
-          Not ekle
+          {t('Not ekle', 'Add a note')}
         </button>
       )}
     </div>

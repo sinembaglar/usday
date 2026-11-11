@@ -3,6 +3,7 @@ import { Share } from '@capacitor/share'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { SplashScreen } from '@capacitor/splash-screen'
+import { isEn } from './i18n'
 
 // Running inside the iPhone or Android app rather than a browser tab.
 export const isNative = Capacitor.isNativePlatform()
@@ -12,6 +13,10 @@ export const isNative = Capacitor.isNativePlatform()
 export const SITE = 'https://usday.app'
 export const publicOrigin = () => (isNative ? SITE : window.location.origin)
 export const siteUrl = (path) => (isNative ? `${SITE}${path}` : path)
+
+// Legal and help pages in the app's language.
+const PAGES_EN = { gizlilik: '/privacy', kosullar: '/terms', destek: '/support', 'hesap-silme': '/delete-account' }
+export const pageUrl = (page) => siteUrl(isEn ? PAGES_EN[page] : `/${page}`)
 
 // Share a text and a link through the phone's own share menu (or the browser's). Returns false when
 // sharing is not possible here, so the caller can copy the text instead.

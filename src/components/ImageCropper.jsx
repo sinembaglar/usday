@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../lib/i18n'
 
 const MAX_ZOOM = 4
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
@@ -88,8 +89,8 @@ export default function ImageCropper({ src, aspect, onCancel, onDone }) {
 
   return (
     <div className="cropper" data-no-swipe>
-      <h3>Fotoğrafı ayarla</h3>
-      <p className="hint">Sürükleyerek kaydır, iki parmakla ya da çubukla yakınlaştır.</p>
+      <h3>{t('Fotoğrafı ayarla', 'Adjust the photo')}</h3>
+      <p className="hint">{t('Sürükleyerek kaydır, iki parmakla ya da çubukla yakınlaştır.', 'Drag to move; pinch or use the slider to zoom.')}</p>
 
       <div
         ref={frameRef}
@@ -124,15 +125,15 @@ export default function ImageCropper({ src, aspect, onCancel, onDone }) {
         step={0.01}
         value={zoom}
         onChange={(e) => changeZoom(Number(e.target.value))}
-        aria-label="Yakınlaştır"
+        aria-label={t('Yakınlaştır', 'Zoom')}
       />
 
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onCancel}>
-          Vazgeç
+          {t('Vazgeç', 'Cancel')}
         </button>
         <button className="btn btn-primary" onClick={done} disabled={!natural}>
-          Kullan
+          {t('Kullan', 'Use')}
         </button>
       </div>
     </div>

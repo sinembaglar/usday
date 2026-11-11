@@ -1,11 +1,25 @@
 import { useState } from 'react'
 import { CalendarHeart, Gift, KeyRound, ShieldCheck, Sparkles, Users } from 'lucide-react'
-import { siteUrl } from '../lib/native'
+import { pageUrl } from '../lib/native'
+import { t } from '../lib/i18n'
+import { PRICE, TRIAL_DAYS } from '../lib/prices'
 
-const TRIAL_DAYS = 14
 const PLANS = [
-  { id: 'yearly', label: 'Yıllık', price: '399,90 TL', per: '/ yıl', note: 'Ayda 33,33 TL’ye gelir · 5 ay bedava', best: true },
-  { id: 'monthly', label: 'Aylık', price: '59,90 TL', per: '/ ay', note: 'İstediğin ay bırakabilirsin' },
+  {
+    id: 'yearly',
+    label: t('Yıllık', 'Yearly'),
+    price: PRICE.yearly,
+    per: t('/ yıl', '/ year'),
+    note: t(`Ayda ${PRICE.yearlyPerMonth}’ye gelir · 5 ay bedava`, `${PRICE.yearlyPerMonth} a month · 5 months free`),
+    best: true,
+  },
+  {
+    id: 'monthly',
+    label: t('Aylık', 'Monthly'),
+    price: PRICE.monthly,
+    per: t('/ ay', '/ month'),
+    note: t('İstediğin ay bırakabilirsin', 'Stop any month you like'),
+  },
 ]
 
 // UsDay+: one subscription opens the shared calendar for the subscriber and the people they are connected
@@ -14,14 +28,24 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
   const [plan, setPlan] = useState('yearly')
   const [asked, setAsked] = useState(false)
   const chosen = PLANS.find((p) => p.id === plan)
-  // 399,90 TL a year shared by up to max + 1 people, per month.
-  const perPerson = (399.9 / 12 / (max + 1)).toLocaleString('tr-TR', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
+  const perPerson = PRICE.perPerson(max)
 
   const perks = [
-    { Icon: Users, text: `Sen ve bağlandığın ${max} kişi`, small: `Onlar ayrıca ödemez; yıllık planda kişi başı ayda ${perPerson} TL` },
-    { Icon: CalendarHeart, text: 'Sınırsız ortak plan, grup planı ve sürpriz' },
-    { Icon: Gift, text: 'Dilek listeleri, doğum günü ve yıldönümü hatırlatmaları' },
-    { Icon: ShieldCheck, text: 'Abonelik biterse hiçbir şey silinmez', small: 'Takvimin salt okunur kalır' },
+    {
+      Icon: Users,
+      text: t(`Sen ve bağlandığın ${max} kişi`, `You and ${max} people you’re connected with`),
+      small: t(
+        `Onlar ayrıca ödemez; yıllık planda kişi başı ayda ${perPerson}`,
+        `They don’t pay separately; on the yearly plan that’s ${perPerson} per person a month`,
+      ),
+    },
+    { Icon: CalendarHeart, text: t('Sınırsız ortak plan, grup planı ve sürpriz', 'Unlimited shared plans, group plans and surprises') },
+    { Icon: Gift, text: t('Dilek listeleri, doğum günü ve yıldönümü hatırlatmaları', 'Wish lists, birthday and anniversary reminders') },
+    {
+      Icon: ShieldCheck,
+      text: t('Abonelik biterse hiçbir şey silinmez', 'Nothing is deleted if your subscription ends'),
+      small: t('Takvimin salt okunur kalır', 'Your calendar becomes read-only'),
+    },
   ]
 
   return (
@@ -30,7 +54,11 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
         <Sparkles size={26} aria-hidden="true" />
       </span>
       <h3>UsDay+</h3>
-      {reason ? <p className="paywall-reason">{reason}</p> : <p className="hint">Ortak takviminiz için tek abonelik.</p>}
+      {reason ? (
+        <p className="paywall-reason">{reason}</p>
+      ) : (
+        <p className="hint">{t('Ortak takviminiz için tek abonelik.', 'One subscription for your shared calendar.')}</p>
+      )}
 
       <ul className="paywall-perks">
         {perks.map(({ Icon, text, small }) => (
@@ -46,7 +74,7 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
         ))}
       </ul>
 
-      <div className="paywall-plans" role="radiogroup" aria-label="Abonelik süresi">
+      <div className="paywall-plans" role="radiogroup" aria-label={t('Abonelik süresi', 'Subscription length')}>
         {PLANS.map((p) => (
           <button
             key={p.id}
@@ -57,7 +85,7 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
           >
             <span className="paywall-plan-label">
               {p.label}
-              {p.best && <span className="paywall-best">En avantajlı</span>}
+              {p.best && <span className="paywall-best">{t('En avantajlı', 'Best value')}</span>}
             </span>
             <span className="paywall-price">
               {p.price} <small>{p.per}</small>
@@ -69,39 +97,46 @@ export default function PaywallSheet({ reason, max = 5, onHaveCode, onClose }) {
 
       {asked ? (
         <p className="notice card paywall-store">
-          Abonelik App Store ve Google Play’deki UsDay uygulamasından alınır. Uygulamayı telefonuna indirip aynı hesapla
-          giriş yapman yeterli.
+          {t(
+            'Abonelik App Store ve Google Play’deki UsDay uygulamasından alınır. Uygulamayı telefonuna indirip aynı hesapla giriş yapman yeterli.',
+            'UsDay+ is sold in the UsDay app on the App Store and Google Play. Download it to your phone and sign in with the same account.',
+          )}
         </p>
       ) : (
         <>
           <button className="btn btn-primary paywall-buy" onClick={() => setAsked(true)}>
-            {TRIAL_DAYS} gün ücretsiz dene
+            {t(`${TRIAL_DAYS} gün ücretsiz dene`, `Try it free for ${TRIAL_DAYS} days`)}
           </button>
           <p className="hint paywall-trial">
-            {TRIAL_DAYS} gün ücretsiz, sonra {chosen.price} {chosen.per}. Deneme bitmeden iptal edersen hiçbir ücret alınmaz.
+            {t(
+              `${TRIAL_DAYS} gün ücretsiz, sonra ${chosen.price} ${chosen.per}. Deneme bitmeden iptal edersen hiçbir ücret alınmaz.`,
+              `Free for ${TRIAL_DAYS} days, then ${chosen.price} ${chosen.per}. Cancel before the trial ends and you won’t be charged.`,
+            )}
           </p>
         </>
       )}
 
       <button className="link-btn paywall-code" onClick={onHaveCode}>
-        <KeyRound size={15} aria-hidden="true" /> Abone olan birinden davet kodum var
+        <KeyRound size={15} aria-hidden="true" /> {t('Abone olan birinden davet kodum var', 'I have an invite code from a subscriber')}
       </button>
 
       <p className="hint paywall-legal">
-        Ücretsiz deneme bitmeden en az 24 saat önce iptal edilmezse abonelik seçtiğin ücretle başlar ve her dönem aynı ücretle
-        yenilenir. Ödeme ve iptal, App Store ya da Google Play hesabından yapılır.{' '}
-        <a href={siteUrl('/kosullar')} target="_blank" rel="noreferrer">
-          Kullanım Koşulları
+        {t(
+          'Ücretsiz deneme bitmeden en az 24 saat önce iptal edilmezse abonelik seçtiğin ücretle başlar ve her dönem aynı ücretle yenilenir. Ödeme ve iptal, App Store ya da Google Play hesabından yapılır.',
+          'Unless you cancel at least 24 hours before the free trial ends, the subscription starts at the price you chose and renews at the same price every period. Payment and cancellation are handled in your App Store or Google Play account.',
+        )}{' '}
+        <a href={pageUrl('kosullar')} target="_blank" rel="noreferrer">
+          {t('Kullanım Koşulları', 'Terms of Use')}
         </a>{' '}
         ·{' '}
-        <a href={siteUrl('/gizlilik')} target="_blank" rel="noreferrer">
-          Gizlilik
+        <a href={pageUrl('gizlilik')} target="_blank" rel="noreferrer">
+          {t('Gizlilik', 'Privacy')}
         </a>
       </p>
 
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={onClose}>
-          Şimdi değil
+          {t('Şimdi değil', 'Not now')}
         </button>
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   type EventRow,
   type Guest,
 } from '../_shared/push.ts'
+import { genitive, say, type Lang } from '../_shared/i18n.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -23,28 +24,19 @@ const json = (body: unknown, status = 200) =>
 const REACTIONS = ['😍', '🥳', '👍', '😂', '🙈']
 
 // An emoji on a comment, as the comment's author reads it: "😂 Yaren yorumuna güldü".
-const COMMENT_REACTIONS: Record<string, string> = {
-  '😂': 'yorumuna güldü',
-  '😍': 'yorumuna bayıldı',
-  '😮': 'yorumuna şaşırdı',
-  '😢': 'yorumuna üzüldü',
-  '😡': 'yorumuna kızdı',
-  '👍': 'yorumunu beğendi',
+const COMMENT_REACTIONS: Record<string, [string, string]> = {
+  '😂': ['yorumuna güldü', 'laughed at your comment'],
+  '😍': ['yorumuna bayıldı', 'loved your comment'],
+  '😮': ['yorumuna şaşırdı', 'was surprised by your comment'],
+  '😢': ['yorumuna üzüldü', 'was moved by your comment'],
+  '😡': ['yorumuna kızdı', 'was angry about your comment'],
+  '👍': ['yorumunu beğendi', 'liked your comment'],
 }
 
 // What a comment says in a notification; a picture or GIF on its own shows as such.
-const commentText = (c: { body: string; image_path?: string | null }) => {
-  const picture = c.image_path ? (c.image_path.endsWith('.gif') ? '🎞️ GIF' : '📷 Görsel') : ''
+const commentText = (c: { body: string; image_path?: string | null }, lang: Lang) => {
+  const picture = c.image_path ? (c.image_path.endsWith('.gif') ? '🎞️ GIF' : say(lang, '📷 Görsel', '📷 Photo')) : ''
   return [picture, c.body.trim()].filter(Boolean).join(' · ')
-}
-
-// Turkish genitive, same as the app's: "Sinem’in", "Ayşe’nin", "Serhat Han’ın".
-function genitive(name: string) {
-  const lower = name.toLocaleLowerCase('tr')
-  const last = [...lower].filter((c) => 'aeıioöuü'.includes(c)).at(-1) ?? 'e'
-  const vowel = ({ a: 'ı', ı: 'ı', e: 'i', i: 'i', o: 'u', u: 'u', ö: 'ü', ü: 'ü' } as Record<string, string>)[last]
-  const endsWithVowel = 'aeıioöuü'.includes(lower.at(-1) ?? '')
-  return `${name}’${endsWithVowel ? 'n' : ''}${vowel}n`
 }
 
 async function eventWithPeople(eventId: string) {
@@ -54,7 +46,8 @@ async function eventWithPeople(eventId: string) {
 }
 
 // What the recipient may know about the plan.
-const nameFor = (e: EventRow, recipient: string) => (hiddenFrom(e, recipient) ? `🎁 Sürpriz (“${e.teaser}”)` : e.title)
+const nameFor = (e: EventRow, recipient: string, lang: Lang) =>
+  hiddenFrom(e, recipient) ? `${say(lang, '🎁 Sürpriz', '🎁 Surprise')} (“${e.teaser}”)` : e.title
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -98,8 +91,14 @@ Deno.serve(async (req) => {
     const others = [...new Set(people.filter((p) => p.id !== userId).map((p) => p.id))]
     if (!others.length) return json({ sent: 0 })
     const icon = { gift: '🎁', travel: '✈️', experience: '🍽️' }[wish.category as string] ?? '🎁'
-    const payload = { title: `${icon} ${me?.name} dilek listesine ekledi`, body: wish.title, url: `/?tab=dilekler&wish=${wish.id}`, tag: `wish-${wish.id}` }
-    return json({ sent: await sendToUsers(others, payload) })
+    return json({
+      sent: await sendToUsers(others, (lang) => ({
+        title: `${icon} ${say(lang, `${me?.name} dilek listesine ekledi`, `${me?.name} added to their wish list`)}`,
+        body: wish.title,
+        url: `/?tab=dilekler&wish=${wish.id}`,
+        tag: `wish-${wish.id}`,
+      })),
+    })
   }
 
   // An emoji on someone's comment: its author hears it, once for each emoji (changing back and forth
@@ -127,13 +126,14 @@ Deno.serve(async (req) => {
       : c.author === c.owner
         ? `/?event=${c.event_id}&about=${c.open ? 'open' : c.viewer}`
         : `/?shared=${c.owner}&event=${c.event_id}`
-    const payload = {
-      title: `${reaction.emoji} ${me?.name} ${words}`,
-      body: `“${commentText(c).slice(0, 160)}”`,
-      url,
-      tag: `comment-reaction-${commentId}`,
-    }
-    return json({ sent: await sendToUsers([c.author], payload) })
+    return json({
+      sent: await sendToUsers([c.author], (lang) => ({
+        title: `${reaction.emoji} ${me?.name} ${say(lang, ...words)}`,
+        body: `“${commentText(c, lang).slice(0, 160)}”`,
+        url,
+        tag: `comment-reaction-${commentId}`,
+      })),
+    })
   }
 
   // A word about a plan on someone's shared calendar. In the shared conversation the owner and everyone
@@ -170,28 +170,35 @@ Deno.serve(async (req) => {
         (id) => id !== c.author && id !== c.owner && seeing.has(id),
       )
       const { data: owner } = await admin.from('profiles').select('name').eq('id', c.owner).single()
-      const text = commentText(c).slice(0, 180)
+      const text = (lang: Lang) => commentText(c, lang).slice(0, 180)
       const tag = `share-chat-${c.event_id}-open`
       let sent = 0
       if (c.author !== c.owner) {
-        const plan = hiddenFrom(event!, c.owner) ? 'bir planın' : `“${event!.title}” planın`
-        sent += await sendToUsers([c.owner], {
-          title: `💬 ${me?.name}, ${plan} hakkında yazdı`,
-          body: text,
+        const hidden = hiddenFrom(event!, c.owner)
+        sent += await sendToUsers([c.owner], (lang) => ({
+          title: hidden
+            ? say(lang, `💬 ${me?.name}, bir planın hakkında yazdı`, `💬 ${me?.name} wrote about one of your plans`)
+            : say(lang, `💬 ${me?.name}, “${event!.title}” planın hakkında yazdı`, `💬 ${me?.name} wrote about your plan “${event!.title}”`),
+          body: text(lang),
           url: `/?event=${c.event_id}&about=open`,
           tag,
-        })
+        }))
       }
       if (joined.length) {
-        sent += await sendToUsers(joined, {
+        const ownerName = owner?.name ?? ''
+        sent += await sendToUsers(joined, (lang) => ({
           title:
             c.author === c.owner
-              ? `💬 ${me?.name} cevap verdi · “${event!.title}”`
-              : `💬 ${me?.name}, ${genitive(owner?.name ?? '')} “${event!.title}” planı hakkında yazdı`,
-          body: text,
+              ? say(lang, `💬 ${me?.name} cevap verdi · “${event!.title}”`, `💬 ${me?.name} replied · “${event!.title}”`)
+              : say(
+                  lang,
+                  `💬 ${me?.name}, ${genitive(ownerName)} “${event!.title}” planı hakkında yazdı`,
+                  `💬 ${me?.name} wrote about ${ownerName}’s plan “${event!.title}”`,
+                ),
+          body: text(lang),
           url: `/?shared=${c.owner}&event=${c.event_id}`,
           tag,
-        })
+        }))
       }
       return json({ sent })
     }
@@ -200,20 +207,24 @@ Deno.serve(async (req) => {
     const recipient = toOwner ? c.owner : c.viewer
     const { data: share } = await admin.from('calendar_shares').select('level').eq('owner', c.owner).eq('viewer', c.viewer).maybeSingle()
     // The owner knows their plan by name (unless it is a surprise for them); the viewer only if they see names.
-    const plan = toOwner
-      ? hiddenFrom(event!, c.owner)
-        ? 'bir planın'
-        : `“${event!.title}” planın`
-      : share?.level === 'details' && !event!.surprise
-        ? `“${event!.title}”`
-        : 'takvimindeki plan'
-    const payload = {
-      title: toOwner ? `💬 ${me?.name}, ${plan} hakkında yazdı` : `💬 ${me?.name} cevap verdi · ${plan}`,
-      body: commentText(c).slice(0, 180),
-      url: toOwner ? `/?event=${c.event_id}&about=${c.viewer}` : `/?shared=${c.owner}&event=${c.event_id}`,
-      tag: `share-chat-${c.event_id}-${c.viewer}`,
-    }
-    return json({ sent: await sendToUsers([recipient], payload) })
+    const hidden = hiddenFrom(event!, c.owner)
+    const named = share?.level === 'details' && !event!.surprise
+    const title = (lang: Lang) =>
+      toOwner
+        ? hidden
+          ? say(lang, `💬 ${me?.name}, bir planın hakkında yazdı`, `💬 ${me?.name} wrote about one of your plans`)
+          : say(lang, `💬 ${me?.name}, “${event!.title}” planın hakkında yazdı`, `💬 ${me?.name} wrote about your plan “${event!.title}”`)
+        : named
+          ? say(lang, `💬 ${me?.name} cevap verdi · “${event!.title}”`, `💬 ${me?.name} replied · “${event!.title}”`)
+          : say(lang, `💬 ${me?.name} cevap verdi · takvimindeki plan`, `💬 ${me?.name} replied · a plan on their calendar`)
+    return json({
+      sent: await sendToUsers([recipient], (lang) => ({
+        title: title(lang),
+        body: commentText(c, lang).slice(0, 180),
+        url: toOwner ? `/?event=${c.event_id}&about=${c.viewer}` : `/?shared=${c.owner}&event=${c.event_id}`,
+        tag: `share-chat-${c.event_id}-${c.viewer}`,
+      })),
+    })
   }
 
   // I started sharing my calendar with someone: tell them.
@@ -226,22 +237,37 @@ Deno.serve(async (req) => {
       .maybeSingle()
     if (!share) return json({ error: 'not_found' }, 404)
     const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
-    const payload = {
-      title: `📅 ${me?.name} takvimini seninle paylaştı`,
-      body:
-        share.level === 'details'
-          ? 'Planlarının adlarını ve saatlerini görebilirsin; boş olduğu bir zamana plan önerebilirsin.'
-          : 'Dolu olduğu saatleri görebilirsin; boş olduğu bir zamana plan önerebilirsin.',
-      url: `/?person=${userId}`,
-      tag: `share-${userId}`,
-    }
-    return json({ sent: await sendToUsers([body.share_viewer], payload) })
+    return json({
+      sent: await sendToUsers([body.share_viewer], (lang) => ({
+        title: say(lang, `📅 ${me?.name} takvimini seninle paylaştı`, `📅 ${me?.name} shared their calendar with you`),
+        body:
+          share.level === 'details'
+            ? say(
+                lang,
+                'Planlarının adlarını ve saatlerini görebilirsin; boş olduğu bir zamana plan önerebilirsin.',
+                'You can see the names and times of their plans, and suggest a plan when they’re free.',
+              )
+            : say(
+                lang,
+                'Dolu olduğu saatleri görebilirsin; boş olduğu bir zamana plan önerebilirsin.',
+                'You can see when they’re busy, and suggest a plan when they’re free.',
+              ),
+        url: `/?person=${userId}`,
+        tag: `share-${userId}`,
+      })),
+    })
   }
 
   // "Test bildirimi gönder" in settings: only to my own devices.
   if (body.test) {
-    const payload = { title: '🔔 Test bildirimi', body: 'Bildirimler bu cihazda çalışıyor 💜', url: '/', tag: 'test' }
-    return json({ sent: await sendToUsers([userId], payload) })
+    return json({
+      sent: await sendToUsers([userId], (lang) => ({
+        title: say(lang, '🔔 Test bildirimi', '🔔 Test notification'),
+        body: say(lang, 'Bildirimler bu cihazda çalışıyor 💜', 'Notifications work on this device 💜'),
+        url: '/',
+        tag: 'test',
+      })),
+    })
   }
 
   // Someone is getting a wish: everyone else who can see it hears it, so it is not bought twice;
@@ -256,13 +282,20 @@ Deno.serve(async (req) => {
     const { data: me } = await admin.from('profiles').select('name').eq('id', userId).single()
     const others = [...new Set(people.map((p) => p.id))].filter((id) => id !== wish!.owner && id !== userId)
     const ownerName = name(wish!.owner) ?? ''
-    const payload = {
-      title: claim.shared ? `🎁 ${me?.name} bunu alıyor` : '🔒 Biri bunu alıyor',
-      body: `${genitive(ownerName)} dileği: ${wish!.title} — ${ownerName} bilmiyor 🤫`,
-      url: `/?tab=dilekler&wish=${wish!.id}`,
-      tag: `claim-${wish!.id}`,
-    }
-    return json({ sent: await sendToUsers(others, payload) })
+    return json({
+      sent: await sendToUsers(others, (lang) => ({
+        title: claim.shared
+          ? say(lang, `🎁 ${me?.name} bunu alıyor`, `🎁 ${me?.name} is getting this`)
+          : say(lang, '🔒 Biri bunu alıyor', '🔒 Someone is getting this'),
+        body: say(
+          lang,
+          `${genitive(ownerName)} dileği: ${wish!.title} — ${ownerName} bilmiyor 🤫`,
+          `${ownerName}’s wish: ${wish!.title} — ${ownerName} doesn’t know 🤫`,
+        ),
+        url: `/?tab=dilekler&wish=${wish!.id}`,
+        tag: `claim-${wish!.id}`,
+      })),
+    })
   }
 
   // New feedback or a report: tells the admins. Only its sender can announce it.
@@ -286,7 +319,7 @@ Deno.serve(async (req) => {
 
   // Which plan, and is the caller allowed to talk about it?
   let eventId = body.event_id ?? body.response_event_id ?? body.moved_event_id
-  let comment: { body: string } | null = null
+  let comment: { body: string; image_path?: string | null } | null = null
   if (body.comment_id) {
     const { data } = await admin
       .from('event_comments')
@@ -303,7 +336,7 @@ Deno.serve(async (req) => {
       .select('id')
     if (!first?.length) return json({ sent: 0 })
     eventId = data.event_id
-    comment = { body: commentText(data) }
+    comment = data
   } else if (body.reaction_event_id) {
     if (!REACTIONS.includes(body.emoji)) return json({ error: 'bad_emoji' }, 400)
     eventId = body.reaction_event_id
@@ -318,14 +351,15 @@ Deno.serve(async (req) => {
     const me = guests.find((g) => g.id === userId)
     if (!me) return json({ error: 'not_found' }, 404)
     const url = eventUrl(groupPlan.id)
-    const when = formatWhen(groupPlan)
+    const when = (lang: Lang) => formatWhen(groupPlan, lang)
     const others = guests.filter((g) => g.id !== userId)
     const names = (list: Guest[]) => list.map((g) => g.name).join(', ')
     // Guests the plan is still a surprise for; they hear only the teaser, and nothing of the planning.
     const secretFor = new Set(others.filter((g) => hiddenFrom(groupPlan, g.id)).map((g) => g.id))
     const insiders = others.filter((g) => !secretFor.has(g.id))
     const targets = guests.filter((g) => secretFor.has(g.id))
-    const forWhom = targets.length ? ` · 🤫 ${names(targets)} için sürpriz` : ''
+    const forWhom = (lang: Lang) =>
+      targets.length ? say(lang, ` · 🤫 ${names(targets)} için sürpriz`, ` · 🤫 a surprise for ${names(targets)}`) : ''
     if (hiddenFrom(groupPlan, userId) && !body.response_event_id) return json({ error: 'not_found' }, 404)
     let sent = 0
 
@@ -334,12 +368,26 @@ Deno.serve(async (req) => {
       const invited = insiders.filter((g) => g.status !== 'maker').map((g) => g.id)
       sent += await sendToUsers(
         invited,
-        { title: `👥 ${me.name} seni bir plana davet ediyor`, body: `${groupPlan.title} · ${when}${forWhom} — ${names(others)} davetli`, url, tag: groupPlan.id },
+        (lang) => ({
+          title: say(lang, `👥 ${me.name} seni bir plana davet ediyor`, `👥 ${me.name} invited you to a plan`),
+          body: say(
+            lang,
+            `${groupPlan.title} · ${when(lang)}${forWhom(lang)} — ${names(others)} davetli`,
+            `${groupPlan.title} · ${when(lang)}${forWhom(lang)} — invited: ${names(others)}`,
+          ),
+          url,
+          tag: groupPlan.id,
+        }),
         groupPlan.id,
       )
       sent += await sendToUsers(
         [...secretFor],
-        { title: `🎁 ${me.name} seni bir sürpriz için ayırtmak istiyor`, body: `${when} boş musun? “${groupPlan.teaser}”`, url, tag: groupPlan.id },
+        (lang) => ({
+          title: say(lang, `🎁 ${me.name} seni bir sürpriz için ayırtmak istiyor`, `🎁 ${me.name} wants to book you for a surprise`),
+          body: say(lang, `${when(lang)} boş musun? “${groupPlan.teaser}”`, `Are you free on ${when(lang)}? “${groupPlan.teaser}”`),
+          url,
+          tag: groupPlan.id,
+        }),
         groupPlan.id,
       )
     } else if (body.response_event_id) {
@@ -353,38 +401,63 @@ Deno.serve(async (req) => {
         .single()
       const note = answer?.note ? ` · “${answer.note}”` : ''
       const tag = `${groupPlan.id}-answer-${userId}`
-      const suggestedWhen = answer?.suggested_date
-        ? formatWhen({ ...groupPlan, event_date: answer.suggested_date, event_time: answer.suggested_time })
-        : ''
-      const payload = {
-        accepted: { title: `✅ ${me.name} katılıyor`, body: `${groupPlan.title} · ${when}${note}`, url, tag },
-        maybe: { title: `🤔 ${me.name} belki katılır`, body: `${groupPlan.title}${note}`, url, tag },
-        suggested: { title: `🕐 ${me.name} başka zaman öneriyor`, body: `${suggestedWhen} olur mu? · ${groupPlan.title}${note}`, url, tag },
-        declined: { title: `❌ ${me.name} katılamıyor`, body: `${groupPlan.title}${note}`, url, tag },
-      }[me.status as string]
-      if (!payload) return json({ error: 'bad_answer' }, 400)
+      const suggestedWhen = (lang: Lang) =>
+        answer?.suggested_date
+          ? formatWhen({ ...groupPlan, event_date: answer.suggested_date, event_time: answer.suggested_time }, lang)
+          : ''
+      const answers: Record<string, (lang: Lang) => { title: string; body: string }> = {
+        accepted: (lang) => ({
+          title: say(lang, `✅ ${me.name} katılıyor`, `✅ ${me.name} is going`),
+          body: `${groupPlan.title} · ${when(lang)}${note}`,
+        }),
+        maybe: (lang) => ({ title: say(lang, `🤔 ${me.name} belki katılır`, `🤔 ${me.name} might come`), body: `${groupPlan.title}${note}` }),
+        suggested: (lang) => ({
+          title: say(lang, `🕐 ${me.name} başka zaman öneriyor`, `🕐 ${me.name} suggests another time`),
+          body: say(lang, `${suggestedWhen(lang)} olur mu?`, `How about ${suggestedWhen(lang)}?`) + ` · ${groupPlan.title}${note}`,
+        }),
+        declined: (lang) => ({ title: say(lang, `❌ ${me.name} katılamıyor`, `❌ ${me.name} can’t make it`), body: `${groupPlan.title}${note}` }),
+      }
+      const words = answers[me.status as string]
+      if (!words) return json({ error: 'bad_answer' }, 400)
       // A suggested time is a question for the maker; other answers are news for everyone in on it.
       const to = me.status === 'suggested' ? insiders.filter((g) => g.status === 'maker') : insiders
-      sent += await sendToUsers(to.map((g) => g.id), payload, groupPlan.id)
+      sent += await sendToUsers(to.map((g) => g.id), (lang) => ({ ...words(lang), url, tag }), groupPlan.id)
     } else if (body.moved_event_id) {
       // The maker moved the plan to a new time: everyone is asked again.
       if (groupPlan.created_by !== userId) return json({ error: 'not_found' }, 404)
       sent += await sendToUsers(
         insiders.map((g) => g.id),
-        { title: `🕐 ${me.name} planı yeni bir zamana taşıdı`, body: `${groupPlan.title} · ${when} — gelebiliyor musun?`, url, tag: `${groupPlan.id}-moved` },
+        (lang) => ({
+          title: say(lang, `🕐 ${me.name} planı yeni bir zamana taşıdı`, `🕐 ${me.name} moved the plan to a new time`),
+          body: say(lang, `${groupPlan.title} · ${when(lang)} — gelebiliyor musun?`, `${groupPlan.title} · ${when(lang)} — can you make it?`),
+          url,
+          tag: `${groupPlan.id}-moved`,
+        }),
         groupPlan.id,
       )
       sent += await sendToUsers(
         [...secretFor],
-        { title: `🎁 ${me.name} sürprizin zamanını değiştirdi`, body: `${when} boş musun? “${groupPlan.teaser}”`, url, tag: `${groupPlan.id}-moved` },
+        (lang) => ({
+          title: say(lang, `🎁 ${me.name} sürprizin zamanını değiştirdi`, `🎁 ${me.name} changed the time of your surprise`),
+          body: say(lang, `${when(lang)} boş musun? “${groupPlan.teaser}”`, `Are you free on ${when(lang)}? “${groupPlan.teaser}”`),
+          url,
+          tag: `${groupPlan.id}-moved`,
+        }),
         groupPlan.id,
       )
     } else {
+      const said = comment
       sent += await sendToUsers(
         insiders.map((g) => g.id),
-        comment
-          ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: comment.body.slice(0, 180), url: `${url}&chat=1`, tag: `${groupPlan.id}-chat` }
-          : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: groupPlan.title, url, tag: `${groupPlan.id}-react` },
+        (lang) =>
+          said
+            ? { title: `💬 ${me.name} · ${groupPlan.title}`, body: commentText(said, lang).slice(0, 180), url: `${url}&chat=1`, tag: `${groupPlan.id}-chat` }
+            : {
+                title: say(lang, `${body.emoji} ${me.name} planına tepki verdi`, `${body.emoji} ${me.name} reacted to the plan`),
+                body: groupPlan.title,
+                url,
+                tag: `${groupPlan.id}-react`,
+              },
         groupPlan.id,
       )
     }
@@ -400,38 +473,68 @@ Deno.serve(async (req) => {
   if (!partner) return json({ sent: 0 })
 
   const url = eventUrl(event.id)
-  const when = formatWhen(event)
-  let payload
+  const when = (lang: Lang) => formatWhen(event, lang)
+  let message: (lang: Lang) => { title: string; body: string; url: string; tag: string }
 
   if (body.event_id) {
     // A new plan or proposal: only its creator announces it.
     if (event.created_by !== userId) return json({ error: 'not_found' }, 404)
     const asking = event.status === 'proposed'
-    payload = event.surprise
-      ? asking
-        ? { title: `🎁 ${me.name} seni bir sürpriz için ayırtmak istiyor`, body: `${when} uygun musun? “${event.teaser}”`, url, tag: event.id }
-        : { title: `🎁 ${me.name} bir sürpriz hazırladı`, body: `“${event.teaser}” · ${when}`, url, tag: event.id }
-      : asking
-        ? { title: `📨 ${me.name} bir plan teklif ediyor`, body: `${event.title} · ${when} — uygun musun?`, url, tag: event.id }
-        : { title: `💌 ${me.name} yeni bir plan ekledi`, body: `${event.title} · ${when}`, url, tag: event.id }
+    message = (lang) =>
+      event.surprise
+        ? asking
+          ? {
+              title: say(lang, `🎁 ${me.name} seni bir sürpriz için ayırtmak istiyor`, `🎁 ${me.name} wants to book you for a surprise`),
+              body: say(lang, `${when(lang)} uygun musun? “${event.teaser}”`, `Are you free on ${when(lang)}? “${event.teaser}”`),
+              url,
+              tag: event.id,
+            }
+          : {
+              title: say(lang, `🎁 ${me.name} bir sürpriz hazırladı`, `🎁 ${me.name} has a surprise for you`),
+              body: `“${event.teaser}” · ${when(lang)}`,
+              url,
+              tag: event.id,
+            }
+        : asking
+          ? {
+              title: say(lang, `📨 ${me.name} bir plan teklif ediyor`, `📨 ${me.name} suggests a plan`),
+              body: say(lang, `${event.title} · ${when(lang)} — uygun musun?`, `${event.title} · ${when(lang)} — are you free?`),
+              url,
+              tag: event.id,
+            }
+          : {
+              title: say(lang, `💌 ${me.name} yeni bir plan ekledi`, `💌 ${me.name} added a new plan`),
+              body: `${event.title} · ${when(lang)}`,
+              url,
+              tag: event.id,
+            }
   } else if (body.response_event_id) {
     // An answer to a proposal goes to whoever asked; the caller must have just answered it.
     if (event.status === 'proposed' && event.awaiting === userId) return json({ error: 'not_answered' }, 409)
-    const plan = nameFor(event, partner.id)
     const note = event.response_note ? ` · “${event.response_note}”` : ''
-    payload =
-      event.status === 'confirmed'
-        ? { title: `✅ ${me.name} uygun!`, body: `${plan} · ${when}${note}`, url, tag: `${event.id}-answer` }
+    const tag = `${event.id}-answer`
+    message = (lang) => {
+      const plan = nameFor(event, partner.id, lang)
+      return event.status === 'confirmed'
+        ? { title: say(lang, `✅ ${me.name} uygun!`, `✅ ${me.name} is free!`), body: `${plan} · ${when(lang)}${note}`, url, tag }
         : event.status === 'declined'
-          ? { title: `❌ ${me.name} o zaman uygun değil`, body: `${plan}${note}`, url, tag: `${event.id}-answer` }
-          : { title: `🕐 ${me.name} başka bir zaman önerdi`, body: `${plan} · ${when}${note}`, url, tag: `${event.id}-answer` }
+          ? { title: say(lang, `❌ ${me.name} o zaman uygun değil`, `❌ ${me.name} isn’t free then`), body: `${plan}${note}`, url, tag }
+          : { title: say(lang, `🕐 ${me.name} başka bir zaman önerdi`, `🕐 ${me.name} suggested another time`), body: `${plan} · ${when(lang)}${note}`, url, tag }
+    }
   } else {
     // Talking about a still-hidden surprise must not reach the person it is hidden from.
     if (hiddenFrom(event, userId) || hiddenFrom(event, partner.id)) return json({ sent: 0 })
-    payload = comment
-      ? { title: `💬 ${me.name} · ${event.title}`, body: comment.body.slice(0, 180), url: `${url}&chat=1`, tag: `${event.id}-chat` }
-      : { title: `${body.emoji} ${me.name} planına tepki verdi`, body: event.title, url, tag: `${event.id}-react` }
+    const said = comment
+    message = (lang) =>
+      said
+        ? { title: `💬 ${me.name} · ${event.title}`, body: commentText(said, lang).slice(0, 180), url: `${url}&chat=1`, tag: `${event.id}-chat` }
+        : {
+            title: say(lang, `${body.emoji} ${me.name} planına tepki verdi`, `${body.emoji} ${me.name} reacted to your plan`),
+            body: event.title,
+            url,
+            tag: `${event.id}-react`,
+          }
   }
 
-  return json({ sent: await sendToUsers([partner.id], payload, event.id) })
+  return json({ sent: await sendToUsers([partner.id], message, event.id) })
 })
