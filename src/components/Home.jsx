@@ -225,6 +225,8 @@ export default function Home({ userId }) {
   const [pendingWish, setPendingWish] = useState(() => startParams.get('wish'))
   const [pendingPerson, setPendingPerson] = useState(() => startParams.get('person'))
   const [pendingBirthday, setPendingBirthday] = useState(() => startParams.get('birthday'))
+  // ?paywall opens the UsDay+ offer (e.g. from a "your trial ends soon" message).
+  const [pendingPaywall, setPendingPaywall] = useState(() => startParams.has('paywall'))
   const [wishFocus, setWishFocus] = useState(null) // whose wish list the wishes tab opens on
   const [pendingMilestone, setPendingMilestone] = useState(() =>
     startParams.get('milestone')
@@ -242,6 +244,7 @@ export default function Home({ userId }) {
       if (p.get('tab') === 'dilekler') setTab('dilekler')
       if (p.get('person')) setPendingPerson(p.get('person'))
       if (p.get('birthday')) setPendingBirthday(p.get('birthday'))
+      if (p.has('paywall')) setPendingPaywall(true)
       if (p.get('wish')) setPendingWish(p.get('wish'))
       if (p.get('shared')) {
         setPendingShared({ owner: p.get('shared'), eventId: p.get('event') })
@@ -510,6 +513,13 @@ export default function Home({ userId }) {
     // choose is stable enough for this one-off jump
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingBirthday, connections, selection, shown, todayKey])
+
+  useEffect(() => {
+    if (!pendingPaywall || !connections) return
+    setPendingPaywall(false)
+    if (billing?.subscribed) setSheet({ type: 'settings' })
+    else setSheet({ type: 'paywall' })
+  }, [pendingPaywall, connections, billing])
 
   useEffect(() => {
     if (!toast) return

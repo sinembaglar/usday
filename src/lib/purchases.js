@@ -6,12 +6,15 @@ import { Capacitor } from '@capacitor/core'
 import { INTRO_ELIGIBILITY_STATUS, Purchases, PURCHASES_ERROR_CODE } from '@revenuecat/purchases-capacitor'
 import { isNative } from './native'
 
-// The entitlement UsDay+ gives in the RevenueCat dashboard.
-const ENTITLEMENT = 'plus'
+// The entitlement UsDay+ gives in the RevenueCat dashboard (its identifier there is "usday").
+const ENTITLEMENT = 'usday'
 
-// Public SDK keys from the RevenueCat dashboard; they are meant to ship inside the app.
+// Public SDK keys from the RevenueCat dashboard; they are meant to ship inside the app. A test build
+// (`vite build --mode storetest`, key in .env.storetest.local) uses RevenueCat's Test Store instead, so
+// purchases can be tried without the App Store or Google Play. That key must never reach a store build.
+const TEST_KEY = import.meta.env.VITE_REVENUECAT_TEST_KEY
 const KEYS = { ios: import.meta.env.VITE_REVENUECAT_IOS_KEY, android: import.meta.env.VITE_REVENUECAT_ANDROID_KEY }
-const apiKey = isNative ? KEYS[Capacitor.getPlatform()] : null
+const apiKey = isNative ? (TEST_KEY ?? KEYS[Capacitor.getPlatform()]) : null
 
 // Whether this copy of UsDay can sell UsDay+ (the phone app, once the store is set up).
 export const canBuy = Boolean(apiKey)
