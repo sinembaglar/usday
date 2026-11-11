@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ChevronRight, ExternalLink, Sparkles } from 'lucide-react'
+import { ChevronRight, ExternalLink, RotateCcw, Sparkles } from 'lucide-react'
 import { setCovered } from '../lib/api'
 import { UNKNOWN_PERSON } from '../lib/constants'
 import { genitive } from '../lib/format'
 import { dateText, t } from '../lib/i18n'
 import { PRICE, TRIAL_DAYS } from '../lib/prices'
+import { canBuy, restore } from '../lib/purchases'
 
 const MANAGE = {
   app_store: 'https://apps.apple.com/account/subscriptions',
@@ -12,8 +13,9 @@ const MANAGE = {
 }
 
 // "Abonelik" in settings: my subscription, and which of my people it covers (up to billing.max).
-export default function SubscriptionSettings({ billing, me, connections, members, onPaywall, onChanged, onToast }) {
+export default function SubscriptionSettings({ billing, me, connections, members, onPaywall, onChanged, onRestored, onToast }) {
   const [busy, setBusy] = useState(null)
+  const [restoring, setRestoring] = useState(false)
   const sub = billing.subscription
   const state = Object.fromEntries(billing.connections.map((c) => [c.couple_id, c]))
   const people = connections.filter((c) => c.partnerId && state[c.id])
@@ -47,6 +49,18 @@ export default function SubscriptionSettings({ billing, me, connections, members
       )
     }
     setBusy(null)
+  }
+
+  // A subscription bought with this Apple / Google account, e.g. on an earlier phone.
+  async function bringBack() {
+    setRestoring(true)
+    try {
+      if (await restore()) onRestored()
+      else onToast(t('Bu Apple ya da Google hesabıyla alınmış bir abonelik bulunamadı', 'No subscription was found for this Apple or Google account'))
+    } catch {
+      onToast(t('Geri yüklenemedi, tekrar dener misin?', 'Couldn’t restore. Try again?'))
+    }
+    setRestoring(false)
   }
 
   function label(c, person) {
@@ -90,6 +104,17 @@ export default function SubscriptionSettings({ billing, me, connections, members
               </small>
             </span>
             <ChevronRight size={18} className="row-chevron" aria-hidden="true" />
+          </button>
+        )}
+        {canBuy && (
+          <button className="list-row" onClick={bringBack} disabled={restoring}>
+            <span className="row-icon">
+              <RotateCcw size={18} aria-hidden="true" />
+            </span>
+            <span className="row-text">
+              {restoring ? t('Bir saniye…', 'One moment…') : t('Satın alımları geri yükle', 'Restore purchases')}
+              <small>{t('Telefon değiştirdiysen', 'If you changed phones')}</small>
+            </span>
           </button>
         )}
       </div>

@@ -37,6 +37,7 @@ export default function SettingsSheet({
   onBirthday,
   billing,
   onBillingChanged,
+  onRestored,
   onPaywall,
   onClose,
   onToast,
@@ -176,6 +177,7 @@ export default function SettingsSheet({
           members={members}
           onPaywall={onPaywall}
           onChanged={onBillingChanged}
+          onRestored={onRestored}
           onToast={onToast}
         />
       )}

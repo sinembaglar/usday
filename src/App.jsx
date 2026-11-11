@@ -7,6 +7,7 @@ import Home from './components/Home'
 import { hideSplash, isNative, statusBarText } from './lib/native'
 import { isDark } from './lib/theme'
 import { syncLanguage } from './lib/api'
+import { startPurchases } from './lib/purchases'
 
 const RETURNING_KEY = 'usday:returning'
 
@@ -51,7 +52,9 @@ export default function App() {
   // Once per sign-in: tell the server which language and time zone this phone uses.
   const user = session?.user
   useEffect(() => {
-    if (user) syncLanguage(user).catch(() => {})
+    if (!user) return
+    syncLanguage(user).catch(() => {})
+    startPurchases(user.id).catch(() => {})
     // only when the signed-in person changes, not on every token refresh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])

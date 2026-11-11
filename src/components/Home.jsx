@@ -186,6 +186,21 @@ export default function Home({ userId }) {
     }
   }, [])
 
+  // Bought or restored in the store: the store tells the server within seconds, so ask a few times.
+  const subscribed = useCallback(async () => {
+    setSheet(null)
+    setToast(t('✨ UsDay+ açıldı, teşekkürler!', '✨ UsDay+ is on. Thank you!'))
+    for (let i = 0; i < 12; i++) {
+      const bill = await loadBilling().catch(() => null)
+      if (bill?.subscribed) {
+        setBilling(bill)
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    }
+    reload()
+  }, [reload])
+
   // Phone app status bar: light text over the dark cover of the calendar and in the dark theme.
   useEffect(() => {
     statusBarText(tab === 'takvim' || isDark())
@@ -1294,7 +1309,9 @@ export default function Home({ userId }) {
               reason={sheet.reason}
               max={billing?.max}
               onHaveCode={() => setSheet({ type: 'addPerson', mode: 'join' })}
+              onBought={subscribed}
               onClose={() => setSheet(null)}
+              onToast={setToast}
             />
           ) : sheet.type === 'birthday' ? (
             <BirthdaySheet current={me?.birthday ?? ''} onSave={saveBirthday} onClose={() => setSheet(null)} />
@@ -1309,6 +1326,7 @@ export default function Home({ userId }) {
               onBirthday={() => setSheet({ type: 'birthday' })}
               billing={billing}
               onBillingChanged={refreshBilling}
+              onRestored={subscribed}
               onPaywall={() => showPaywall()}
               connections={all}
               members={members}
